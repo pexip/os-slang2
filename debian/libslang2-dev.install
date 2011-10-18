@@ -1,0 +1,20 @@
+demo/demolib.c	usr/share/doc/libslang2-dev/examples
+src/config.h	usr/share/doc/libslang2-dev/examples
+demo/pager.c	usr/share/doc/libslang2-dev/examples
+demo/README 	usr/share/doc/libslang2-dev/examples
+demo/smgtest.c	usr/share/doc/libslang2-dev/examples
+demo/useropen.c	usr/share/doc/libslang2-dev/examples
+demo/keypad.c	usr/share/doc/libslang2-dev/examples
+demo/Makefile	usr/share/doc/libslang2-dev/examples
+src/config.h	usr/share/doc/libslang2-dev/examples
+NEWS	usr/share/doc/libslang2-dev
+README	usr/share/doc/libslang2-dev
+UPGRADE.txt usr/share/doc/libslang2-dev
+doc/text/cref.txt	usr/share/doc/libslang2-dev
+doc/text/cslang.txt	usr/share/doc/libslang2-dev
+src/slang.h	usr/include
+src/slcurses.h	usr/include
+debian/lintian/libslang2-dev	usr/share/lintian/overrides
+debian/tmp/usr/lib/*/libslang.a	
+debian/tmp/usr/lib/*/libslang.so	
+debian/tmp/usr/lib/*/pkgconfig/slang.pc
