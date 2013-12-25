@@ -1,3 +1,9 @@
+slang2 (2.2.4-3ubuntu1pexip1) pexip; urgency=low
+
+  * Prepare Pexip packaging
+
+ -- John-Mark Bell <jmb@pexip.com>  Wed, 25 Dec 2013 04:45:56 +0000
+
 slang2 (2.2.4-3ubuntu1) precise; urgency=low
 
   * Merge with Debian unstable. Remaining Ubuntu changes:
