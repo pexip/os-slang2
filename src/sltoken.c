@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -61,7 +61,7 @@ static int next_input_line (void)
 
 static void free_slstring_token_val (_pSLang_Token_Type *tok)
 {
-   char *s = tok->v.s_val;
+   SLCONST char *s = tok->v.s_val;
    if (s != NULL)
      {
 	_pSLfree_hashed_string (s, strlen(s), tok->hash);
@@ -74,7 +74,7 @@ static void free_static_sval_token (_pSLang_Token_Type *tok)
 }
 
 _pSLtok_Type _pSLtoken_init_slstring_token (_pSLang_Token_Type *tok, _pSLtok_Type type,
-					    char *s, unsigned int len)
+					    SLCONST char *s, SLstrlen_Type len)
 {
    if (NULL == (tok->v.s_val = _pSLstring_make_hashed_string (s, len, &tok->hash)))
      return tok->type = EOF_TOKEN;
@@ -1142,7 +1142,7 @@ static _pSLang_Multiline_String_Type *
 	num++;
      }
 
-   if (NULL == (buf = SLmalloc (len+1)))
+   if (NULL == (buf = (char *)SLmalloc (len+1)))
      {
 	SLfree ((char *) m);
 	return NULL;
@@ -1737,7 +1737,7 @@ static char *read_from_file (SLang_Load_Type *x)
    buf = fgets (c->buf, MAX_FILE_LINE_LEN+1, c->fp);
    if (buf != NULL)
      {
-	unsigned int num;
+	size_t num;
 
 	num = strlen (buf);
 	if ((num == MAX_FILE_LINE_LEN)
@@ -1814,7 +1814,7 @@ int SLns_load_file (SLFUTURE_CONST char *f, SLFUTURE_CONST char *ns_name)
 
    if (fp == NULL)
      _pSLang_verror (SL_OBJ_NOPEN, "Unable to open %s", name);
-   else if (NULL != (buf = SLmalloc (MAX_FILE_LINE_LEN + 1)))
+   else if (NULL != (buf = (char *)SLmalloc (MAX_FILE_LINE_LEN + 1)))
      {
 	client_data.fp = fp;
 	client_data.buf = buf;
@@ -2224,7 +2224,7 @@ static int bytecomp_write_data (SLCONST char *buf, unsigned int len)
 	     clen = 0;
 	  }
 
-	if (EOF == putc (*buf, fp))
+	if (EOF == putc ((unsigned char)*buf, fp))
 	  {
 	     SLang_set_error (SL_IO_WRITE_ERROR);
 	     return -1;
@@ -2312,7 +2312,7 @@ static int byte_compile_multiline_token (_pSLang_Token_Type *tok,
 static void byte_compile_token (_pSLang_Token_Type *tok)
 {
    unsigned char buf [SL_MAX_TOKEN_LEN + 4], *buf_max;
-   unsigned int len;
+   SLstrlen_Type len;
    char *b3;
    int is_escaped;
    unsigned char *s;

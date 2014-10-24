@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -94,7 +94,7 @@ USA.
 #define CHAR_MASK	0x000000FF
 #define FG_MASK		0x0000FF00
 #define BG_MASK		0x00FF0000
-#define ATTR_MASK	0x1F000000
+#define ATTR_MASK	0x3F000000
 #define BGALL_MASK	0x0FFF0000
 
 /* The 0x10000000 bit represents the alternate character set.  BGALL_MASK does
@@ -192,6 +192,7 @@ char *SLtt_Graphics_Char_Pairs = NULL;	       /* ac termcap string -- def is vt1
 
 static SLCONST char *UnderLine_Vid_Str;
 static SLCONST char *Blink_Vid_Str;
+static SLCONST char *Italic_Vid_Str;
 static SLCONST char *Bold_Vid_Str;
 static SLCONST char *Ins_Mode_Str; /* = "\033[4h"; */   /* ins mode (im) */
 static SLCONST char *Eins_Mode_Str; /* = "\033[4l"; */  /* end ins mode (ei) */
@@ -275,9 +276,9 @@ int _pSLusleep (unsigned long usecs)
 
 int SLtt_flush_output (void)
 {
-   int nwrite = 0;
-   unsigned int total;
-   int n = (int) (Output_Bufferp - Output_Buffer);
+   ssize_t nwrite = 0;
+   size_t total;
+   size_t n = (Output_Bufferp - Output_Buffer);
 
    SLtt_Num_Chars_Output += n;
 
@@ -315,22 +316,22 @@ int SLtt_flush_output (void)
 }
 
 int SLtt_Baud_Rate = 0;
-static void tt_write(SLCONST char *str, unsigned int n)
+static void tt_write(SLCONST char *str, SLstrlen_Type n)
 {
    static unsigned long last_time;
-   static int total;
+   static SLstrlen_Type total;
    unsigned long now;
-   unsigned int ndiff;
+   size_t ndiff;
 
    if ((str == NULL) || (n == 0)) return;
    total += n;
 
    while (1)
      {
-	ndiff = MAX_OUTPUT_BUFFER_SIZE - (int) (Output_Bufferp - Output_Buffer);
+	ndiff = MAX_OUTPUT_BUFFER_SIZE - (Output_Bufferp - Output_Buffer);
 	if (ndiff < n)
 	  {
-	     SLMEMCPY ((char *) Output_Bufferp, str, ndiff);
+	     memcpy ((char *) Output_Bufferp, str, ndiff);
 	     Output_Bufferp += ndiff;
 	     SLtt_flush_output ();
 	     n -= ndiff;
@@ -338,14 +339,14 @@ static void tt_write(SLCONST char *str, unsigned int n)
 	  }
 	else
 	  {
-	     SLMEMCPY ((char *) Output_Bufferp, str, n);
+	     memcpy ((char *) Output_Bufferp, str, n);
 	     Output_Bufferp += n;
 	     break;
 	  }
      }
 
    if (((SLtt_Baud_Rate > 150) && (SLtt_Baud_Rate <= 9600))
-       && (10 * total > SLtt_Baud_Rate))
+       && (10 * total > (unsigned int)SLtt_Baud_Rate))
      {
 	total = 0;
 	if ((now = (unsigned long) time(NULL)) - last_time <= 1)
@@ -1044,7 +1045,7 @@ static void del_eol (void)
      }
 
    if ((Del_Eol_Str != NULL)
-       && (Can_Background_Color_Erase || ((Current_Fgbg & ~0xFF) == 0)))
+       && (Can_Background_Color_Erase || ((Current_Fgbg & ~0xFFU) == 0)))
      {
 	tt_write_string(Del_Eol_Str);
 	return;
@@ -1088,8 +1089,8 @@ static Color_Def_Type Color_Defs [MAX_COLOR_NAMES] =
      {"brightgreen",	SLSMG_COLOR_BRIGHT_GREEN},
      {"yellow",		SLSMG_COLOR_BRIGHT_BROWN},
      {"brightblue",	SLSMG_COLOR_BRIGHT_BLUE},
-     {"brightmagenta",	SLSMG_COLOR_BRIGHT_CYAN},
-     {"brightcyan",	SLSMG_COLOR_BRIGHT_MAGENTA},
+     {"brightmagenta",	SLSMG_COLOR_BRIGHT_MAGENTA},
+     {"brightcyan",	SLSMG_COLOR_BRIGHT_CYAN},
      {"white",		SLSMG_COLOR_BRIGHT_WHITE},
 #define SLSMG_COLOR_DEFAULT 0xFF
      {"default",		SLSMG_COLOR_DEFAULT}
@@ -1371,11 +1372,59 @@ static int parse_color_digit_name (SLCONST char *color, SLtt_Char_Type *f)
    return 0;
 }
 
+/* Here whitespace is not allowed.  That is, "blue;blink" is ok but
+ * "blue; blink" or "blue ;blink" are not.
+ */
+static int parse_color_and_attributes (SLCONST char *f, char *buf, size_t buflen, SLtt_Char_Type *attrp)
+{
+   SLCONST char *s;
+   unsigned int len;
+   SLtt_Char_Type a;
+
+   *attrp = a = 0;
+
+   s = strchr (f, ';');
+   if (s == NULL) return 0;
+
+   len = s - f;
+   if (len >= buflen) len = buflen-1;
+   strncpy (buf, f, len);
+   buf[len] = 0;
+
+   while ((*s == ';') || (*s == ' ') || (*s == '\t')) s++;
+   f = s;
+   while (*f)
+     {
+	s = strchr (f, ';');
+	if (s == NULL)
+	  s = f + strlen (f);
+
+	len = s - f;
+	if (len)
+	  {
+	     if (0 == strncmp (f, "italic", 6))
+	       a |= SLTT_ITALIC_MASK;
+	     else if (0 == strncmp (f, "blink", 5))
+	       a |= SLTT_BLINK_MASK;
+	     else if (0 == strncmp (f, "underline", 9))
+	       a |= SLTT_ULINE_MASK;
+	     else if (0 == strncmp (f, "bold", 4))
+	       a |= SLTT_BOLD_MASK;
+	  }
+	while ((*s == ';') || (*s == ' ') || (*s == '\t')) s++;
+	f = s;
+     }
+   *attrp = a;
+   return 1;
+}
+
 static int make_color_fgbg (SLCONST char *fg, SLCONST char *bg, SLtt_Char_Type *fgbg)
 {
    SLtt_Char_Type f = 0xFFFFFFFFU, b = 0xFFFFFFFFU;
    SLCONST char *dfg, *dbg;
    unsigned int i;
+   char bgbuf[16], fgbuf[16];
+   SLtt_Char_Type fattr= 0, battr = 0;
 
    if ((fg != NULL) && (*fg == 0)) fg = NULL;
    if ((bg != NULL) && (*bg == 0)) bg = NULL;
@@ -1389,6 +1438,9 @@ static int make_color_fgbg (SLCONST char *fg, SLCONST char *bg, SLtt_Char_Type *
 	if (bg == NULL) bg = dbg;
      }
 
+   if (1 == parse_color_and_attributes (fg, fgbuf, sizeof(fgbuf), &fattr))
+     fg = fgbuf;
+
    if (-1 == parse_color_digit_name (fg, &f))
      {
 	for (i = 0; i < MAX_COLOR_NAMES; i++)
@@ -1398,6 +1450,9 @@ static int make_color_fgbg (SLCONST char *fg, SLCONST char *bg, SLtt_Char_Type *
 	     break;
 	  }
      }
+
+   if (1 == parse_color_and_attributes (bg, bgbuf, sizeof(bgbuf), &battr))
+     bg = bgbuf;
 
    if (-1 == parse_color_digit_name (bg, &b))
      {
@@ -1412,7 +1467,7 @@ static int make_color_fgbg (SLCONST char *fg, SLCONST char *bg, SLtt_Char_Type *
    if ((f == 0xFFFFFFFFU) || (b == 0xFFFFFFFFU))
      return -1;
 
-   *fgbg = fb_to_fgbg (f, b);
+   *fgbg = fb_to_fgbg (f, b) | fattr | battr;
    return 0;
 }
 
@@ -1481,6 +1536,7 @@ static void write_attributes (SLtt_Char_Type fgbg)
 	if (fgbg & SLTT_ULINE_MASK) tt_write_string (UnderLine_Vid_Str);
 	if (fgbg & SLTT_BOLD_MASK) SLtt_bold_video ();
 	if (fgbg & SLTT_REV_MASK) tt_write_string (Rev_Vid_Str);
+	if (fgbg & SLTT_ITALIC_MASK) tt_write_string (Italic_Vid_Str);
 	if (fgbg & SLTT_BLINK_MASK)
 	  {
 	     /* Someday Linux will have a blink mode that set high intensity
@@ -1600,7 +1656,7 @@ static int bce_colors_eq (SLsmg_Color_Type ca, SLsmg_Color_Type cb, int just_bg)
  */
 static void write_string_with_care (SLCONST char *str)
 {
-   unsigned int len;
+   SLstrlen_Type len;
 
    if (str == NULL) return;
 
@@ -1628,7 +1684,7 @@ static void write_string_with_care (SLCONST char *str)
 	       if (SLtt_Screen_Cols > Cursor_c)
 	         {
 		    char *p;
-		    nchars = SLtt_Screen_Cols - Cursor_c - 1;
+		    nchars = (SLstrlen_Type)(SLtt_Screen_Cols - Cursor_c - 1);
 		    p = (char *)SLutf8_skip_chars((SLuchar_Type *) str, (SLuchar_Type *)(str + len), nchars, NULL, 1);
 		    len = p - str;
 		 }
@@ -2301,7 +2357,7 @@ static void get_color_info (void)
 
 #ifdef __unix__
 
-static int Termcap_Initalized = 0;
+static int Termcap_Initialized = 0;
 
 /* #define USE_TERMCAP 1 */
 #ifdef USE_TERMCAP
@@ -2363,7 +2419,7 @@ static char *tt_tgetstr (SLCONST char *cap)
    char area_buf[4096];
    char *area;
 #endif
-   if (Termcap_Initalized == 0)
+   if (Termcap_Initialized == 0)
      return NULL;
 
 #ifdef USE_TERMCAP
@@ -2409,7 +2465,7 @@ char *SLtt_tgetstr (SLFUTURE_CONST char *cap)
 
 static int tt_tgetnum (SLCONST char *s)
 {
-   if (Termcap_Initalized == 0)
+   if (Termcap_Initialized == 0)
      return -1;
 #ifdef USE_TERMCAP
    return tgetnum (s);
@@ -2425,7 +2481,7 @@ int SLtt_tgetnum (SLFUTURE_CONST char *s)
 
 static int tt_tgetflag (SLCONST char *s)
 {
-   if (Termcap_Initalized == 0)
+   if (Termcap_Initialized == 0)
      return -1;
 #ifdef USE_TERMCAP
    return tgetflag (s);
@@ -2471,7 +2527,7 @@ void SLtt_get_terminfo (void)
 
    term = getenv ("TERM");
    if (term == NULL)
-     SLang_exit_error("TERM environment variable needs set.");
+     SLang_exit_error("%s", "TERM environment variable needs set.");
 
    if (0 == (status = SLtt_initialize (term)))
      return;
@@ -2547,6 +2603,8 @@ int SLtt_initialize (SLFUTURE_CONST char *term)
    if (Terminfo != NULL)
      _pSLtt_tifreeent (Terminfo);
 
+   Termcap_Initialized = 0;	       /* resetting things */
+
    if (NULL == (Terminfo = _pSLtt_tigetent (term)))
      {
 	if (almost_vtxxx) /* Special cases. */
@@ -2566,7 +2624,7 @@ int SLtt_initialize (SLFUTURE_CONST char *term)
    /* Termcap_String_Ptr = Termcap_String_Buf; */
 # endif				       /* NOT USE_TERMCAP */
 
-   Termcap_Initalized = 1;
+   Termcap_Initialized = 1;
 
    Cls_Str = tt_tgetstr ("cl");
    Abs_Curs_Pos_Str = tt_tgetstr ("cm");
@@ -2665,6 +2723,7 @@ int SLtt_initialize (SLFUTURE_CONST char *term)
      Blink_Vid_Str = "\033[5m";
 
    UnderLine_Vid_Str = tt_tgetstr("us");
+   Italic_Vid_Str = "\033[3m";
 
    Start_Alt_Chars_Str = tt_tgetstr ("as");   /* smacs */
    End_Alt_Chars_Str = tt_tgetstr ("ae");   /* rmacs */
@@ -2862,6 +2921,7 @@ void SLtt_set_term_vtxxx(int *vt100)
    Bold_Vid_Str = "\033[1m";
    Blink_Vid_Str = "\033[5m";
    UnderLine_Vid_Str = "\033[4m";
+   Italic_Vid_Str = "\033[3m";
    Del_Eol_Str = "\033[K";
    Del_Bol_Str = "\033[1K";
    Rev_Scroll_Str = "\033M";

@@ -1,7 +1,1 @@
-NEWS	usr/share/doc/libslang2
-README	usr/share/doc/libslang2
-UPGRADE.txt usr/share/doc/libslang2
-doc/text/slang.txt	usr/share/doc/libslang2
-doc/text/slangfun.txt	usr/share/doc/libslang2
-debian/lintian/libslang2		usr/share/lintian/overrides
 debian/tmp/lib/*/libslang.so.*

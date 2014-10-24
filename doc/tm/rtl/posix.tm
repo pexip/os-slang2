@@ -31,6 +31,29 @@
 \seealso{getpid, getppid}
 \done
 
+\function{getpgid}
+\synopsis{Get the process group id}
+\usage{Int_Type getpgid (Int_Type pid)}
+\description
+  The \ifun{getpgid} function returns the process group id of the
+  process whose process is \exmp{pid}.  If \exmp{pid} is 0, then the
+  current process will be used.
+\notes
+  This function is not supported by all systems.
+\seealso{getpgrp, getpid, getppid}
+\done
+
+\function{getpgrp}
+\synopsis{Get the process group id of the calling process}
+\usage{Int_Type getpgrp ()}
+\description
+  The \ifun{getpgrp} function returns the process group id of the
+  current process.
+\notes
+  This function is not supported by all systems.
+\seealso{getpgid, getpid, getppid}
+\done
+
 \function{getpid}
 \synopsis{Get the current process id}
 \usage{Integer_Type getpid ()}
@@ -74,6 +97,77 @@
 \seealso{setpriority, getpid, getppid}
 \done
 
+\function{getrusage}
+\synopsis{Get process resource usage}
+\usage{Struct_Type getrusage ([Int_Type who]}
+\description
+  This function returns a structure whose fields contain information
+  about the resource usage of calling process, summed over all threads
+  of the process.  The optional integer argument \exmp{who} may be
+  used to obtain resource usage of child processes, or of the calling
+  thread itself. Specifically, the optional integer argument
+  \exmp{who} may take on one of the following values:
+#v+
+    RUSAGE_SELF (default)
+    RUSAGE_CHILDREN
+#v-
+  If \ivar{RUSAGE_CHILDREN} is specified, then the process information
+  will be the sum of all descendents of the calling process that have
+  terminated and have been waited for (via, e.g., \ifun{waitpid}).  It
+  will not contain any information about child processes that have not
+  terminated.
+
+  The structure that is returned will contain the following fields:
+#v+
+   ru_utimesecs       user CPU time used (Double_Type secs)
+   ru_stimesecs       system CPU time used (Double_Type secs)
+   ru_maxrss          maximum resident_set_size
+   ru_minflt          page reclaims (soft page faults)
+   ru_majflt          page faults (hard page faults)
+   ru_inblock         block input operations
+   ru_oublock         block output operations
+   ru_nvcsw           voluntary context switches
+   ru_nivcsw          involuntary context switches
+   ru_ixrss           integral shared memory size
+   ru_idrss           integral unshared data size
+   ru_isrss           integral unshared stack size
+   ru_nswap           swaps
+   ru_msgsnd          IPC messages sent
+   ru_msgrcv          IPC messages received
+   ru_nsignals        signals received
+#v-
+  Some of the fields may not be supported for a particular OS or
+  kernel version.  For example, on Linux the 2.6.32 kernel supports
+  only the following fields:
+#v+
+    ru_utimesecs
+    ru_stimesecs
+    ru_maxrss (since Linux 2.6.32)
+    ru_minflt
+    ru_majflt
+    ru_inblock (since Linux 2.6.22)
+    ru_oublock (since Linux 2.6.22)
+    ru_nvcsw (since Linux 2.6)
+    ru_nivcsw (since Linux 2.6)
+#v-
+\notes
+  The underlying system call returns the CPU user and system times
+  as C \exmp{struct timeval} objects.  For convenience, the interpreter
+  interface represents these objects as double precision floating point
+  values.
+\seealso{times}
+\done
+
+\function{getsid}
+\synopsis{get the session id of a process}
+\usage{Int_Type getsid ([Int_Type pid])}
+\description
+  The \ifun{getsid} function returns the session id of the current
+  process.  If the optional integer \exmp{pid} argument is given, then
+  the function returns the session id of the specified process id.
+\seealso{setsid, getpid, getpid}
+\done
+
 \function{getuid}
 \synopsis{Get the user-id of the current process}
 \usage{Int_Type getuid ()}
@@ -105,7 +199,19 @@
 #v-
 \notes
   This function is not supported by all systems.
-\seealso{getpid}
+\seealso{killpg, getpid}
+\done
+
+\function{killpg}
+\synopsis{Send a signal to a process group}
+\usage{Integer_Type killpg (Integer_Type pgrppid, Integer_Type sig)}
+\description
+  This function may be used to send a signal given by the integer \exmp{sig}
+  to the process group specified by \exmp{pgrppid}.  The function returns zero upon
+  success or \exmp{-1} upon failure setting \ivar{errno} accordingly.
+\notes
+  This function is not supported by all systems.
+\seealso{kill, getpid}
 \done
 
 \function{mkfifo}
@@ -190,6 +296,20 @@
  -20 to 20, with -20 being the highest scheduling priority, and +20
  the lowest.
 \seealso{getpriority, getpid}
+\done
+
+
+\function{setsid}
+\synopsis{Create a new session for the current process}
+\usage{Int_Type setsid ()}
+\description
+  If the current process is not a session leader, the \ifun{setsid}
+  function will create a new session and make the process the session
+  leader for the new session.  It returns the the process group id of
+  the new session.
+
+  Upon failure, -1 will be returned and \ivar{errno} set accordingly.
+\seealso{getsid, setpgid}
 \done
 
 \function{setuid}

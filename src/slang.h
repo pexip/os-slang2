@@ -2,7 +2,7 @@
 #define DAVIS_SLANG_H_
 /* -*- mode: C; mode: fold; -*- */
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -22,8 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
 */
 
-#define SLANG_VERSION 20204
-#define SLANG_VERSION_STRING "2.2.4"
+#define SLANG_VERSION 20300
+#define SLANG_VERSION_STRING "2.3.0"
 /* #ifdef __DATE__ */
 /* # define SLANG_VERSION_STRING SLANG_VERSION_STRING0 " " __DATE__ */
 /* #else */
@@ -222,6 +222,12 @@ typedef unsigned char *VOID_STAR;
 # define SLFUTURE_CONST
 #endif
 
+#ifdef ENABLE_SLFUTURE_VOID
+# define SLFUTURE_VOID void
+#else
+# define SLFUTURE_VOID char
+#endif
+
 typedef int (*FVOID_STAR)(void);
 
 #if defined(__MSDOS__) && defined(__BORLANDC__)
@@ -256,10 +262,10 @@ typedef int (*FVOID_STAR)(void);
 # define SL_EXTERN extern SL_IMPORT
 #endif
 
-SL_EXTERN char *SLdebug_malloc (unsigned long);
-SL_EXTERN char *SLdebug_calloc (unsigned long, unsigned long);
-SL_EXTERN char *SLdebug_realloc (char *, unsigned long);
-SL_EXTERN void SLdebug_free (char *);
+SL_EXTERN SLFUTURE_VOID *SLdebug_malloc (unsigned long);
+SL_EXTERN SLFUTURE_VOID *SLdebug_calloc (unsigned long, unsigned long);
+SL_EXTERN SLFUTURE_VOID *SLdebug_realloc (SLFUTURE_VOID *, unsigned long);
+SL_EXTERN void SLdebug_free (SLFUTURE_VOID *);
 SL_EXTERN void SLmalloc_dump_statistics (void);
 SL_EXTERN char *SLstrcpy(register char *, register char *);
 SL_EXTERN int SLstrcmp(register char *, register char *);
@@ -272,10 +278,14 @@ SL_EXTERN int SLmemcmp (char *, char *, int);
 
 /*}}}*/
 
-/* SLstrings */
-typedef char SLstr_Type;
 typedef unsigned int SLstrlen_Type;    /* Eventually this will become size_t */
 #define SLANG_STRLEN_TYPE SLANG_UINT_TYPE
+typedef int SLindex_Type;
+typedef unsigned int SLuindex_Type;
+#define SLANG_ARRAY_INDEX_TYPE SLANG_INT_TYPE
+
+/* SLstrings */
+typedef char SLstr_Type;
 SL_EXTERN int SLang_pop_strlen_type (SLstrlen_Type *);
 SL_EXTERN int SLang_push_strlen_type (SLstrlen_Type);
 
@@ -284,11 +294,14 @@ SL_EXTERN int SLang_push_strlen_type (SLstrlen_Type);
  */
 SL_EXTERN SLstr_Type *SLang_create_nslstring (SLFUTURE_CONST char *, SLstrlen_Type);
 SL_EXTERN SLstr_Type *SLang_create_slstring (SLFUTURE_CONST char *);
-SL_EXTERN void SLang_free_slstring (SLstr_Type *);    /* handles NULL */
+SL_EXTERN void SLang_free_slstring (SLCONST SLstr_Type *);    /* handles NULL */
 SL_EXTERN int SLang_pop_slstring (SLstr_Type **);   /* free with SLang_free_slstring */
 SL_EXTERN SLstr_Type *SLang_concat_slstrings (SLstr_Type *a, SLstr_Type *b);
+typedef unsigned long SLstr_Hash_Type;
+SL_EXTERN SLstr_Hash_Type SLcompute_string_hash (SLCONST SLstr_Type *);
 
-SL_EXTERN void SLstring_dump_stats (void);
+
+/* SL_EXTERN void SLstring_dump_stats (void);  // is not (yet?) defined by S-Lang library */
 
 /*{{{ UTF-8 and Wide Char support */
 
@@ -588,10 +601,10 @@ SL_EXTERN int SLns_add_math_unary_table (SLang_NameSpace_Type *, SLang_Math_Unar
 SL_EXTERN int SLns_add_hconstant_table (SLang_NameSpace_Type *, SLang_HConstant_Type *, SLFUTURE_CONST char *);
 SL_EXTERN int SLns_add_iconstant_table (SLang_NameSpace_Type *, SLang_IConstant_Type *, SLFUTURE_CONST char *);
 SL_EXTERN int SLns_add_lconstant_table (SLang_NameSpace_Type *, SLang_LConstant_Type *, SLFUTURE_CONST char *);
-SL_EXTERN int SLns_add_fconstant_table (SLang_NameSpace_Type *, SLang_FConstant_Type *, SLFUTURE_CONST char *);
+/* SL_EXTERN int SLns_add_fconstant_table (SLang_NameSpace_Type *, SLang_FConstant_Type *, SLFUTURE_CONST char *);  // is not (yet?) defined by S-Lang library */
 SL_EXTERN int SLns_add_dconstant_table (SLang_NameSpace_Type *, SLang_DConstant_Type *, SLFUTURE_CONST char *);
 #ifdef HAVE_LONG_LONG
-SL_EXTERN int SLns_add_llconstant_table (SLang_NameSpace_Type *, SLang_LLConstant_Type *, SLFUTURE_CONST char *);
+/* SL_EXTERN int SLns_add_llconstant_table (SLang_NameSpace_Type *, SLang_LLConstant_Type *, SLFUTURE_CONST char *);  // is not (yet?) defined by S-Lang library */
 #endif
 SL_EXTERN int SLns_add_istruct_table (SLang_NameSpace_Type *, SLang_IStruct_Field_Type *, VOID_STAR, SLFUTURE_CONST char *);
 
@@ -668,9 +681,6 @@ SL_EXTERN int SLang_generate_debug_info (int);
 # define _PROTO(x) ()
 #endif
 
-typedef int SLindex_Type;
-typedef unsigned int SLuindex_Type;
-#define SLANG_ARRAY_INDEX_TYPE SLANG_INT_TYPE
 SL_EXTERN int SLang_pop_array_index (SLindex_Type *);
 SL_EXTERN int SLang_push_array_index (SLindex_Type);
 
@@ -678,6 +688,37 @@ typedef struct _pSLang_Struct_Type SLang_Struct_Type;
 SL_EXTERN void SLang_free_struct (SLang_Struct_Type *);
 SL_EXTERN int SLang_push_struct (SLang_Struct_Type *);
 SL_EXTERN int SLang_pop_struct (SLang_Struct_Type **);
+
+SL_EXTERN SLang_Struct_Type *SLang_create_struct (SLFUTURE_CONST char **field_names, unsigned int nfields);
+/* Push the specified field value onto the stack */
+SL_EXTERN int SLang_push_struct_field (SLang_Struct_Type *s, char *name);
+/* Pop the value from the stack into the specified field */
+SL_EXTERN int SLang_pop_struct_field (SLang_Struct_Type *s, char *name);
+/* Set the first n fields of the struct from the stack.  If n < 0, pop all fields. */
+SL_EXTERN int SLang_pop_struct_fields (SLang_Struct_Type *s, int n);
+
+
+typedef struct _pSLang_Assoc_Array_Type SLang_Assoc_Array_Type;
+
+SL_EXTERN SLang_Assoc_Array_Type *SLang_create_assoc (SLtype type, int has_default);
+/* If has_default is non-zero, take the default value from the stack */
+SL_EXTERN void SLang_free_assoc (SLang_Assoc_Array_Type *);
+SL_EXTERN int SLang_push_assoc (SLang_Assoc_Array_Type *, int free_flag);
+SL_EXTERN int SLang_pop_assoc (SLang_Assoc_Array_Type **);
+SL_EXTERN int SLang_assoc_get (SLang_Assoc_Array_Type *, SLstr_Type *, SLtype *);
+/* SLang_assoc_get leaves the object on the stack */
+SL_EXTERN int SLang_assoc_put (SLang_Assoc_Array_Type *, SLstr_Type *);
+/* SLang_assoc_put takes the object from the stack */
+
+SL_EXTERN int SLang_assoc_key_exists (SLang_Assoc_Array_Type *, SLstr_Type *);
+
+typedef struct _pSLang_List_Type SLang_List_Type;
+SL_EXTERN SLang_List_Type *SLang_create_list (int);
+SL_EXTERN int SLang_list_append (SLang_List_Type *, int);
+SL_EXTERN int SLang_list_insert (SLang_List_Type *, int);
+SL_EXTERN int SLang_push_list (SLang_List_Type *, int free_list);
+SL_EXTERN int SLang_pop_list (SLang_List_Type **);
+SL_EXTERN void SLang_free_list (SLang_List_Type *);
 
 typedef struct _pSLang_Foreach_Context_Type SLang_Foreach_Context_Type;
 
@@ -707,7 +748,7 @@ SL_EXTERN int SLang_pop_long_long (long long *);
 SL_EXTERN int SLang_push_long_long (long long);
 SL_EXTERN int SLang_pop_ulong_long (unsigned long long *);
 SL_EXTERN int SLang_push_ulong_long (unsigned long long);
-SL_EXTERN int SLclass_pop_llong_obj (SLtype, long long *);
+/* SL_EXTERN int SLclass_pop_llong_obj (SLtype, long long *);  // is not (yet?) defined by S-Lang library */
 SL_EXTERN int SLclass_push_llong_obj (SLtype, long long);
 #endif
 
@@ -1192,7 +1233,6 @@ SL_EXTERN int SLang_pop_value (SLtype type, VOID_STAR);
 SL_EXTERN void SLang_free_value (SLtype type, VOID_STAR);
 
 typedef struct _pSLang_Object_Type SLang_Any_Type;
-
 SL_EXTERN int SLang_pop_anytype (SLang_Any_Type **);
 SL_EXTERN int SLang_push_anytype (SLang_Any_Type *);
 SL_EXTERN void SLang_free_anytype (SLang_Any_Type *);
@@ -1264,6 +1304,10 @@ SL_EXTERN int SLroll_stack (int);
 /* If argument p is positive, the top p objects on the stack are rolled
  * up.  If negative, the stack is rolled down.
  */
+
+/* exchange two items on the stack.  The top item is given by 0 */
+SL_EXTERN int SLstack_exch (unsigned int, unsigned int);
+
 SL_EXTERN int SLdup_n (int n);
 /* Duplicate top n elements of stack */
 
@@ -1290,7 +1334,7 @@ SL_EXTERN int SLstruct_create_struct (unsigned int,
 SL_EXTERN int SLang_add_cleanup_function (void (*)(void));
 
 SL_EXTERN char *SLmake_string (SLFUTURE_CONST char *);
-SL_EXTERN char *SLmake_nstring (SLFUTURE_CONST char *, unsigned int);
+SL_EXTERN char *SLmake_nstring (SLFUTURE_CONST char *, SLstrlen_Type);
 /* Returns a null terminated string made from the first n characters of the
  * string.
  */
@@ -1300,16 +1344,16 @@ SL_EXTERN char *SLmake_nstring (SLFUTURE_CONST char *, unsigned int);
  * to get a pointer and length.
  */
 typedef struct _pSLang_BString_Type SLang_BString_Type;
-SL_EXTERN unsigned char *SLbstring_get_pointer (SLang_BString_Type *, unsigned int *);
+SL_EXTERN unsigned char *SLbstring_get_pointer (SLang_BString_Type *, SLstrlen_Type *);
 
 SL_EXTERN SLang_BString_Type *SLbstring_dup (SLang_BString_Type *);
-SL_EXTERN SLang_BString_Type *SLbstring_create (unsigned char *, unsigned int);
+SL_EXTERN SLang_BString_Type *SLbstring_create (unsigned char *, SLstrlen_Type);
 
-/* The create_malloced function used the first argument which is assumed
+/* The create_malloced function uses the first argument which is assumed
  * to be a pointer to a len + 1 malloced string.  The extra byte is for
  * \0 termination.
  */
-SL_EXTERN SLang_BString_Type *SLbstring_create_malloced (unsigned char *, unsigned int, int);
+SL_EXTERN SLang_BString_Type *SLbstring_create_malloced (unsigned char *s, SLstrlen_Type len, int free_on_error);
 
 /* Create a bstring from an slstring */
 SL_EXTERN SLang_BString_Type *SLbstring_create_slstring (SLFUTURE_CONST char *);
@@ -1318,10 +1362,10 @@ SL_EXTERN void SLbstring_free (SLang_BString_Type *);
 SL_EXTERN int SLang_pop_bstring (SLang_BString_Type **);
 SL_EXTERN int SLang_push_bstring (SLang_BString_Type *);
 
-SL_EXTERN char *SLmalloc (unsigned int);
-SL_EXTERN char *SLcalloc (unsigned int, unsigned int);
-SL_EXTERN void SLfree(char *);	       /* This function handles NULL */
-SL_EXTERN char *SLrealloc (char *, unsigned int);
+SL_EXTERN SLFUTURE_VOID *SLmalloc (SLstrlen_Type);
+SL_EXTERN SLFUTURE_VOID *SLcalloc (SLstrlen_Type, SLstrlen_Type);
+SL_EXTERN void SLfree(SLFUTURE_VOID *);	       /* This function handles NULL */
+SL_EXTERN SLFUTURE_VOID *SLrealloc (SLFUTURE_VOID *, SLstrlen_Type);
 
 SL_EXTERN char *SLcurrent_time_string (void);
 
@@ -1372,6 +1416,16 @@ SL_EXTERN int SLang_set_argc_argv (int, char **);
 
 /*}}}*/
 
+/*{{{ Qualifier Functions */
+
+extern int SLang_qualifier_exists (SLCONST char *name);
+extern int SLang_get_int_qualifier (SLCONST char *name, int *val, int defval);
+extern int SLang_get_long_qualifier (SLCONST char *name, long *val, long defval);
+extern int SLang_get_double_qualifier (SLCONST char *name, double *val, double defval);
+extern int SLang_get_string_qualifier (SLCONST char *name, char **val, SLFUTURE_CONST char *defval);
+
+/*}}}*/
+
 /*{{{ SLang getkey interface Functions */
 
 #ifdef REAL_UNIX_SYSTEM
@@ -1382,7 +1436,7 @@ SL_EXTERN int SLang_TT_Read_FD;
 /* I do not want to include windows.h just to get the typedef for HANDLE.
  * Make this conditional upon the inclusion of windows.h.
  */
-#  ifdef WINVER
+#  ifdef _WINDOWS_
 SL_EXTERN HANDLE SLw32_Hstdin;
 #  endif
 # endif
@@ -1568,6 +1622,16 @@ SL_EXTERN int SLrline_set_update_hook (SLrline_Type *,
 					     SLFUTURE_CONST char *buf, unsigned int len,
 					     unsigned int point, VOID_STAR client_data),
 				    VOID_STAR client_data);
+/* free update_hook client_data */
+SL_EXTERN void SLrline_set_free_update_cb (SLrline_Type *, void (*)(SLrline_Type *, VOID_STAR));
+SL_EXTERN int SLrline_get_update_client_data (SLrline_Type *, VOID_STAR *);
+
+/* These functions are passed a pointer to the update_hook client_data */
+SL_EXTERN void SLrline_set_update_clear_cb(SLrline_Type *, void (*)(SLrline_Type *, VOID_STAR));
+SL_EXTERN void SLrline_set_update_preread_cb (SLrline_Type *, void (*)(SLrline_Type *, VOID_STAR));
+SL_EXTERN void SLrline_set_update_postread_cb (SLrline_Type *, void (*)(SLrline_Type *, VOID_STAR));
+SL_EXTERN void SLrline_set_update_width_cb (SLrline_Type *, void (*)(SLrline_Type *, int, VOID_STAR));
+SL_EXTERN int SLrline_get_update_client_data (SLrline_Type *, VOID_STAR *);
 
 SL_EXTERN SLkeymap_Type *SLrline_get_keymap (SLrline_Type *);
 
@@ -1595,6 +1659,7 @@ typedef unsigned long SLtt_Char_Type;
 #define SLTT_ULINE_MASK	0x04000000UL
 #define SLTT_REV_MASK	0x08000000UL
 #define SLTT_ALTC_MASK  0x10000000UL
+#define SLTT_ITALIC_MASK  0x20000000UL
 
 SL_EXTERN int SLtt_Screen_Rows;
 SL_EXTERN int SLtt_Screen_Cols;
@@ -1883,8 +1948,8 @@ SL_EXTERN int SLsmg_Backspace_Moves;
 # define SLSMG_COLOR_BRIGHT_GREEN	0x00000A
 # define SLSMG_COLOR_BRIGHT_BROWN	0x00000B
 # define SLSMG_COLOR_BRIGHT_BLUE	0x00000C
-# define SLSMG_COLOR_BRIGHT_CYAN	0x00000D
-# define SLSMG_COLOR_BRIGHT_MAGENTA	0x00000E
+# define SLSMG_COLOR_BRIGHT_MAGENTA	0x00000D
+# define SLSMG_COLOR_BRIGHT_CYAN	0x00000E
 # define SLSMG_COLOR_BRIGHT_WHITE	0x00000F
 #endif
 
@@ -2291,6 +2356,11 @@ SL_EXTERN int SLclass_patch_intrin_fun_table1 (SLang_Intrin_Fun_Type *table,
    SLANG_ULLONG_TYPE, (r)\
 }
 
+#define MAKE_CSTRUCT_FLOAT_FIELD(s,f,n,r) {(n), offsetof(s,f),\
+   (sizeof(((s*)0L)->f)==sizeof(float))?(SLANG_FLOAT_TYPE): \
+   SLANG_DOUBLE_TYPE, (r)\
+}
+
 #define SLANG_END_TABLE {NULL}
 #define SLANG_END_INTRIN_FUN_TABLE MAKE_INTRINSIC_0(NULL,NULL,0)
 #define SLANG_END_FCONST_TABLE MAKE_DCONSTANT(NULL,0)
@@ -2329,8 +2399,8 @@ SL_EXTERN SLRegexp_Type *SLregexp_compile (SLFUTURE_CONST char *pattern, unsigne
 #define SLREGEXP_UTF8		0x10
 
 SL_EXTERN void SLregexp_free (SLRegexp_Type *);
-SL_EXTERN char *SLregexp_match (SLRegexp_Type *compiled_regexp, SLFUTURE_CONST char *str, unsigned int len);
-SL_EXTERN int SLregexp_nth_match (SLRegexp_Type *, unsigned int nth, unsigned int *ofsp, unsigned int *lenp);
+SL_EXTERN char *SLregexp_match (SLRegexp_Type *compiled_regexp, SLFUTURE_CONST char *str, SLstrlen_Type len);
+SL_EXTERN int SLregexp_nth_match (SLRegexp_Type *, unsigned int nth, SLstrlen_Type *ofsp, SLstrlen_Type *lenp);
 
 SL_EXTERN int SLregexp_get_hints (SLRegexp_Type *, unsigned int *flagsp);
 #define SLREGEXP_HINT_BOL		0x01   /* pattern must match bol */
@@ -2379,7 +2449,7 @@ SL_EXTERN SLuchar_Type *SLsearch_forward (SLsearch_Type *st,
                                         SLuchar_Type *pmin, SLuchar_Type *pmax);
 SL_EXTERN SLuchar_Type *SLsearch_backward (SLsearch_Type *st,
                                          SLuchar_Type *pmin, SLuchar_Type *pstart, SLuchar_Type *pmax);
-SL_EXTERN unsigned int SLsearch_match_len (SLsearch_Type *);
+SL_EXTERN SLstrlen_Type SLsearch_match_len (SLsearch_Type *);
 
 /*}}}*/
 
@@ -2406,6 +2476,7 @@ SL_EXTERN char *SLpath_find_file_in_path (SLFUTURE_CONST char *, SLFUTURE_CONST 
 SL_EXTERN char *SLpath_dirname (SLFUTURE_CONST char *);
 SL_EXTERN int SLpath_file_exists (SLFUTURE_CONST char *);
 SL_EXTERN char *SLpath_pathname_sans_extname (SLFUTURE_CONST char *);
+SL_EXTERN char *SLpath_getcwd (void);  /* return NULL on error, sets errno */
 
 /*}}}*/
 

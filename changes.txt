@@ -1,4 +1,324 @@
 -*- mode: text; mode: fold -*-
+Changes since 2.2.4
+1. src/slarray.c: Try to find a suitable multiplier for range arrays
+   to avoid roundoff errors.  Using the multiplier avoids the
+   [1:10:0.001] from having the element 1.1260000000000001.
+2. doc/tm/rtl/strops.tm: Correct typos in string_match documentation
+   (Manfred Hanke).
+3. modules/base64-module.c: Added a base64 encoder module.
+4. modules/chksum-module.c: A module to compute md5, sha1, etc
+   checksums.
+5. Removed a few unused variables from the code.
+6. Documentation updates and corrections by Agathoklis D. Hatzimanikas.
+7. src/slarray.c: array_map enhanced to handle functions that return
+   multiple values (based upon a patch from Manfred Hanke).
+8. Documentation tweaks (Manfred Hanke).
+9. src/slmath.c: Added sincos intrinsic (Manfred Hanke)
+10. doc/tm/rtl/array.tm: Changed an example used in the array_map
+    documentation.
+11. More documentation updates/corrections (Agathoklis D. Hatzimanikas).
+12. src/slarray.c: Tweaked the code that computes the
+    array-range-multiplier to avoid agressive optimization by the
+    compiler.
+13. modules/rand.sl: The rand_int function was not working correctly
+    (Thomas Dauser).
+14. modules/test/test_rand.sl: Added a simple statistical test for
+    rand_int (based upon an idea by Thomas Dauser).
+15. modules/test/test_rand.sl: Corrected a typo introduced by #14.
+16. src/slarray.c: #12 introduced a truncation error for some
+    values involving the range multiplier.
+17. autoconf/aclocal.m4: Change ncurses5w-config to ncursesw5-config
+    (Gilles Espinasse).
+18. modules/base64-module.c: Added decoder.
+19. slsh/lib/sldbcore.sl: Only run the debugger from the pid that
+    started it.  This avoids problems debugging scripts that call fork.
+20. src/slrline.c: SLrline_read_line will return NULL if getkey
+    returns SLANG_GETKEY_ERROR.
+21. doc/tm/rtl/*.tm: A few typos corrected (Manfred Hanke).
+22. slsh/lib/print.sl; print binary strings differently from regular
+    ones (Manfred Hanke).
+23. slsh/lib/print.sl: I introduced a typo in #21 (Pablo Cassatella).
+24. src/slutty.c: if the flow control parameter to the SLang_init_tty
+    argument is negative, the terminal's flow control handling will
+    not be changed.
+25. src/slrline.c: Ammend #20 to return NULL if errno != EINTR.
+26. src/sldisply.c: Changed Termcap_Initalized -> Termcap_Initialized
+27. src/slarray.c: avoid an expensive memcpy when doing
+    an aget via an index array on a (b)string.  (Paul Boekholt).
+28. slsh/scripts/badlinks: Updated to use array_map and cmdopt
+    (Agathoklis D. Hatzimanikas).
+29. Some minor documentation tweaks (Agathoklis D. Hatzimanikas)
+30. More doc tweaks (Agathoklis D. Hatzimanikas)
+31. src/slposio.c: lseek was not working properly.
+32. slsh/scripts/badlinks: Changed from GPLv3 to GPLv2 with permission
+    from Agathoklis Hatzimanikas.
+33. src/slscanf.c: Call strtod in a locale where the decimal point is
+    ".".  This works around problems associated with modules that
+    change the locale.
+34. src/slscanf.c: include <xlocale.h> if available.
+35. src/slscanf.c: Avoid the use of setlocale and simply copy the
+    locale's decimal point before calling strtod (Paul Boekholt).
+36. modules/socket-module.c: NULL was being returned when accept was
+    called with a single argument (Fixes bug reported by Arik
+    Mitschang).
+37. src/slwclut.c: A logic error was causing strtrans to function
+    improperly for some UTF-8 encoded strings.
+38. src/fork-module.c: If WCONTINUED is not defined, define it to be 0
+    (from debian patch).
+39. src/slbstr.c: Added support for an optional offset parameter to
+    is_substrbytes.
+40. modules/csv.sl: Allow the "names" qualifier to be a list in
+    addition to an array.
+41. *.c/*.h: provide a path for a future change in the
+    return value of the malloc/free functions.  Now they process char*
+    pointers but this will be changed to void* in the future.
+42. modules/: Merged stats and histogram modules into the distribution.
+43. modules/stats-module.c: removed a couple of unused variables.
+    Also modules/test/test_*.sl updated to use modules in the $(ARCH)objs
+    subdir.
+44. src/slang.c: Local_Variable_Stack is now dynamically allocated,
+    and the value of SLANG_MAX_LOCAL_STACK made to scale with
+    SLANG_MAX_RECURSIVE_DEPTH.
+45. modules/cmaps/: Added 3 perceptually balanced color maps derived
+    from matlab code by Matteo Niccoli under the BSD license.
+46. src/slmath.c: Use _pSLang_peek_at_stack2 instead of the combination
+    SLang_peek_at_stack and SLang_peek_at_stack1.  This change
+    provides a bit more performnce.
+47. slsh/lib/fswalk.sl: Functions here facilitate walking the
+    filesystem.
+48. Some doc updates.
+49. slsh/: Using help at the prompt will invoke the pager if the
+    number of lines is longer than the screen size.  This required add
+    an slsh-specific intrinsic that returns the number of rows.
+50. modules/stats.sl: Avoid integer overflow when computing Spearman's
+    rank correlation (Victoria Grinberg).
+51. modules/csv.sl; Added support for RDB tab-delimited files via the
+    ";rdb" qualifier.
+52. modules/stats-module.c: The stddev function was computing an
+    incorrectly normalized value when passed the optional dims argument.
+53. src/slang.h: The following qualifier functions were added to the
+    public API:
+
+       SLang_qualifier_exists;
+       SLang_get_int_qualifier;
+       SLang_get_long_qualifier;
+       SLang_get_double_qualifier;
+       SLang_get_string_qualifier;
+
+    These functions may be used to create intrinsic functions that use
+    qualifiers.
+54. The previous change necessitated a minor change in the qualifier
+    semantics such that qualifiers that are created with no value
+    assigned are implicitly given a value of 1.  That is, foo(arg;q)
+    and foo(arg;q=1) are now equivalent forms.  Previously, foo(arg;q)
+    and foo(and;q=NULL) were equivalent.  Experience has shown that
+    the new semantics result in simpler code.  This change should not
+    break any existing interpreter scripts.
+55. Backed out change #54 because it did break some scripts.
+56. src/util/mkslarith2.sl: Used "signed char" instead of "char" to
+    avoid problems with systems that assume unsigned characters.
+    (RongQing Li).
+57. modules/socket-module.c: Added support for socket credentials
+    (Arik Mitschang).
+58. src/signal.c: Added support for interval timers via the
+    get/setitimer functions.
+59. src/test/signal.sl: Missing #endif (Paul Boekholt)
+60. autoconf/slang.pc: Allow prefix and exec_prefix to be different
+    (Diab Jerius).
+61. src/sltoken.c: Use an unsigned cast when calling putc to
+    work-around what looks like a VMS C library bug bug.
+62. src/slarrfun.c: Added wherefirstmin/max and wherelastmin/max
+    functions.
+63. src/slarrfun.inc: Removed an unused variable from the
+    wherefirst/last/min/max functions.
+64. src/slcommon.c: find_interrupt_hook was not setting the prevp
+    variable causing some hooks to become lost during calls to
+    SLang_remove_interrupt_hook.
+65. src/slrline.c,slsh/readline.c: Added support for SLrline
+    callbacks.  See the slsh docs for details.
+66. src/slarray.c: Added wherediff intrinsic.  This returns an array
+    of indices where adjacent elements of an array differ.
+67. modules/stats-module.c: Rewrote the log_gamma_star function to
+    avoid double precision overflows when computing the poisson_cdf
+    function for large values.  Also, the poisson_cdf function now
+    uses the Wilson and Hilferty normal approximation for values of
+    lambda greater than 1000.
+68. src/slrline.c: Use the SLang_set_error function instead of
+    manipulating the _pSLang_Error variable.  Also, changed the readline
+    "kbd_quit" function to throw a UserBreakError.
+69. src/mkfiles/mkmake.exe: Compiled as a win32 executable.  The old
+    16bit DOS version was renamed to mkmake16.exe.
+70. slsh/readline.c: Change #65 broke the slsh --no-readline option.
+71. mkfiles/: Added the /y option to the DOS copy command to avoid
+    being prompted to overwriting files when installing on a windows
+    system.
+72. win32-specific changes: Additional makefile tweaks.  Also, permit
+    "./foo" to represent a "relatively-absolute" filename on
+    DOS/Windows.
+73. modules/stats.sl: Added the correlation function.
+74. src/slarray.c: _isnull was not handling Null_Type arrays.
+75. src/slparse.c: If the _for statement contains two control
+    variables instead of 3, assume the third is 1.
+76. modules/fork-module.c: The execve_intrin was not functioning
+    properly (Agathoklis D. Hatzimanikas).
+77. slsh/readline.c: Check to see if an update_hook has been set
+    before adding callbacks to it.
+78. modules/csv.sl: Add support for empty field names.
+79. slsh/lib/slshrl.sl: Added "who" interactive command that shows the
+    names and values of all variables/functions defined at the prompt:
+
+      slsh> x = 1; y = "foo";
+      slsh> who;
+      Integer_Type x=1
+      String_Type y="foo"
+
+80. slsh/lib/print.sl: If the string form of the object ends in a
+    newline, do not write another.
+81. modules/stats.sl: The usage message for Welch's t-test referred to
+    Student's form.
+82. slsh/lib/sldbcore.sl: When entering the debugger_input_loop,
+    initialize the SIGINT handler.
+83. slsh/lib/arrayfuns.sl: New function: rearrange, which may be used
+    to perform an in-place rearrangement of an array or list.
+84. slsh/lib/listfuns.sl: New file that includes various functions
+    dealing with lists and list-based data structures.  Currently this
+    includes list_sort and a heap object.
+85. slsh/lib/listfuns.sl: heap_peek was improperly declared.
+86. Numerous changes from int -> SLindex_Type.  Note that SLindex_Type
+    is currently typedefed to be an int.  For version 3, SLindex_Type
+    will become a long.  This change lays some of that groundwork.
+    Similarly, I added SLFUTURE_CONST here and there.  Neither of
+    these changes break binary compatibility nor affect the API.
+87. src/slarrfun.c: The prod function for complex numbers had a sign
+    error.
+88. modules/csv.sl: Modify fixup_header_names to work with scalars.
+89. modules/json-module.c: New module provided by Manfred Hanke.  To
+    support this module several other changes were made including some
+    additions to the API.
+90. Initial support for 64-bit windows: Use ptrdiff_t instead of long
+    when subtracting pointers.  Also json-module added to windows
+    makefiles.
+91. modules/rand.sl: rand_int was not properly handing intervals
+    larger than INT_MAX.
+92. src/slbstr.c: Added bstrjoin and bstrcat intrinsics.
+93. modules/json-module: Modified to use bstrcat.  The
+    json_generate/json_parse functions were renamed to
+    json_encode/json_decode.
+94. configure: added support for parsing /etc/ld.so.conf
+95. modules/json.sl: Use bstrcat throughout json_encode; additional
+    renames: generate->encode, parse->decode. (Manfred Hanke).
+96. src/sllist.c: To decrease memory usages by lists, a size hint may
+    be specified upon list creation.
+97. Allow struct field names to be an arbitrary string.  When
+    referencing such a field, quotes must be used:
+
+         X = struct {"some-field", some_other_field };
+	 X.some_other_field = 3;
+	 X."some-field" = 4;
+
+   New struct-related functions were added to the C API:
+
+     SLang_create_struct
+     SLang_push_struct_field
+     SLang_pop_struct_field
+     SLang_pop_struct_fields
+
+98. Changed the json module to use structs instead of associative
+    arrays.  (Paul Boekholt).
+99. src/slassoc.c: Add C API SLang_assoc_key_exists (Paul Boekholt).
+100. src/slang.c: Add SLstack_exch and tweak the json module to use it.
+101. src/slang.h: Made the SLcompute_string_hash function public and
+     rewrote the hash table function in the json module to use it.
+102. json-module: Doc updates, use compact encoding by default
+     (Manfred Hanke).
+103. src/slstd.c: Added get_environ intrinsic, which returns an array of
+     the currently defined environment variables.
+104. src/slang.c: Fixed a small memory leak introduced by the byte-code
+     optimizer when dealing with floating point literals.
+105. src/slang.c: The changes added in #104 were a bit too aggressive.
+     I added code so that only literals get freed.
+106. src/slstd.c: OSX has no proper environ, need to use a function
+     call. (Dima Pasechnik).
+107. src/sldisply.c: Added support for an italic attribute if the
+     terminal supports it.  This can be enabled using a color name
+     with a qualifier, e.g.,
+
+         SLtt_set_color ("menu", "white;italics", "blue");
+
+     This mechanism has also been extended to other attributes:
+
+        SLtt_set_color ("comment", "black;underline;italics", "cyan");
+
+     (Based upon a patch provided by Egmont Koblinger).
+
+108. *.tm: Documentation updates and corrections. (Agathoklis D.
+     Hatzimanikas)
+109. modules/csv-module.c: The store_value function was not updating
+     the num_allocated variable when resizing the value array.  This
+     caused it to fail when reading a CSV table with more than 256
+     data columns.
+110. modules/csv.sl: Since S-Lang structure field names may be
+     arbitrary strings, there is no need to massage the csv column
+     names. (See change 97).
+111. modules/iconv-module.c: If the iconv descriptor has been closed,
+     then do not close it again in the iconv object destructor
+112. src/slproc.c: Added getrusage function to get process resource
+     usage.
+113. modules/png-module.c: Only the first 1/4 pixels of an RGB+alpha
+     image were getting byte-swapped. (RGB images were ok).
+114. configure,*/Makefile.in: rearranged the compiler command so that
+     include flags occur before CFLAGS.  This is a protective measure
+     designed to avoid issues when the CFLAGS variable also contains an
+     include path.
+115. slsh/lib/process.sl: Added support to the pre_exec_hook callback
+     function for an optional argument.
+116. Change 107 introduced a cut/paste error that prevented the
+     background color on Windows systems from being properly parsed.
+     (Reported by Frank and Manfred from jed-users).
+117. src/sldisply.c: SLSMG_COLOR_BRIGHT_MAGENTA and
+     SLSMG_COLOR_BRIGHT_CYAN were swapped (patch provided by Thorben
+     from slang-users list).
+118. Updated copyright year for upcoming release.
+119. src/slposdir.c: Added lchown intrinsic.
+120. src/slang.h, src/slpath.c: Added API function SLpath_getcwd
+121. src/slsh.c: Use SLpath_getcwd instead of "." for CWD.
+122. src/slpath.c: Added support for \\netdrive\paths for Windows, and
+     modified SLpath_dirname (path_dirname intrinsic) to perform some
+     expansion of .. and . in path names (e.g.,
+     path_dirname("/foo/../bar") will produce "/" instead of
+     "/foo/..").
+
+     The old bahavior was consident with that of the Unix
+     dirname command:
+        $ dirname `dirname /usr/bin/./slsh`
+	/usr/bin
+
+     The new behavior produces an arguably more accurate result:
+        slsh> path_dirname(path_dirname("/usr/bin/./slsh"));
+	/usr
+
+123. slsh/scripts/badlinks updated to use the fswalk functions
+     (Agathoklis D. Hatzimanikas).
+124. Various documentation updates/corrections (Agathoklis D.
+     Hatzimanikas).
+125. slsh/slsh.c: bumped copyright year.
+126. src/slconfig.h: For non-Unix, HAVE_LSTAT and HAVE_LCHOWN were
+     defined to be 0 instead of undef'd.  Also, removed an unused
+     function from slposdir.c and a shadowed variable from slpath.c
+127. documentation updates (Manfred Hanke)
+128. modules/test/: Additional json-modules tests (Manfred Hanke)
+129. src/slarray.c: Allow functions called by array_map to return
+     NULL. (Manfred Hanke)
+130. src/slang.c: Fixed a bug in the short-circuiting of non-boolean
+     expressions.
+131. Updated the NEWS file for release.
+132. documentation updates
+133. autoconf/: Updated configure scripts
+134. src/mkfiles/mkmake.c: Add definitions for SLmalloc/free so that
+     mkmake can be built without the full slang library.
+
+{{{ Previous Versions
+
 Changes since 2.2.3
 1. src/slpack.c: Typo affecting 64 bit integers ('q' & 'Q') (Paul
    Boekholt).
@@ -36,8 +356,6 @@ Changes since 2.2.3
 19. Tweaked doc macros and rebuilt docs.
 20. src/slarray.c: Added a check for too small of a range array
     increment.
-
-{{{ Previous Versions
 
 Changes since 2.2.2
 1. src/sltermin.c: Added support for native terminfo binary layouts.

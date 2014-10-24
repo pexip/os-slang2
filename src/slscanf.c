@@ -1,6 +1,6 @@
 /* sscanf function for S-Lang */
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -20,10 +20,25 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
 */
 
+#ifndef _GNU_SOURCE
+# define _GNU_SOURCE
+#endif
+#ifndef __EXTENSIONS__
+# define __EXTENSIONS__
+#endif
+
 #include "slinclud.h"
 #include <ctype.h>
 #include <math.h>
 #include <errno.h>
+
+#ifdef HAVE_LOCALE_H
+# include <locale.h>
+#endif
+
+#ifdef HAVE_XLOCALE_H
+# include <xlocale.h>
+#endif
 
 #include "slang.h"
 #include "_slang.h"
@@ -133,6 +148,44 @@ static int parse_ushort (SLFUTURE_CONST char **sp, SLFUTURE_CONST char *smax, un
 }
 
 #if SLANG_HAS_FLOAT
+/* See <pubs.opengroup.org> for information about locale_t, newlocale, etc.
+ * The usage below is based on the opengroup manpages.
+ */
+# if defined(HAVE_STRTOD_L) && defined(HAVE_NEWLOCALE) && defined(LC_ALL_MASK)
+#  define USE_STRTOD_L 1
+# else
+#  define USE_STRTOD_L 0
+# endif
+
+# if USE_STRTOD_L
+static locale_t C_Locale = (locale_t) 0;
+# endif
+static int do_strtod (char *buf, int sign, double *xp)
+{
+# if USE_STRTOD_L
+   if (C_Locale != (locale_t) 0)
+     {
+	*xp = sign * strtod_l (buf, NULL, C_Locale);
+	return 1;
+     }
+
+   C_Locale = newlocale (LC_ALL_MASK, "C", (locale_t) 0);
+   if (C_Locale != (locale_t) 0)
+     {
+	*xp = sign * strtod_l (buf, NULL, C_Locale);
+	return 1;
+     }
+   /* drop */
+# endif
+
+# ifdef HAVE_STRTOD
+   *xp = sign * strtod (buf, NULL);
+# else
+   *xp = sign * atof (buf);
+# endif
+   return 1;
+}
+
 /*
  * In an ideal world, strtod would be the correct function to use.  However,
  * there may be problems relying on this function because some systems do
@@ -150,6 +203,17 @@ static int parse_double (SLFUTURE_CONST char **sp, SLFUTURE_CONST char *smax, do
    SLFUTURE_CONST char *start_pos, *sign_pos;
    char *b, *bmax;
    char ch;
+   const char *decimal_point = ".";
+   char *b_after_decimal_position;
+# if !USE_STRTOD_L && defined(HAVE_LOCALECONV)
+   struct lconv *locale_data;
+
+   if (NULL != (locale_data = localeconv()))
+     {
+	decimal_point = locale_data->decimal_point;
+	if (*decimal_point == 0) decimal_point = ".";
+     }
+# endif
 
    start_pos = *sp;
    s = get_sign (start_pos, smax, &sign);
@@ -220,8 +284,14 @@ static int parse_double (SLFUTURE_CONST char **sp, SLFUTURE_CONST char *smax, do
    /* Prepare the buffer that will be passed to strtod */
    /* Allow the exponent to be 5 significant digits: E+xxxxx\0 */
    bmax = buf + (sizeof (buf) - 8);
-   buf[0] = '0'; buf[1] = '.';
-   b = buf + 2;
+   b = buf;
+   *b++ = '0';
+   do
+     {
+	*b++ = *decimal_point++;
+     }
+   while ((*decimal_point != 0) && (b < bmax));
+   b_after_decimal_position = b;
 
    init_map (map, 10);
 
@@ -249,7 +319,7 @@ static int parse_double (SLFUTURE_CONST char **sp, SLFUTURE_CONST char *smax, do
    if ((s < smax) && (*s == '.'))
      {
 	s++;
-	if (b == buf + 2)	       /* nothing added yet */
+	if (b == b_after_decimal_position)	       /* nothing added yet */
 	  {
 	     while ((s < smax) && (*s == '0'))
 	       {
@@ -271,7 +341,7 @@ static int parse_double (SLFUTURE_CONST char **sp, SLFUTURE_CONST char *smax, do
 	  }
      }
 
-   if ((b == buf + 2)
+   if ((b == b_after_decimal_position)
        && (has_leading_zeros == 0))
      {
 	*sp = start_pos;
@@ -317,13 +387,7 @@ static int parse_double (SLFUTURE_CONST char **sp, SLFUTURE_CONST char *smax, do
 
    *sp = s;
 
-   /* fprintf (stdout, "buf='%s'\n", buf); */
-#ifdef HAVE_STRTOD
-   *d = sign * strtod (buf, NULL);
-#else
-   *d = sign * atof (buf);
-#endif
-   return 1;
+   return do_strtod (buf, sign, d);
 }
 
 static int parse_float (SLFUTURE_CONST char **sp, SLFUTURE_CONST char *smax, float *d)

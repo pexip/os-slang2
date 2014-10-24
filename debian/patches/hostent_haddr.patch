@@ -5,15 +5,16 @@ Last-Updated: 2009-03-27
 Author: Alastair McKinstry <mckinstry@debian.org>
 Forwarded: no
 
-diff -ruN slang-2.2.2-old/modules/socket-module.c slang-2.2.2/modules/socket-module.c
---- slang-2.2.2-old/modules/socket-module.c	2008-02-25 05:28:07.000000000 +0000
-+++ slang-2.2.2/modules/socket-module.c	2009-03-28 15:01:24.000000000 +0000
-@@ -445,7 +445,7 @@
- #ifndef h_addr
+Index: slang-2.3.0/modules/socket-module.c
+===================================================================
+--- slang-2.3.0.orig/modules/socket-module.c
++++ slang-2.3.0/modules/socket-module.c
+@@ -453,7 +453,7 @@ static Host_Addr_Info_Type *get_host_add
+ # ifndef h_addr
     /* Older interface.  There is only one address, so fake a list */
     h_addr_list = fake_h_addr_list;
 -   h_addr_list [0] = hp->h_addr;
 +   h_addr_list [0] = hp->h_addr_list[0];
     h_addr_list [1] = NULL;
- #else
+ # else
     h_addr_list = hp->h_addr_list;

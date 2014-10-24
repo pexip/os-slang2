@@ -1,4 +1,4 @@
-_debug_info = 1; () = evalfile ("inc.sl");
+() = evalfile ("inc.sl");
 
 testing_feature ("Associative Arrays");
 
@@ -174,7 +174,86 @@ define test_arith ()
 }
 test_arith ();
 
+private define check_assoc_values (a, key_value_pairs)
+{
+   variable key, expected_value, v, i;
+
+   _for i (0, length(key_value_pairs)-1, 2)
+     {
+	key = key_value_pairs[i];
+	expected_value = key_value_pairs[i+1];
+
+        % test value seen by the interpreter
+        v = a[key];
+	ifnot (__is_same (v, expected_value))
+	  {
+	     failed ("api_created assoc's value (key=%S) was %S, expected %S",
+		     key, v, expected_value);
+	  }
+
+        % test value seen by SLang_assoc_get
+	v = api_assoc_get (a, key);
+	ifnot (__is_same (v, expected_value))
+	  {
+	     failed ("api_assoc_get (key=%S) produced %S, expected %S",
+		     key, v, expected_value);
+	  }
+     }
+}
+
+private define test_api_create_assoc_without_default_value ()
+{
+   variable key_value_pairs =
+     {
+	"foo", 1,
+	"bar", PI,
+	"complex", 2+3i,
+	"string", "foobar",
+	"array", [1,2,3,4],
+	"struct", struct {foo, bar},
+     };
+   variable a = api_create_asssoc (__push_list (key_value_pairs));
+
+   loop (10) check_assoc_values (a, key_value_pairs);
+}
+test_api_create_assoc_without_default_value ();
+
+private define test_api_create_assoc_with_default_value ()
+{
+   variable key_value_pairs =
+     {
+	"foo", "1",
+	"bar", "3.141592653589793",
+	"complex", "(2 + 3i)",
+	"string", "foobar",
+	"array", "Integer_Type[4]",
+	"struct", "Struct_Type with 2 fields",
+     };
+
+   variable default_value = "*default*";
+   variable a = api_create_asssoc (__push_list (key_value_pairs), default_value);
+
+   list_join (key_value_pairs,
+	      {"bla", default_value, "blabla", default_value});
+
+   loop (10) check_assoc_values (a, key_value_pairs);
+}
+test_api_create_assoc_with_default_value ();
+
+test_api_push_and_pop_assoc ();  % entirely defined in assoc.c
+
+private define test_api_pop_and_push_assoc ()
+{
+   variable a1 = Assoc_Type[Integer_Type, 42];
+   a1;
+   variable a2 = api_pop_and_push_assoc ();
+   ifnot (__is_same (a1, a2))
+     {
+	failed ("api_push_and_pop_assoc");
+     }
+}
+test_api_pop_and_push_assoc ();
+
 print ("Ok\n");
 
 exit (0);
-

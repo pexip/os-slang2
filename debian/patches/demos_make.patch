@@ -3,10 +3,11 @@ Description: Patch to fix paths so that a good Makefile is copied to
 Author: Alastair McKinstry <mckinstry@debian.org>
 Last-Updated: 2011-04-05
 Forwarded: no
-diff -ruN slang-2.2.2-old/demo/Makefile.in slang-2.2.2/demo/Makefile.in
---- slang-2.2.2-old/demo/Makefile.in	2005-02-07 06:03:28.000000000 +0000
-+++ slang-2.2.2/demo/Makefile.in	2005-02-17 20:59:41.828038656 +0000
-@@ -9,8 +9,8 @@
+Index: slang-2.3.0/demo/Makefile.in
+===================================================================
+--- slang-2.3.0.orig/demo/Makefile.in
++++ slang-2.3.0/demo/Makefile.in
+@@ -9,8 +9,8 @@ LDFLAGS = @LDFLAGS@ @DYNAMIC_LINK_FLAGS@
  #-----------------------------------------------------------------------------
  # Directory where the various libraries are located.
  #-----------------------------------------------------------------------------
@@ -17,7 +18,7 @@ diff -ruN slang-2.2.2-old/demo/Makefile.in slang-2.2.2/demo/Makefile.in
  
  #---------------------------------------------------------------------------
  # Other libraries
-@@ -36,10 +36,6 @@
+@@ -36,10 +36,6 @@ DOT_O_DEPS = demolib.c
  #---------------------------------------------------------------------------
  all: $(CONFIG_H) $(OTHERSTUFF)
  

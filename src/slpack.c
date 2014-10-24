@@ -1,6 +1,6 @@
 /* Pack objects as a binary string */
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -335,9 +335,9 @@ static int parse_a_format (char **format, Format_Type *ft)
    return 1;
 }
 
-static int compute_size_for_format (char *format, unsigned int *num_bytes)
+static int compute_size_for_format (char *format, SLstrlen_Type *num_bytes)
 {
-   unsigned int size;
+   size_t size;
    Format_Type ft;
    int status;
 
@@ -454,9 +454,10 @@ static void check_native_byte_order (void)
 }
 
 static SLang_BString_Type *
-pack_according_to_format (char *format, unsigned int nitems)
+pack_according_to_format (char *format, SLuindex_Type nitems)
 {
-   unsigned int size, num;
+   SLstrlen_Type size;
+   SLstrlen_Type num;
    unsigned char *buf, *b;
    SLang_BString_Type *bs;
    Format_Type ft;
@@ -609,8 +610,8 @@ void _pSLunpack (char *format, SLang_BString_Type *bs)
 {
    Format_Type ft;
    unsigned char *b;
-   unsigned int len;
-   unsigned int num_bytes;
+   SLstrlen_Type len;
+   SLstrlen_Type num_bytes;
 
    check_native_byte_order ();
 
@@ -685,7 +686,7 @@ void _pSLunpack (char *format, SLang_BString_Type *bs)
 	else
 	  len = get_unpadded_strlen ((char *)b, ft.pad, ft.repeat);
 
-	str = SLmalloc (len + 1);
+	str = (char *)SLmalloc (len + 1);
 	if (str == NULL)
 	  return;
 	memcpy ((char *) str, (char *)b, len);
@@ -718,9 +719,9 @@ void _pSLunpack (char *format, SLang_BString_Type *bs)
      }
 }
 
-unsigned int _pSLpack_compute_size (char *format)
+SLstrlen_Type _pSLpack_compute_size (char *format)
 {
-   unsigned int n;
+   SLstrlen_Type n;
 
    n = 0;
    (void) compute_size_for_format (format, &n);
@@ -729,7 +730,7 @@ unsigned int _pSLpack_compute_size (char *format)
 
 void _pSLpack_pad_format (char *format)
 {
-   unsigned int len, max_len;
+   SLstrlen_Type len, max_len;
    Format_Type ft;
    char *buf, *b;
 
@@ -743,7 +744,7 @@ void _pSLpack_pad_format (char *format)
     * I cannot see how this will be overrun
     */
    max_len = 4 * (strlen (format) + 1);
-   if (NULL == (buf = SLmalloc (max_len + 1)))
+   if (NULL == (buf = (char *)SLmalloc (max_len + 1)))
      return;
 
    b = buf;

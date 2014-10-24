@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -37,13 +37,13 @@ static SLFUTURE_CONST char *Deleted_Key = "*deleted*";
 
 typedef struct _pSLAssoc_Array_Element_Type
 {
-   SLFUTURE_CONST char *key;		       /* slstring */
-   unsigned long hash;
+   SLFUTURE_CONST char *key;                   /* slstring */
+   SLstr_Hash_Type hash;
    SLang_Object_Type value;
 }
 _pSLAssoc_Array_Element_Type;
 
-typedef struct
+typedef struct _pSLang_Assoc_Array_Type
 {
    _pSLAssoc_Array_Element_Type *elements;
    unsigned int table_len;
@@ -57,10 +57,11 @@ typedef struct
 #if SLANG_OPTIMIZE_FOR_SPEED
    int is_scalar_type;
 #endif
+   int ref_count;
 }
-SLang_Assoc_Array_Type;
+_pSLang_Assoc_Array_Type;
 
-static int HASH_AGAIN (SLCONST char *str, unsigned long hash, unsigned int table_len)
+static int HASH_AGAIN (SLCONST char *str, SLstr_Hash_Type hash, unsigned int table_len)
 {
    int h;
    (void) table_len; (void) str;
@@ -71,7 +72,7 @@ static int HASH_AGAIN (SLCONST char *str, unsigned long hash, unsigned int table
 }
 
 static _pSLAssoc_Array_Element_Type *
-find_element (SLang_Assoc_Array_Type *a, char *str, unsigned long hash)
+find_element (SLang_Assoc_Array_Type *a, char *str, SLstr_Hash_Type hash)
 {
    int i, c;
    _pSLAssoc_Array_Element_Type *e, *elements;
@@ -105,7 +106,7 @@ find_element (SLang_Assoc_Array_Type *a, char *str, unsigned long hash)
 
 static _pSLAssoc_Array_Element_Type *
 find_empty_element (_pSLAssoc_Array_Element_Type *elements, unsigned int table_len,
-		    SLCONST char *str, unsigned long hash)
+                    SLCONST char *str, SLstr_Hash_Type hash)
 {
    int i, c;
    _pSLAssoc_Array_Element_Type *e;
@@ -135,7 +136,6 @@ static int resize_table (SLang_Assoc_Array_Type *a)
    _pSLAssoc_Array_Element_Type *new_es;
 
    num_occupied = a->num_occupied - a->num_deleted;
-   new_table_len = a->table_len;
 
    if (num_occupied == 0)
      num_occupied = (MIN_TABLE_SIZE >> 1);
@@ -197,10 +197,14 @@ static void delete_assoc_array (SLang_Assoc_Array_Type *a)
 {
    _pSLAssoc_Array_Element_Type *e, *emax;
 #if SLANG_OPTIMIZE_FOR_SPEED
-   int is_scalar_type = a->is_scalar_type;
+   int is_scalar_type;
 #endif
 
    if (a == NULL) return;
+
+#if SLANG_OPTIMIZE_FOR_SPEED
+   is_scalar_type = a->is_scalar_type;
+#endif
 
    e = a->elements;
    if (e != NULL)
@@ -224,6 +228,19 @@ static void delete_assoc_array (SLang_Assoc_Array_Type *a)
      SLang_free_object (&a->default_value);
 
    SLfree ((char *) a);
+}
+
+static void free_assoc (SLang_Assoc_Array_Type *assoc)
+{
+   if (assoc == NULL)
+     return;
+
+   if (assoc->ref_count > 1)
+     {
+	assoc->ref_count--;
+	return;
+     }
+   delete_assoc_array (assoc);
 }
 
 static SLang_Assoc_Array_Type *alloc_assoc_array (SLtype type, int has_default_value)
@@ -265,10 +282,12 @@ static SLang_Assoc_Array_Type *alloc_assoc_array (SLtype type, int has_default_v
 	delete_assoc_array (a);
 	return NULL;
      }
+
+   a->ref_count = 1;
    return a;
 }
 
-static _pSLAssoc_Array_Element_Type *store_object (SLang_Assoc_Array_Type *a, _pSLAssoc_Array_Element_Type *e, SLstr_Type *s, unsigned long hash, SLang_Object_Type *obj)
+static _pSLAssoc_Array_Element_Type *store_object (SLang_Assoc_Array_Type *a, _pSLAssoc_Array_Element_Type *e, SLstr_Type *s, SLstr_Hash_Type hash, SLang_Object_Type *obj)
 {
    if ((e != NULL)
        || (NULL != (e = find_element (a, s, hash))))
@@ -300,60 +319,47 @@ static _pSLAssoc_Array_Element_Type *store_object (SLang_Assoc_Array_Type *a, _p
    return e;
 }
 
-static void assoc_destroy (SLtype type, VOID_STAR ptr)
+static int pop_assoc (SLang_Assoc_Array_Type **assoc)
 {
-   (void) type;
-   delete_assoc_array ((SLang_Assoc_Array_Type *) ptr);
+   if (-1 == SLclass_pop_ptr_obj (SLANG_ASSOC_TYPE, (VOID_STAR *) assoc))
+     {
+        *assoc = NULL;
+        return -1;
+     }
+   return 0;
 }
 
 static int pop_index (unsigned int num_indices,
-		      SLang_MMT_Type **mmt,
-		      SLang_Assoc_Array_Type **a,
-		      SLstr_Type **str, unsigned long *hashp)
+                      SLang_Assoc_Array_Type **ap,
+                      SLstr_Type **strp, SLstr_Hash_Type *hashp)
 {
-   /* if (NULL == (*mmt = SLang_pop_mmt (SLANG_ASSOC_TYPE))) */
-   if (-1 == SLclass_pop_ptr_obj (SLANG_ASSOC_TYPE, (VOID_STAR *) mmt))
+
+   if (-1 == pop_assoc (ap))
      {
-	*a = NULL;
-	*str = NULL;
+	*strp = NULL;
 	return -1;
      }
 
    if ((num_indices != 1)
-       || (-1 == SLang_pop_slstring (str)))
+       || (-1 == SLang_pop_slstring (strp)))
      {
 	_pSLang_verror (SL_NOT_IMPLEMENTED,
 		      "Assoc_Type arrays require a single string index");
-	SLang_free_mmt (*mmt);
-	*mmt = NULL;
-	*a = NULL;
-	*str = NULL;
+	free_assoc (*ap);
+	*ap = NULL;
+	*strp = NULL;
 	return -1;
      }
 
-   /* *a = (SLang_Assoc_Array_Type *) SLang_object_from_mmt (*mmt); */
-   *a = (SLang_Assoc_Array_Type *) (*mmt)->user_data;
-   *hashp = _pSLstring_get_hash (*str);
+   *hashp = _pSLstring_get_hash (*strp);
 
    return 0;
 }
 
-int _pSLassoc_aget (SLtype type, unsigned int num_indices)
+static int push_assoc_element (SLang_Assoc_Array_Type *a, SLstr_Type *str, SLstr_Hash_Type hash)
 {
-   unsigned long hash;
-   SLang_MMT_Type *mmt;
-   SLstr_Type *str;
-   _pSLAssoc_Array_Element_Type *e;
-   SLang_Assoc_Array_Type *a;
+   _pSLAssoc_Array_Element_Type *e = find_element (a, str, hash);
    SLang_Object_Type *obj;
-   int ret;
-
-   (void) type;
-
-   if (-1 == pop_index (num_indices, &mmt, &a, &str, &hash))
-     return -1;
-
-   e = find_element (a, str, hash);
 
    if (e == NULL)
      {
@@ -361,33 +367,45 @@ int _pSLassoc_aget (SLtype type, unsigned int num_indices)
 	  obj = &a->default_value;
 	else
 	  {
-	     ret = -1;
 	     _pSLang_verror (SL_INTRINSIC_ERROR,
 			   "No such element in Assoc Array: %s", str);
-	     goto free_and_return;
+	     return -1;
 	  }
-
      }
-   else obj = &e->value;
+   else
+     obj = &e->value;
 
 #if SLANG_OPTIMIZE_FOR_SPEED
    if (a->is_scalar_type)
-     ret = SLang_push (obj);
+     return SLang_push (obj);
    else
 #endif
-     ret = _pSLpush_slang_obj (obj);
+     return _pSLpush_slang_obj (obj);
+}
 
-   free_and_return:
+int _pSLassoc_aget (SLtype type, unsigned int num_indices)
+{
+   SLstr_Hash_Type hash;
+   SLstr_Type *str;
+   SLang_Assoc_Array_Type *a;
+   int ret;
+
+   (void) type;
+
+   if (-1 == pop_index (num_indices, &a, &str, &hash))
+     return -1;
+
+   ret = push_assoc_element (a, str, hash);
 
    _pSLang_free_slstring (str);
-   SLang_free_mmt (mmt);
+   free_assoc (a);
    return ret;
 }
 
 _INLINE_
 static _pSLAssoc_Array_Element_Type *
-  assoc_aput (SLang_Assoc_Array_Type *a, _pSLAssoc_Array_Element_Type *e,
-	      SLstr_Type *str, unsigned long hash)
+assoc_aput (SLang_Assoc_Array_Type *a, _pSLAssoc_Array_Element_Type *e,
+	    SLstr_Type *str, SLstr_Hash_Type hash)
 {
    SLang_Object_Type obj;
 
@@ -414,15 +432,14 @@ static _pSLAssoc_Array_Element_Type *
 
 int _pSLassoc_aput (SLtype type, unsigned int num_indices)
 {
-   SLang_MMT_Type *mmt;
    SLstr_Type *str;
    SLang_Assoc_Array_Type *a;
    int ret;
-   unsigned long hash;
+   SLstr_Hash_Type hash;
 
    (void) type;
 
-   if (-1 == pop_index (num_indices, &mmt, &a, &str, &hash))
+   if (-1 == pop_index (num_indices, &a, &str, &hash))
      return -1;
 
    if (NULL == assoc_aput (a, NULL, str, hash))
@@ -431,15 +448,14 @@ int _pSLassoc_aput (SLtype type, unsigned int num_indices)
      ret = 0;
 
    _pSLang_free_slstring (str);
-   SLang_free_mmt (mmt);
+   free_assoc (a);
 
    return ret;
 }
 
 int _pSLassoc_inc_value (unsigned int num_indices, int inc)
 {
-   unsigned long hash;
-   SLang_MMT_Type *mmt;
+   SLstr_Hash_Type hash;
    SLstr_Type *str;
    _pSLAssoc_Array_Element_Type *e;
    SLang_Assoc_Array_Type *a;
@@ -447,7 +463,7 @@ int _pSLassoc_inc_value (unsigned int num_indices, int inc)
    SLang_Object_Type inc_obj;
    int ret;
 
-   if (-1 == pop_index (num_indices, &mmt, &a, &str, &hash))
+   if (-1 == pop_index (num_indices, &a, &str, &hash))
      return -1;
 
    e = find_element (a, str, hash);
@@ -491,16 +507,15 @@ int _pSLassoc_inc_value (unsigned int num_indices, int inc)
    ret = 0;
    /* drop */
 
-   free_and_return:
+free_and_return:
 
    _pSLang_free_slstring (str);
-   SLang_free_mmt (mmt);
+   free_assoc (a);
    return ret;
 }
 
 static int assoc_anew (SLtype type, unsigned int num_dims)
 {
-   SLang_MMT_Type *mmt;
    SLang_Assoc_Array_Type *a;
    int has_default_value;
 
@@ -511,7 +526,8 @@ static int assoc_anew (SLtype type, unsigned int num_dims)
 	type = SLANG_ANY_TYPE;
 	break;
       case 2:
-	(void) SLreverse_stack (2);
+	if (-1 == SLreverse_stack (2))
+	  return -1;
 	has_default_value = 1;
 	/* drop */
       case 1:
@@ -529,19 +545,7 @@ static int assoc_anew (SLtype type, unsigned int num_dims)
    if (a == NULL)
      return -1;
 
-   if (NULL == (mmt = SLang_create_mmt (SLANG_ASSOC_TYPE, (VOID_STAR) a)))
-     {
-	delete_assoc_array (a);
-	return -1;
-     }
-
-   if (-1 == SLang_push_mmt (mmt))
-     {
-	SLang_free_mmt (mmt);
-	return -1;
-     }
-
-   return 0;
+   return SLang_push_assoc (a, 1);
 }
 
 static void assoc_get_keys (SLang_Assoc_Array_Type *a)
@@ -583,7 +587,7 @@ static int
 transfer_element (SLang_Class_Type *cl, VOID_STAR dest_data,
 		  SLang_Object_Type *obj)
 {
-   unsigned int sizeof_type;
+   size_t sizeof_type;
    VOID_STAR src_data;
 
 #if USE_NEW_ANYTYPE_CODE
@@ -661,7 +665,7 @@ static void assoc_get_values (SLang_Assoc_Array_Type *a)
 
 static int assoc_key_exists (SLang_Assoc_Array_Type *a, char *key)
 {
-   return (NULL != find_element (a, key, _pSLcompute_string_hash (key)));
+   return (NULL != find_element (a, key, SLcompute_string_hash (key)));
 }
 
 static void assoc_delete_key (SLang_Assoc_Array_Type *a, char *key)
@@ -697,14 +701,13 @@ static int assoc_length (SLtype type, VOID_STAR v, SLuindex_Type *len)
    SLang_Assoc_Array_Type *a;
 
    (void) type;
-   a = (SLang_Assoc_Array_Type *) SLang_object_from_mmt (*(SLang_MMT_Type **)v);
+   a = *(SLang_Assoc_Array_Type **) v;
    *len = a->num_occupied - a->num_deleted;
    return 0;
 }
 
 struct _pSLang_Foreach_Context_Type
 {
-   SLang_MMT_Type *mmt;
    SLang_Assoc_Array_Type *a;
    unsigned int next_hash_index;
 #define CTX_WRITE_KEYS		1
@@ -719,12 +722,12 @@ static SLang_Foreach_Context_Type *
 cl_foreach_open (SLtype type, unsigned int num)
 {
    SLang_Foreach_Context_Type *c;
+   SLang_Assoc_Array_Type *assoc;
    unsigned char flags;
-   SLang_MMT_Type *mmt;
 
    (void) type;
 
-   if (NULL == (mmt = SLang_pop_mmt (SLANG_ASSOC_TYPE)))
+   if (-1 == pop_assoc (&assoc))
      return NULL;
 
    flags = 0;
@@ -735,7 +738,7 @@ cl_foreach_open (SLtype type, unsigned int num)
 
 	if (-1 == SLang_pop_slstring (&s))
 	  {
-	     SLang_free_mmt (mmt);
+	     free_assoc (assoc);
 	     return NULL;
 	  }
 
@@ -749,7 +752,7 @@ cl_foreach_open (SLtype type, unsigned int num)
 			   "using '%s' not supported by SLassoc_Type",
 			   s);
 	     _pSLang_free_slstring (s);
-	     SLang_free_mmt (mmt);
+	     free_assoc (assoc);
 	     return NULL;
 	  }
 
@@ -758,17 +761,17 @@ cl_foreach_open (SLtype type, unsigned int num)
 
    if (NULL == (c = (SLang_Foreach_Context_Type *) SLmalloc (sizeof (SLang_Foreach_Context_Type))))
      {
-	SLang_free_mmt (mmt);
+	free_assoc (assoc);
 	return NULL;
      }
 
    memset ((char *) c, 0, sizeof (SLang_Foreach_Context_Type));
 
+   c->a = assoc;
+
    if (flags == 0) flags = CTX_WRITE_VALUES|CTX_WRITE_KEYS;
 
    c->flags = flags;
-   c->mmt = mmt;
-   c->a = (SLang_Assoc_Array_Type *) SLang_object_from_mmt (mmt);
 #if SLANG_OPTIMIZE_FOR_SPEED
    c->is_scalar = (SLANG_CLASS_TYPE_SCALAR == _pSLang_get_class_type (c->a->type));
 #endif
@@ -779,7 +782,7 @@ static void cl_foreach_close (SLtype type, SLang_Foreach_Context_Type *c)
 {
    (void) type;
    if (c == NULL) return;
-   SLang_free_mmt (c->mmt);
+   free_assoc (c->a);
    SLfree ((char *) c);
 }
 
@@ -832,6 +835,19 @@ static int cl_foreach (SLtype type, SLang_Foreach_Context_Type *c)
    return 1;
 }
 
+static void assoc_destroy (SLtype type, VOID_STAR ptr)
+{
+   (void) type;
+   free_assoc (*(SLang_Assoc_Array_Type **) ptr);
+}
+
+static int assoc_push (SLtype type, VOID_STAR ptr)
+{
+   (void) type;
+   return SLang_push_assoc (*(SLang_Assoc_Array_Type **) ptr, 0);
+}
+
+
 int SLang_init_slassoc (void)
 {
    SLang_Class_Type *cl;
@@ -843,6 +859,8 @@ int SLang_init_slassoc (void)
      return -1;
 
    (void) SLclass_set_destroy_function (cl, assoc_destroy);
+   (void) SLclass_set_push_function (cl, assoc_push);
+
    (void) SLclass_set_aput_function (cl, _pSLassoc_aput);
    (void) SLclass_set_aget_function (cl, _pSLassoc_aget);
    (void) SLclass_set_anew_function (cl, assoc_anew);
@@ -851,12 +869,77 @@ int SLang_init_slassoc (void)
    cl->cl_foreach_close = cl_foreach_close;
    cl->cl_foreach = cl_foreach;
 
-   if (-1 == SLclass_register_class (cl, SLANG_ASSOC_TYPE, sizeof (SLang_Assoc_Array_Type), SLANG_CLASS_TYPE_MMT))
+   cl->is_container = 1;
+   if (-1 == SLclass_register_class (cl, SLANG_ASSOC_TYPE, sizeof (SLang_Assoc_Array_Type), SLANG_CLASS_TYPE_PTR))
      return -1;
 
    if (-1 == SLadd_intrin_fun_table (Assoc_Table, "__SLASSOC__"))
      return -1;
 
    return 0;
+}
+
+SLang_Assoc_Array_Type *SLang_create_assoc (SLtype type, int has_default_value)
+{
+   if (type == SLANG_VOID_TYPE) type = SLANG_ANY_TYPE;
+   return alloc_assoc_array (type, has_default_value);
+}
+
+int SLang_assoc_put (SLang_Assoc_Array_Type *assoc, SLstr_Type *key)
+{
+   SLstr_Hash_Type hash = _pSLstring_get_hash (key);
+
+   if (NULL == assoc_aput (assoc, NULL, key, hash))
+     return -1;
+
+   return 0;
+}
+
+int SLang_assoc_get (SLang_Assoc_Array_Type *assoc, SLstr_Type *key, SLtype *typep)
+{
+   int type;
+   SLstr_Hash_Type hash = _pSLstring_get_hash (key);
+
+   if ((-1 == push_assoc_element (assoc, key, hash))
+       || (-1 == (type = SLang_peek_at_stack ())))
+     return -1;
+
+   if (typep != NULL)
+     *typep = (SLtype) type;
+
+   return 0;
+}
+
+int SLang_push_assoc (SLang_Assoc_Array_Type *assoc, int free_flag)
+{
+   if (assoc == NULL)
+     return SLang_push_null ();
+
+   /* SLclass_push_ptr_obj does not do memory management */
+   if (-1 == SLclass_push_ptr_obj (SLANG_ASSOC_TYPE, (VOID_STAR)assoc))
+     {
+	if (free_flag) free_assoc (assoc);
+	return -1;
+     }
+
+   if (free_flag == 0)
+     assoc->ref_count++;
+
+   return 0;
+}
+
+int SLang_pop_assoc (SLang_Assoc_Array_Type **assoc)
+{
+   return SLclass_pop_ptr_obj (SLANG_ASSOC_TYPE, (VOID_STAR *) assoc);
+}
+
+void SLang_free_assoc (SLang_Assoc_Array_Type *assoc)
+{
+   free_assoc (assoc);
+}
+
+int SLang_assoc_key_exists (SLang_Assoc_Array_Type *a, SLstr_Type *key)
+{
+   return assoc_key_exists(a, key);
 }
 

@@ -1,6 +1,6 @@
 /* -*- mode: C; mode: fold; -*- */
 /*
-Copyright (C) 2009-2011 John E. Davis
+Copyright (C) 2009-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -35,6 +35,10 @@ USA.
 #include <string.h>
 #include <slang.h>
 
+/* WCONTINUED is not defined on Hurd, in waitflags.h. */
+#ifndef WCONTINUED
+# define WCONTINUED 0		       /* Debian patch used 8, but 0 is safer */
+#endif
 SLANG_MODULE(fork);
 
 static int fork_intrinsic (void)
@@ -112,7 +116,7 @@ static char **pop_argv (SLang_Array_Type **atp)
 {
    SLang_Array_Type *at;
    char **argv;
-   unsigned int i, num, argc;
+   SLuindex_Type i, num, argc;
    char **strp;
 
    *atp = NULL;
@@ -228,10 +232,10 @@ static int execvp_intrin (void)
 
 static int execve_intrin (void)
 {
-   if (SLang_Num_Function_Args != 2)
-     SLang_verror (SL_Usage_Error, "Usage: ret = execvp(path, argv[]);");
+   if (SLang_Num_Function_Args != 3)
+     SLang_verror (SL_Usage_Error, "Usage: ret = execve(path, argv[], env[]);");
 
-   return exec_what (CALL_EXECVE, 0);
+   return exec_what (CALL_EXECVE, 1);
 }
 
 static void _exit_intrin (int *s)

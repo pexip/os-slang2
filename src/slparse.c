@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -720,13 +720,18 @@ static void rpn_parse_line (_pSLang_Token_Type *tok)
    while (EOF_TOKEN != _pSLget_rpn_token (tok));
 }
 
-static int get_identifier_token (_pSLang_Token_Type *tok)
+static int get_identifier_token (_pSLang_Token_Type *tok, int string_ok)
 {
+   int type = get_token (tok);
+   if ((type == IDENT_TOKEN)
+       || (string_ok && (type == STRING_TOKEN)))
+     return 0;
+
    if (IDENT_TOKEN == get_token (tok))
      return IDENT_TOKEN;
 
    _pSLparse_error (SL_SYNTAX_ERROR, "Expecting identifier", tok, 0);
-   return tok->type;
+   return -1;
 }
 
 static void define_function (_pSLang_Token_Type *ctok, unsigned char type)
@@ -748,7 +753,7 @@ static void define_function (_pSLang_Token_Type *ctok, unsigned char type)
      }
 
    init_token (&fname);
-   if (IDENT_TOKEN != get_identifier_token (&fname))
+   if (-1 == get_identifier_token (&fname, 0))
      {
 	free_token (&fname);
 	return;
@@ -1286,13 +1291,56 @@ static void loop_block (_pSLang_Token_Type *ctok)
    compile_token_of_type (CBRACE_TOKEN);
 }
 
+/* It is important that the caller wrap this with push_token_list/compile_token_list */
+static int simple_expressions_with_paren (_pSLang_Token_Type *ctok)
+{
+   int n = 0;
+
+   if (ctok->type != OPAREN_TOKEN)
+     {
+	_pSLparse_error(SL_SYNTAX_ERROR, "Expecting (", ctok, 0);
+	return -1;
+     }
+
+   (void) get_token (ctok);
+   while (_pSLang_Error == 0)
+     {
+	if (ctok->type == COMMA_TOKEN)
+	  {
+	     _pSLparse_error (SL_SYNTAX_ERROR, "Misplaced ','", ctok, 0);
+	     return -1;
+	  }
+
+	simple_expression (ctok);
+	n++;
+
+	if (ctok->type == CPAREN_TOKEN)
+	  {
+	     if (-1 == get_token (ctok))
+	       return -1;
+
+	     return n;
+	  }
+	if (ctok->type != COMMA_TOKEN)
+	  {
+	     _pSLparse_error (SL_SYNTAX_ERROR, "Expecting a ',' or ')'", ctok, 0);
+	     return -1;
+	  }
+	(void) get_token (ctok);
+     }
+
+   return -1;
+}
+
 static void handle_for_statement (_pSLang_Token_Type *ctok)
 {
    _pSLang_Token_Type tok_buf;
    _pSLang_Token_Type *ident_token = NULL;
+   int n;
 #if SLANG_HAS_BOSEOS
    int eos;
 #endif
+
    if (ctok->type == IDENT_TOKEN)
      {
 	tok_buf = *ctok;
@@ -1303,7 +1351,25 @@ static void handle_for_statement (_pSLang_Token_Type *ctok)
 #if SLANG_HAS_BOSEOS
    eos = compile_bos(ctok, 2);
 #endif
-   expression_with_parenthesis (ctok);
+
+   if (NULL == push_token_list ())
+     return;
+
+   if (-1 == (n = simple_expressions_with_paren (ctok)))
+     return;
+
+   if (n == 2)			       /* _for (a, b) */
+     {
+	n++;
+	append_int_as_token (1);
+     }
+   if (n != 3)
+     {
+	_pSLparse_error (SL_SYNTAX_ERROR, "Invalid number of control variables in _for statement", ctok, 1);
+	return;
+     }
+   (void) compile_token_list ();
+
 #if SLANG_HAS_BOSEOS
    if (eos) compile_eos ();
 #endif
@@ -1812,10 +1878,10 @@ static void free_token_linked_list (_pSLang_Token_Type *tok)
 }
 
 /* This works with any string-like token */
-static int prefix_token_sval_field (_pSLang_Token_Type *tok, char *prefix)
+static int prefix_token_sval_field (_pSLang_Token_Type *tok, SLFUTURE_CONST char *prefix)
 {
    char buf[2*SL_MAX_TOKEN_LEN];
-   unsigned int len, prefix_len;
+   size_t len, prefix_len;
 
    prefix_len = strlen (prefix);
    len = _pSLstring_bytelen (tok->v.s_val);   /* sign */
@@ -1871,7 +1937,7 @@ static _pSLang_Token_Type *
 	  }
 	else
 	  {
-	     if (IDENT_TOKEN != ctok->type)
+	     if ((IDENT_TOKEN != ctok->type) && (ctok->type != STRING_TOKEN))
 	       break;
 	  }
 
@@ -2567,7 +2633,7 @@ static int combine_namespace_tokens (_pSLang_Token_Type *a, _pSLang_Token_Type *
 {
    SLFUTURE_CONST char *sa, *sb;
    char *sc;
-   unsigned int lena, lenb;
+   size_t lena, lenb;
    unsigned long hash;
 
    /* This is somewhat of a hack.  Combine the TWO identifier names
@@ -2582,7 +2648,7 @@ static int combine_namespace_tokens (_pSLang_Token_Type *a, _pSLang_Token_Type *
    lena = strlen (sa);
    lenb = strlen (sb);
 
-   sc = SLmalloc (lena + lenb + 3);
+   sc = (char *)SLmalloc (lena + lenb + 3);
    if (sc == NULL)
      return -1;
 
@@ -2636,7 +2702,7 @@ static int get_identifier_expr_token (_pSLang_Token_Type *ctok)
 {
    _pSLang_Token_Type next_token;
 
-   if (IDENT_TOKEN != get_identifier_token (ctok))
+   if (-1 == get_identifier_token (ctok, 0))
      return -1;
 
    init_token (&next_token);
@@ -2646,7 +2712,7 @@ static int get_identifier_expr_token (_pSLang_Token_Type *ctok)
 	return IDENT_TOKEN;
      }
 
-   if (IDENT_TOKEN != get_identifier_token (&next_token))
+   if (-1 == get_identifier_token (&next_token, 0))
      {
 	free_token (&next_token);
 	return -1;
@@ -2658,7 +2724,7 @@ static int get_identifier_expr_token (_pSLang_Token_Type *ctok)
 	return -1;
      }
    free_token (&next_token);
-   return IDENT_TOKEN;
+   return 0;
 }
 
 /* postfix-expression:
@@ -2756,7 +2822,7 @@ static void postfix_expression (_pSLang_Token_Type *ctok)
 
       case BAND_TOKEN:
 #if 0
-	if (IDENT_TOKEN != get_identifier_expr_token (ctok))
+	if (-1 == get_identifier_expr_token (ctok))
 	  break;
 
 	ctok->type = _REF_TOKEN;
@@ -2821,7 +2887,7 @@ static void postfix_expression (_pSLang_Token_Type *ctok)
 	get_token (ctok);
 	if (ctok->type == OPAREN_TOKEN)
 	  {
-	     if (IDENT_TOKEN == get_identifier_expr_token (ctok))
+	     if (-1 != get_identifier_expr_token (ctok))
 	       {
 		  ctok->type = TMP_TOKEN;
 		  append_token (ctok);
@@ -2903,7 +2969,7 @@ static void postfix_expression (_pSLang_Token_Type *ctok)
 	      * and f(a).X[b].c ==> "c" b "X" a f . ARRAY .
 	      * Also, f(a).X[b] = g(x); ==> x g b "X" a f .
 	      */
-	     if (IDENT_TOKEN != get_identifier_token (ctok))
+	     if (-1 == get_identifier_token (ctok, 1))
 	       return;
 
 	     ctok->type = DOT_TOKEN;

@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -543,7 +543,7 @@ static SLuchar_Type *xform_utf8 (SLuchar_Type *u, SLuchar_Type *umax,
                                  SLwchar_Type (*fun)(SLwchar_Type))
 {
    SLuchar_Type *buf, *p;
-   unsigned int malloced_len, len;
+   size_t malloced_len, len;
 
    if (umax < u)
      return NULL;

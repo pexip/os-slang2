@@ -1,3 +1,9 @@
+% Copyright (C) 2012-2014 John E. Davis
+%
+% This file is part of the S-Lang Library and may be distributed under the
+% terms of the GNU General Public License.  See the file COPYING for
+% more information.
+%---------------------------------------------------------------------------
 %
 % This file implements the core a simple debugger.  It needs to be wrapped
 % by routines that implement the Debugger_Methods.
@@ -69,6 +75,7 @@ private variable Last_List_Line = 0;
 private variable Last_Cmd_Line = NULL;
 private variable Last_Cmd = NULL;
 private variable Prompt = "(SLdb) ";
+private variable Startup_PID = NULL;
 
 private define new_breakpoints ()
 {
@@ -514,7 +521,8 @@ private define debugger_input_loop ()
 	variable e;
 	try (e)
 	  {
-	     deinit_sigint_handler ();
+	     %deinit_sigint_handler ();
+	     init_sigint_handler ();
 	     Debugger_Step = 0;
 
 	     if (Current_Frame > max_frame)
@@ -723,6 +731,9 @@ private define eof_handler ()
 
 private define debug_hook (file, line)
 {
+   if (Startup_PID != getpid())
+     return;
+
    %variable file = e.file, line = e.line;
    variable e = __get_exception_info ();
    output ("Received %s error.  Entering the debugger\n", e.descr);
@@ -754,6 +765,7 @@ define sldb_enable ()
 % The namespace semantics are the same as that of require.
 define sldb ()
 {
+   Startup_PID = getpid ();
    sldb_initialize ();
 
    sldb_enable ();

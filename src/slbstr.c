@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -46,11 +46,11 @@ struct _pSLang_BString_Type
 #define BS_GET_POINTER(b) \
    (((b)->ptr_type != IS_BSTRING) ? (b)->v.ptr : (b)->v.bytes)
 
-static SLang_BString_Type *create_bstring_of_type (char *bytes, unsigned int len, int type)
+static SLang_BString_Type *create_bstring_of_type (char *bytes, size_t len, int type)
 {
    SLang_BString_Type *b;
-   unsigned int size;
-   unsigned int malloced_len = len;
+   size_t size;
+   size_t malloced_len = len;
 
    size = sizeof(SLang_BString_Type);
    if (type == IS_BSTRING)
@@ -106,14 +106,14 @@ static SLang_BString_Type *create_bstring_of_type (char *bytes, unsigned int len
 }
 
 SLang_BString_Type *
-SLbstring_create (unsigned char *bytes, unsigned int len)
+SLbstring_create (unsigned char *bytes, SLstrlen_Type len)
 {
    return create_bstring_of_type ((char *)bytes, len, IS_BSTRING);
 }
 
 /* Note that ptr must be len + 1 bytes long for \0 termination */
 SLang_BString_Type *
-SLbstring_create_malloced (unsigned char *ptr, unsigned int len, int free_on_error)
+SLbstring_create_malloced (unsigned char *ptr, SLstrlen_Type len, int free_on_error)
 {
    SLang_BString_Type *b;
 
@@ -144,7 +144,7 @@ SLang_BString_Type *SLbstring_dup (SLang_BString_Type *b)
    return b;
 }
 
-unsigned char *SLbstring_get_pointer (SLang_BString_Type *b, unsigned int *len)
+unsigned char *SLbstring_get_pointer (SLang_BString_Type *b, SLstrlen_Type *len)
 {
    if (b == NULL)
      {
@@ -254,7 +254,7 @@ static int compare_bstrings (SLang_BString_Type *a, SLang_BString_Type *b)
 static SLang_BString_Type *
 concat_bstrings (SLang_BString_Type *a, SLang_BString_Type *b)
 {
-   unsigned int len;
+   SLuindex_Type len;
    SLang_BString_Type *c;
    char *bytes;
 
@@ -263,7 +263,7 @@ concat_bstrings (SLang_BString_Type *a, SLang_BString_Type *b)
 #if SLANG_USE_TMP_OPTIMIZATION
    if ((a->num_refs == 1)	       /* owned by stack */
        && (a->ptr_type == IS_BSTRING)
-       && (len <= a->malloced_len))
+       && (len < a->malloced_len))
      {
 	bytes = (char *)a->v.bytes;
 	memcpy (bytes + a->len, (char *)BS_GET_POINTER(b), b->len);
@@ -286,9 +286,9 @@ concat_bstrings (SLang_BString_Type *a, SLang_BString_Type *b)
    return c;
 }
 
-static void free_n_bstrings (SLang_BString_Type **a, unsigned int n)
+static void free_n_bstrings (SLang_BString_Type **a, SLuindex_Type n)
 {
-   unsigned int i;
+   SLuindex_Type i;
 
    if (a == NULL) return;
 
@@ -307,7 +307,7 @@ bstring_bstring_bin_op (int op,
 {
    char *ic;
    SLang_BString_Type **a, **b, **c;
-   unsigned int n, n_max;
+   SLuindex_Type n, n_max;
    unsigned int da, db;
 
    (void) a_type;
@@ -325,7 +325,7 @@ bstring_bstring_bin_op (int op,
 	if ((*a == NULL) || (*b == NULL))
 	  {
 	     _pSLang_verror (SL_VARIABLE_UNINITIALIZED,
-			   "Binary string element[%u] not initialized for binary operation", n);
+			   "Binary string element[%lu] not initialized for binary operation", (unsigned long)n);
 	     return -1;
 	  }
 	a += da; b += db;
@@ -418,9 +418,9 @@ bstring_bstring_bin_op (int op,
  * is called by the binary op routines for why.
  */
 static SLang_BString_Type **
-make_n_bstrings (SLang_BString_Type **b, char **a, unsigned int n, int ptr_type)
+make_n_bstrings (SLang_BString_Type **b, char **a, SLuindex_Type n, int ptr_type)
 {
-   unsigned int i;
+   SLuindex_Type i;
    int malloc_flag;
 
    malloc_flag = 0;
@@ -640,8 +640,8 @@ static unsigned int count_byte_occurrences (SLang_BString_Type *b, unsigned char
    return n;
 }
 
-/* returns the character position of substring in a string or null */
-static int issubbytes (SLang_BString_Type *as, SLang_BString_Type *bs)
+/* returns the 1-based byte offset of substring in a string, or 0 */
+static int issubbytes_1 (SLang_BString_Type *as, SLang_BString_Type *bs, unsigned int ofs0)
 {
    unsigned int lena, lenb;
    unsigned char *a, *b, *amax, *bmax, *astart;
@@ -651,6 +651,14 @@ static int issubbytes (SLang_BString_Type *as, SLang_BString_Type *bs)
    b = BS_GET_POINTER(bs);
    lena = as->len;
    lenb = bs->len;
+
+   if (ofs0)
+     {
+	if (lena < ofs0)
+	  return 0;
+	lena -= ofs0;
+	a += ofs0;
+     }
 
    if ((lenb > lena) || (lenb == 0))
      return 0;
@@ -675,7 +683,7 @@ static int issubbytes (SLang_BString_Type *as, SLang_BString_Type *bs)
 	     b++;
 	  }
 	if (b == bmax)
-	  return (a0 - astart);
+	  return ofs0 + (a0 - astart);
 
 	a = a0;
 	b = b0;
@@ -683,16 +691,211 @@ static int issubbytes (SLang_BString_Type *as, SLang_BString_Type *bs)
    return 0;
 }
 
+static SLindex_Type issubbytes (void)
+{
+   SLang_BString_Type *a, *b;
+   SLindex_Type ofs = 0;
+
+   if (SLang_Num_Function_Args == 3)
+     {
+	if (-1 == SLang_pop_array_index (&ofs))
+	  return -1;
+	if (ofs <= 0)
+	  {
+	     SLang_verror (SL_InvalidParm_Error, "1-based offset must be greater than 0");
+	     return -1;
+	  }
+	ofs--;
+     }
+   if (-1 == SLang_pop_bstring (&b))
+     return 0;
+   if (0 == SLang_pop_bstring (&a))
+     {
+	SLuindex_Type uofs = issubbytes_1 (a, b, (SLuindex_Type) ofs);
+	/* 1-based upon return */
+
+	ofs = (SLindex_Type) uofs;
+	SLbstring_free (b);
+     }
+   SLbstring_free (a);
+   return ofs;
+}
+
+static SLang_BString_Type *join_bstrings (SLang_BString_Type **data, SLuindex_Type num, SLang_BString_Type *delim,
+					  int tmp_opt_ok)
+{
+   SLuindex_Type i;
+   unsigned char *delim_ptr = NULL, *bytes = NULL;
+   SLstrlen_Type delim_len = 0;
+   SLang_BString_Type *bstr;
+   unsigned char *ptr;
+   SLstrlen_Type dlen;
+
+   size_t len;
+
+   if (num == 0)
+     return SLbstring_create ((unsigned char *)"", 0);
+
+   if (delim != NULL)
+     {
+	if (NULL == (delim_ptr = SLbstring_get_pointer (delim, &delim_len)))
+	  return NULL;
+     }
+
+   len = 0;
+   for (i = 0; i < num; i++)
+     {
+	if (data[i] == NULL)
+	  continue;
+	if (NULL == SLbstring_get_pointer (data[i], &dlen))
+	  return NULL;
+
+	len += dlen;
+     }
+
+   len += (num-1) * delim_len;
+
+   if (len != (SLstrlen_Type)len)
+     {
+	SLang_set_error (SL_Malloc_Error);
+	return NULL;
+     }
+
+# if SLANG_USE_TMP_OPTIMIZATION
+   bstr = data[0];
+   if (tmp_opt_ok && (bstr != NULL)
+       && (bstr->num_refs == 1)	       /* owned by stack */
+       && (bstr->ptr_type == IS_BSTRING)
+       && (len < bstr->malloced_len))
+     {
+	bytes = (unsigned char *)bstr->v.bytes + bstr->len;
+	bstr->len = len;
+	bstr->num_refs++;
+     }
+   else
+     {
+#endif
+	if (NULL == (bstr = create_bstring_of_type (NULL, len, IS_BSTRING)))
+	  return NULL;
+
+	bytes = bstr->v.bytes;
+
+	if (NULL == (ptr = SLbstring_get_pointer (data[0], &dlen)))
+	  goto return_error;
+
+	memcpy (bytes, ptr, dlen);
+	bytes += dlen;
+#if SLANG_USE_TMP_OPTIMIZATION
+     }
+#endif
+
+   for (i = 1; i < num; i++)
+     {
+	if (delim_len)
+	  {
+	     memcpy (bytes, delim_ptr, delim_len);
+	     bytes += delim_len;
+	  }
+	if (data[i] != NULL)
+	  {
+	     if (NULL == (ptr = SLbstring_get_pointer (data[i], &dlen)))
+	       goto return_error;
+	     memcpy (bytes, ptr, dlen);
+	     bytes += dlen;
+	  }
+     }
+   *bytes = 0;
+   return bstr;
+
+return_error:
+
+   SLbstring_free (bstr);
+   return NULL;
+}
+
+static void bstrjoin_cmd (void)
+{
+   SLang_Array_Type *at;
+   SLang_BString_Type *delim, *bstr;
+
+   if (SLang_Num_Function_Args == 1)
+     delim = NULL;
+   else
+     {
+	if (-1 == SLang_pop_bstring (&delim))
+	  return;
+     }
+
+   if (-1 == SLang_pop_array_of_type (&at, SLANG_BSTRING_TYPE))
+     {
+	if (delim != NULL)
+	  SLbstring_free (delim);
+	return;
+     }
+
+   bstr = join_bstrings ((SLang_BString_Type **)at->data, at->num_elements, delim, 0);
+   if (bstr != NULL)
+     {
+	(void) SLang_push_bstring (bstr);
+	SLbstring_free (bstr);
+     }
+   if (delim != NULL) SLbstring_free (delim);
+   SLang_free_array (at);
+}
+
+static void bstrcat_cmd (void) /*{{{*/
+{
+   SLang_BString_Type *bstrings_buf[10];
+   SLang_BString_Type **bstrings, *bstr;
+   int i, nargs;
+
+   nargs = SLang_Num_Function_Args;
+   if (nargs <= 0) nargs = 2;
+
+   if (nargs <= 10)
+     bstrings = bstrings_buf;
+   else if (NULL == (bstrings = (SLang_BString_Type **)_SLcalloc (nargs, sizeof (SLang_BString_Type *))))
+     return;
+
+   memset ((char *) bstrings, 0, sizeof (SLang_BString_Type *) * nargs);
+
+   i = nargs;
+   while (i != 0)
+     {
+	i--;
+
+	if (-1 == SLang_pop_bstring (bstrings + i))
+	  goto free_and_return;
+     }
+
+   bstr = join_bstrings (bstrings, nargs, NULL, 1);
+   if (bstr != NULL)
+     {
+	(void) SLang_push_bstring (bstr);
+	SLbstring_free (bstr);
+     }
+   /* drop */
+
+free_and_return:
+   for (i = 0; i < nargs; i++)
+     SLbstring_free (bstrings[i]);
+
+   if (bstrings != bstrings_buf)
+     SLfree ((char *) bstrings);
+}
+
 static SLang_Intrin_Fun_Type BString_Table [] = /*{{{*/
 {
    MAKE_INTRINSIC_1("bstrlen",  bstrlen_cmd, SLANG_UINT_TYPE, SLANG_BSTRING_TYPE),
+   MAKE_INTRINSIC_0("bstrcat",  bstrcat_cmd, SLANG_VOID_TYPE),
+   MAKE_INTRINSIC_0("bstrjoin",  bstrjoin_cmd, SLANG_VOID_TYPE),
    MAKE_INTRINSIC_2("count_byte_occurances", count_byte_occurrences, SLANG_UINT_TYPE, SLANG_BSTRING_TYPE, SLANG_UCHAR_TYPE),
    MAKE_INTRINSIC_2("count_byte_occurrences", count_byte_occurrences, SLANG_UINT_TYPE, SLANG_BSTRING_TYPE, SLANG_UCHAR_TYPE),
    MAKE_INTRINSIC_0("pack", _pSLpack, SLANG_VOID_TYPE),
    MAKE_INTRINSIC_2("unpack", _pSLunpack, SLANG_VOID_TYPE, SLANG_STRING_TYPE, SLANG_BSTRING_TYPE),
    MAKE_INTRINSIC_1("pad_pack_format", _pSLpack_pad_format, SLANG_VOID_TYPE, SLANG_STRING_TYPE),
    MAKE_INTRINSIC_1("sizeof_pack", _pSLpack_compute_size, SLANG_UINT_TYPE, SLANG_STRING_TYPE),
-   MAKE_INTRINSIC_2("is_substrbytes", issubbytes, SLANG_INT_TYPE, SLANG_BSTRING_TYPE, SLANG_BSTRING_TYPE),
+   MAKE_INTRINSIC_0("is_substrbytes", issubbytes, SLANG_ARRAY_INDEX_TYPE),
    SLANG_END_INTRIN_FUN_TABLE
 };
 
@@ -710,7 +913,7 @@ _pSLbstring_foreach_open (SLtype type, unsigned int num)
    SLang_Foreach_Context_Type *c;
    int using_chars = 0;
    SLang_BString_Type *bstr;
-   unsigned int len;
+   SLstrlen_Type len;
 
    (void) type;
 

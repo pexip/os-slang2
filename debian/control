@@ -1,17 +1,29 @@
 Source: slang2
 Section: devel
 Priority: optional
-Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
-XSBC-Original-Maintainer: Alastair McKinstry <mckinstry@debian.org>
-Build-Depends: debhelper (>= 8.1.3), docbook-to-man, libpcre3-dev, libpng12-dev, zlib1g-dev, libncurses-dev, chrpath
-Standards-Version: 3.9.2
+Maintainer: Alastair McKinstry <mckinstry@debian.org>
+Uploaders: Dmitry Smirnov <onlyjob@member.fsf.org>
+Build-Depends: debhelper (>= 9), autoconf, autotools-dev,
+ unicode-data,
+ chrpath,
+ docbook-to-man,
+ dpkg-dev (>= 1.16.1~),
+ libncurses-dev,
+ libonig-dev,
+ libpcre3-dev,
+ libpng-dev,
+ zlib1g-dev,
+Standards-Version: 3.9.6
+Homepage: http://www.jedsoft.org/slang/
+VCS-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/slang2.git
+VCS-Git: git://anonscm.debian.org/collab-maint/slang2.git
 
 Package: libslang2-dev
 Section: libdevel
 Architecture: any
 Depends: libslang2 (= ${binary:Version}), libc6-dev | libc-dev, libpng-dev, ${misc:Depends}
 Multi-Arch: same
-Conflicts: slang1-utf8-dev, slang-dev6, slang0.99.34-dev (<< 0.99.38-2.3)
+Built-Using: ${Built-Using}
 Description: S-Lang programming library, development version
  S-Lang is a C programmer's library that includes routines for the rapid
  development of sophisticated, user friendly, multi-platform applications.
@@ -34,11 +46,12 @@ Description: S-Lang programming library, development version
 
 Package: libslang2
 Section: libs
-Priority: required
+Priority: important
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Pre-Depends: ${misc:Pre-Depends}
 Multi-Arch: same
+Built-Using: ${Built-Using}
 Recommends: libpng12-0
 Description: S-Lang programming library - runtime version
  S-Lang is a C programmer's library that includes routines for the rapid
@@ -50,9 +63,9 @@ Description: S-Lang programming library - runtime version
  need the companion -dev package as well.
 
 Package: libslang2-pic
-Priority: optional
 Section: libdevel
 Architecture: any
+Built-Using: ${Built-Using}
 Depends: libslang2-dev (= ${binary:Version}), ${misc:Depends}
 Conflicts: slang1-utf8-pic, slang-pic, libslang1-pic
 Description: S-Lang programming library, shared library subset kit
@@ -64,20 +77,21 @@ Package: libslang2-udeb
 Section: debian-installer
 Priority: extra
 Architecture: any
-Depends: ${shlibs:Depends}
+Built-Using: ${Built-Using}
+Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: S-Lang library for Debian Installer
- This is a udeb, or a microdeb, of the S-Lang library with wide charater
+ This is a udeb, or a microdeb, of the S-Lang library with wide character
  support. As such it is the installer counterpart of libslang2.
  You only need this package to support applications needing S-Lang during
  the Debian installation process time and probably don't need to select it.
-XC-Package-Type: udeb
+Package-Type: udeb
 
 Package: slsh
 Section: interpreters
-Priority: optional
 Architecture: any
-Depends: ${shlibs:Depends}, libslang2-modules (= ${binary:Version}) , ${misc:Depends}
+Depends: ${shlibs:Depends}, libslang2-modules (= ${binary:Version}), ${misc:Depends}
 Multi-Arch: foreign
+Built-Using: ${Built-Using}
 Description: Interpreter for S-Lang language
  S-Lang is a C programmer's library that includes routines for the rapid
  development of sophisticated, user friendly, multi-platform applications.
@@ -87,9 +101,15 @@ Description: Interpreter for S-Lang language
 
 Package: libslang2-modules
 Section: libs
-Priority: optional
 Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Conflicts:  slsh (<< 2.1.4-2), libslang2 (= 2.1.4-2)
+Conflicts: slang-histogram
+Provides: slang-histogram
+Replaces: slang-histogram
 Description: Shared modules for S-Lang language
+ S-Lang is a C programmer's library that includes routines for the rapid
+ development of sophisticated, user friendly, multi-platform applications.
+ .
  This package contains dynamically-loaded modules for S-Lang applications.

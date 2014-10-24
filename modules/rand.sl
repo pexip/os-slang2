@@ -1,3 +1,9 @@
+% Copyright (C) 2012-2014 John E. Davis
+%
+% This file is part of the S-Lang Library and may be distributed under the
+% terms of the GNU General Public License.  See the file COPYING for
+% more information.
+%---------------------------------------------------------------------------
 import ("rand");
 
 private define get_generator_args (nargs, num_parms, parmsp, rtp, nump,
@@ -113,9 +119,21 @@ define rand_int ()
    get_generator_args (_NARGS, 2, &parms, &rt, &num,
 		       "r = rand_int ([Rand_Type,] imin, imax [,num])");
 
-   variable r = call_rand_func (&rand_uniform, rt, num);
+   variable
+     imin = typecast (parms[0], Int32_Type),
+     imax = typecast (parms[1], Int32_Type), di;
 
-   return nint(parms[0] + (parms[1] - parms[0])*__tmp(r));
+   if (imin > imax)
+     throw InvalidParmError, "rand_int: imax < imin";
+
+   di = typecast (imax - imin, UInt32_Type);
+
+   variable r = call_rand_func (&rand, rt, num);
+
+   if (di + 1 != 0)		       % UINT32_MAX does not exist
+     r = __tmp(r) mod (di + 1);
+
+   return typecast (imin + r, Int32_Type);
 }
 
 define rand_exp ()

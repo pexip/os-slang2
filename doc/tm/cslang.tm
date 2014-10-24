@@ -1234,7 +1234,7 @@
   \verb{SLang_init_tty}. Before exiting the program, the function
   \verb{SLang_reset_tty} must be called to restore the keyboard
   interface to its original state.  Once initialized, the low-level
-  \verb{SLang_getkey} function may be used to read \em{simgle}
+  \verb{SLang_getkey} function may be used to read \em{single}
   keyboard characters from the terminal.  An application using the
   higher-level \grp{SLkp} interface will read charcters using the
   \verb{SLkp_getkey} function.
@@ -1279,11 +1279,16 @@
   provides the function \verb{Slang_set_abort_signal} to make it easy to
   facilitate this task.
 
-  The second parameter is used to specify whether or not flow control should
-  be used.  If this parameter is zero, flow control is enabled otherwise
-  it is disabled.  Disabling flow control is necessary to pass certain
-  characters to the application (e.g., \key{Ctrl-S} and \key{Ctrl-Q}).
-  For some systems such as MSDOS, this parameter is meaningless.
+  The second parameter is used to specify whether or not flow control
+  should be used.  If this parameter is zero, flow control is enabled.
+  If the value is positive, flow control will be disabled. Disabling
+  flow control is necessary to pass certain characters to the
+  application (e.g., \key{Ctrl-S} and \key{Ctrl-Q}). Otherwise, the
+  value is negative and the flow control behavior will be inherited
+  from the terminal.  The latter interpretation was added to version
+  2.3.0 of the library; earlier versions disabled flow control for
+  both positive and negative values of this parameter. For some
+  systems such as MSDOS, this parameter is meaningless.
 
   The third parameter, \verb{opost}, is used to turn output processing on or
   off.  If \verb{opost} is zero, output processing is \em{not} turned on
@@ -1944,7 +1949,7 @@
   \verb{SLsmg_write_wrapped_string}.
 
 \proto{void SLsmg_write_wrapped_string(SLuchar_Type *str, int r, int c, unsigned int dr, unsigned int dc, int fill)}
-  The purpose of this function is two write a string \verb{str} to a
+  The purpose of this function is to write a string \verb{str} to a
   box defined by rows and columns satisfying \verb{r<=row<r+dc} and
   \verb{c<=column<c+dc}. The string will be wrapped at the column
   boundaries of the box and truncated if its size exceeds to size of
@@ -2188,7 +2193,7 @@
   Set this variable to the tab width that will be used when expanding tab
   characters.  The default is 8.
 
-  \verb{int SLsmg_Display_Eight_Bit}
+  \verb{int SLsmg_Display_Eight_Bit;}
   This variable determines how characters with the high bit set are to be
   output.  Specifically, a character with the high bit set with a value
   greater than or equal to this value is output as is; otherwise, it will be

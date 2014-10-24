@@ -1,6 +1,6 @@
 /* sllimits.h */
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -43,7 +43,7 @@ USA.
 #ifdef __MSDOS_16BIT__
 # define SLANG_MAX_LOCAL_STACK		200
 #else
-# define SLANG_MAX_LOCAL_STACK		4096
+# define SLANG_MAX_LOCAL_STACK		(10*SLANG_MAX_RECURSIVE_DEPTH)
 #endif
 
 /* slang.c: The size of the hash table used for local and global objects.
