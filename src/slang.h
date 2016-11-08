@@ -2,7 +2,7 @@
 #define DAVIS_SLANG_H_
 /* -*- mode: C; mode: fold; -*- */
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -22,8 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
 */
 
-#define SLANG_VERSION 20300
-#define SLANG_VERSION_STRING "2.3.0"
+#define SLANG_VERSION 20301
+#define SLANG_VERSION_STRING "2.3.1"
 /* #ifdef __DATE__ */
 /* # define SLANG_VERSION_STRING SLANG_VERSION_STRING0 " " __DATE__ */
 /* #else */
@@ -929,7 +929,7 @@ typedef struct _pSLang_Array_Type
 }
 SLang_Array_Type;
 
-extern int _pSLarray_convert_to_array (VOID_STAR cd,
+SL_EXTERN int _pSLarray_convert_to_array (VOID_STAR cd,
 				       int (*get_type)(VOID_STAR, SLuindex_Type, SLtype *),
 				       int (*push)(VOID_STAR, SLuindex_Type),
 				       SLuindex_Type num_objects, SLtype type);
@@ -1418,11 +1418,11 @@ SL_EXTERN int SLang_set_argc_argv (int, char **);
 
 /*{{{ Qualifier Functions */
 
-extern int SLang_qualifier_exists (SLCONST char *name);
-extern int SLang_get_int_qualifier (SLCONST char *name, int *val, int defval);
-extern int SLang_get_long_qualifier (SLCONST char *name, long *val, long defval);
-extern int SLang_get_double_qualifier (SLCONST char *name, double *val, double defval);
-extern int SLang_get_string_qualifier (SLCONST char *name, char **val, SLFUTURE_CONST char *defval);
+SL_EXTERN int SLang_qualifier_exists (SLCONST char *name);
+SL_EXTERN int SLang_get_int_qualifier (SLCONST char *name, int *val, int defval);
+SL_EXTERN int SLang_get_long_qualifier (SLCONST char *name, long *val, long defval);
+SL_EXTERN int SLang_get_double_qualifier (SLCONST char *name, double *val, double defval);
+SL_EXTERN int SLang_get_string_qualifier (SLCONST char *name, char **val, SLFUTURE_CONST char *defval);
 
 /*}}}*/
 
@@ -1624,7 +1624,6 @@ SL_EXTERN int SLrline_set_update_hook (SLrline_Type *,
 				    VOID_STAR client_data);
 /* free update_hook client_data */
 SL_EXTERN void SLrline_set_free_update_cb (SLrline_Type *, void (*)(SLrline_Type *, VOID_STAR));
-SL_EXTERN int SLrline_get_update_client_data (SLrline_Type *, VOID_STAR *);
 
 /* These functions are passed a pointer to the update_hook client_data */
 SL_EXTERN void SLrline_set_update_clear_cb(SLrline_Type *, void (*)(SLrline_Type *, VOID_STAR));

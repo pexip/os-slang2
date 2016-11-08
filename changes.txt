@@ -1,4 +1,256 @@
 -*- mode: text; mode: fold -*-
+Changes since 2.3.0
+1. modules/json-module.c: Fix a possible uninitialized variable error.
+2. Define _BSD_SOURCE the few places necessary to get prototypes for
+   strtoll and BSD specific network struct fields.
+3. src/slstd.c: define _SVID_SOURCE to get prototype for putenv
+4. modules/Makefile.in: On cygwin, the libraries must be placed last
+   for module compilation (Marco Atzeri).
+5. src/slstrops.c: The return value from pop_lut was not being
+   checked leading to a segv upon faiure (reported by Morten Bo
+   Johansen).
+6. slsh/lib/slshrl.sl: Floating point literals with a leading '.' were
+   not being properly handled by slsh_interactive_massage_hook
+   (Manfred Hanke).
+7. src/slarrfun.c: Added wherefirst/last_eq/ne/gt/lt/ge/le functions,
+   which are much faster than using just wherefirst or wherefast with
+   the implied binary comparison.  For example:
+
+     slsh> .load rand
+     slsh> x = rand_uniform (100000);
+     slsh> tic; loop (1000) i=wherefirst(x>=0.999); toc; i;
+     0.597183
+     268
+     slsh> tic; loop (1000) i=wherefirst_ge(x,0.999); toc; i;
+     0.0024419999999999997
+     268
+
+   For this case, the speedup about 0.60/0.0024 = 250.
+8. Rebuilt text documentation for change #7.
+9. Documentation updates (Manfred Hanke).
+10. src/slarrfun.inc: use a macro for the common case statements of
+    the wherefirst_op and wherelast_op code. (Manfred Hanke)
+11. modules/stats.sl: Added Anderson-Darling tests:
+
+       ad_test:   test for normality
+       ad_ktest:  k-sample test
+
+    I also broke out some of the statistical tests into separate files.
+12. Tweaked the makefiles to create a statically-linked version of
+    slsh when `make static` and `make install-static` are run.
+13. For the static slsh build, disable dynamic linking.
+14. src/slstdio.c:fread_bytes: A size_t vs unsigned int issue was
+    causing SLmalloc to be called with an incorrect size in some cases.
+15. src/slbstr.c: Made the size of the printable representation of
+    binary strings customizable via get/set_printable_bstring_size
+    intrinsics.
+16. slsh/slsh.c: A missing continue statement was causing slsh to stop
+    parsing command line options after the first occurrence of -D.
+17. src/slang.h: Remove duplicate prototype for
+    SLrline_get_update_client_data. (Valdis Kletnieks)
+18. src/slposdir.c: Add statvfs intrinsic that wraps corresponding
+    POSIX function.
+19. modules/Makefile.in, png-module.c: Cygwin tweaks
+    (Marco Atzeri).
+20. */*.c: Added explicit (unsigned char) typecast to isspace/isdigit
+    functions.
+21. */*.c: reduced the scope of some variables; removed duplicate ||
+    expression from slarray.c (David Binderman)
+22. src/slarray.c: The Kahan error corrections were not be added back
+    when summing complex arrays.
+23. slsh/lib/listfuns.sl: Corrected the usage method for heap_new().
+24. Found and corrected a few memory leaks that occur after a malloc
+    failure; added some more unit tests
+25. Added more regression tests and bug fixes:
+
+     slscanf.c: %i was failing for Octal and Hex forms
+     slbstr.c: <, and > operators were swapped for binary strings
+     histogram-module.c: A missing 'break' statement was causing hist2d
+       to fail when binning 8 bit integers.
+
+26. src/slposdir.c: If an fdopen'd FILE* object was closed, then do
+    not close the underlying fd descriptor; added more regression/unit
+    tests.
+27. modules/test/test_stats.sl: Do not use 64 bit ints when testing
+    the mean and stddev functions on 32 bit systems since these
+    integers are not supported by the functions.
+28. modules/stats-module.inc: Some arrays were causing median_nc to
+    not converge.
+29. src/slscanf.c: Allow whitespace in the format to match 0
+    whitespace characters in the input string.
+30. src/slproc.c: define _XOPEN_SOURCE to be 500
+31. src/slproc.c: #30 caused a compilation error on macos since it
+    caused certain rusage fields to not be exposed.  Define
+    _BSD_SOURCE to expose them.
+32. src/slerr.c: Add a windows error handler so that windows will
+    return an error code instead of aborting when passed a bad file
+    descriptor, etc.
+33. src/slproc.c: Use _XOPEN_SOURCE=1 instead of 500.  This setting
+    works for both OSX and Windows.  (See #30,31)
+34. src/slcurses.h: SLtt_Char_Type and SLcurses_Char_Type were being
+    used interchangably.
+35. src/sldisply.c: Added support for 24 bit color terminals based
+    upon a patch from Egmont Koblinger forwarded to me by Anton Kochkov.
+    See NEWS for usage.  (for 64 bit systems)
+36. src/slposio.c: Rename the posix_close function to avoid conflict
+    with an upcoming POSIX standard. (patch provided by Thomas
+    Petazzoni).
+37. slposio.c,slstdio.c,slposdir.c: Do not include <sys/fcntl.h> if
+    <fcntl.h> was included. (variation on a patch provided by Thomas
+    Petazzoni).
+38. slsh/: Move processing of the SLSH_PATH environment variable to
+    slsh.rc.  Also, guess the slsh lib path based upon the location of
+    the executable.
+39. modules/onig-module.c: Only allow certain flags for onig_search.
+    Others cause onig_search to reinterpret the meaning of the region
+    argument.
+40. slsh/etc/slsh.rc: Add support for multiple paths to the
+    *_to_slang_load_path functions.
+41. src/slscanf.c: The formats %x and %o were producing a signed values instead
+    of an unsigned ones.
+42. src/slconfig.h,...: Added longlong functions to win32, use
+    "%I64d/u" format when printing long long on win32.
+43. src/slcurses.c: Changed the data type of SLcurses_Char_Type back
+    to long[128] (change #34 broke backward compatibility)
+44. src/slstruct.c: Optional argument to _push_struct_field_values may
+    be used to specify the fields to be pushed.
+45. src/sllimits.h: Bumped up the size of the slsring table.  A future
+    version will dynamically resize the table.
+46. src/slstd.c,slstrops.c: Improve the speed of sprintf by reducing
+    the number of reallocs and special casing strings in the
+    _pSLstring_intrinsic function.
+47. modules/cvs.sl: Reading a CSV file from an open file descriptor
+    (e.g., stdin) was failing.  The updated regression test also
+    exposed a side effect of change #38: the uninstalled version of
+    slsh.rc lacks processing of SLSH_PATH.  Processing of SLSH_PATH
+    was added to the test.sl include file.
+48. src/slregexp.c: The RE \d? was not handled properly.
+49. src/slmisc.c: Catch empty hex \x and decimal \d escape sequences.
+50. autoconf/Makefile.in: Add install-pkgconfig to the install-static
+    target. (Max Filippov).
+51. src/test/signal.sl: Skip the sigsuspend test when running from
+    make.  The test involves the user pressing ^C, which kills the
+    make process.  This test should be run outside of make.
+52. src/slmisc.c: Corrected a typo in the error message introduced in
+    change #49 (Manfred Hanke).
+53. src/sltime.c: Added _ftime, which returns the number of
+    (wallclock) seconds since an epoch.
+54. Changes the array allocation routines to use a signed integer
+    (SLindex_Type) vs an unsigned one (SLuindex_Type).  The reason for
+    this is that all slang arrays may be indexed from the end using a
+    negative index, and multidemsional arrays must allow indexing
+    using a single signed index, e.g.,
+
+          a = Int_Type[10,20]; ...;  a[where(a<0)] = 0;
+55. src/sltime.c: Fixed a windows compile error involving _ftime
+    (see change #53).
+56. src/slnspace.c,...: Check for malformed namepace names.
+57. doc/tm/: Documentation updates (Agathoklis D. Chatzimanikas)
+58. slsh/slsh.c: Added __slsh_startup_hook function that slsh will
+    call after loading slsh.rc.
+59. modules/: Updated the png and pcre modules, and added new test
+    scripts.  Added support for setting the compression value to the
+    png module, and added additional symbolic constants to the pcre
+    module.
+60. slsh/lib/test/: Have `make check` run the test scripts in this
+    directory.
+61. modules/csv-module.c: Added line number information to error
+    messages.
+62. src/test/: Updated some tests
+63. src/sltoken.c: bug fix affecting reading byte-compiled files: Use
+    SLatoul for unsigned longs instead of atol; remove alignment test
+    from pack.sl until a new test can be devised.
+64. Added support for compiling against slsyswrap testing library.
+    It is disabled for production code.
+65. Bug fixes:
+
+      src/slarrfun.c: SLang_duplicate_array return value not checked;
+      src/slstdio.c: SLfree was used in an error handler instead of
+       SLang_free_slstring
+      src/slposio.c: If EINTR happens in the close function, do not
+       restart it.  See <http://lwn.net/Articles/576478/>.
+      src/sltoken.c: Use unsigned char * cast for SLatol functions.
+
+66. src/slmisc.c: \uABCD supported in string literals.  Previously,
+    braces were required (\u{ABCD}).
+67. Updated many of the unit tests/regression scripts.
+68. Updated more tests.  Made use of the _slang.h LONG_IS_INT macro to
+    eliminate some unused functions on systems where
+    sizeof(long)==sizeof(int).
+69. modules/slsmg-module.c: was not compiling on windows; fixed a
+    malformed comment in src/test/sltest.c.
+70. Added "#define _DEFAULT_SOURCE" to a few places to quiet gcc;
+    Added slsyswrap support to src/slposdir.c,slposio.c,slcommon.c
+71. src/slexcept.c: The deprecated _clear_error function using in
+    ERROR_BLOCKs was not completely removing queued error messages.
+    Note: ERROR_BLOCKs will be removed in version 3.
+72. src/slregexp.c: Added "\{m,n\}" support to '\1'-'\9', '.', and
+    '\d' REs.  '$' changed to match only at the end of a string, or
+    just before a \n at the end of the string.  Updated regexp.sl test.
+73. src/slang.c: The delete_interpreter function (called upon program
+    exit) was not freeing local variables on the function call stack.  This
+    showed up as a memory leak when a function called "exit", which
+    would not allow the function stack to unroll and trigger the
+    destructors.
+74. src/*.c: Added a few gcc #pragmas to turn off warnings about
+    non-string literals as printf-style formats.
+75. src/*.c, modules/*.c: If close fails with errno=EINTR, do not restart
+    it.  Doing so invokes undefined behavior.
+76. src/slerr.c: Add _pSLerr_deinit to the exit hook.
+77. src/slarray.c,src/slclass.c,src/slstruct.c: Use the SLclass_set*
+    functions to set SLang_Class_Type fields instead of directly
+    accessing them.
+78. Added additional unit/regresssion tests.
+79. Makefiles: Add a time-stamp dependency to directory targets to
+    avoid race conditions when running parallel make (Based upon a
+    patch from Kylie McClain).
+80. src/Makefile.in: Updated the libslang.a dependency to account for
+    change #79.
+81. tweaked a few files (modules/png-module.c,src/slarith.inc,src/slimport.c)
+    to reduce gcc warnings.
+82. modules/test/test_slsmg.sl: Test skipped if the terminal type is
+    "unknown".
+83. Updated copyright years; some doc updates
+84. src/sldisply.c: make JMAX_COLORS consistent with SLTT_MAX_COLORS.
+85. src/slstrops.c: Added string_to_wchars and wchars_to_string
+    intrinsic functions.
+86. Moved gcc diagnosic pragmas outside function bodies for
+    compatibility with old versions of gcc.
+87. src/slwclut.c: Unclosed ranges (hyphen at the end of a character
+    set specification string) were not being handled properly: the
+    character befor the hyphen was being dropped, e.g.,
+
+      strcompress ("foo-(bar)", "_()-");
+
+    was producing "foo_bar)" instead of "foo_bar".
+88. src/sllimits.h: Reduce SLANG_MAX_RECURSIVE_DEPTH to 500 on
+    CYGWIN/WIN32 to avoid hitting the default runtime stacklimit.
+89. Updates to the mingw32/64 build system.
+90. src/sltermin.c: Avoid invalid free when TERMCAP is used.  See
+    <https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=837868>.
+91. Some documentation typos corrected (Agathoklis D. Hatzimanikas;
+    debian patches)
+92. src/_slang.h: On at least one platform, clang defines GNUC but
+    does not implement GNU C inline semantics.  Disble inline support
+    for clang if GNUC defined.
+93. src/sllimits.h: SLANG_MAX_RECURSIVE_DEPTH set to 1500 to decrease
+    the probability of running into the C runtime stacksize limit.
+94. src/test/sltest.c: A missing preprocessor #else block in change
+    #78 was causing UTF-8 tests to fail in a non-UTF8 environment.
+95. MacOSX changes: fix environ intrinsic, export DYLD_LIBRARY env
+    variable in test scripts.
+96. slsh/lib/process.sl: If execvp fails, include the name of the executable
+    in the error message.
+97. autoconf/config.*: Updated scripts
+98. .../runtests.sh: Added LD_LIBRARY_PATH to test scripts (removed in
+    #96)
+99. mkfiles/makefile.m32: Use mkfiles\runslsh.bat instead of
+    mkfiles/runslsh.bat (Windows only).
+100. documentation updates
+
+
+{{{ Previous Versions
+
 Changes since 2.2.4
 1. src/slarray.c: Try to find a suitable multiplier for range arrays
    to avoid roundoff errors.  Using the multiplier avoids the
@@ -316,8 +568,6 @@ Changes since 2.2.4
 133. autoconf/: Updated configure scripts
 134. src/mkfiles/mkmake.c: Add definitions for SLmalloc/free so that
      mkmake can be built without the full slang library.
-
-{{{ Previous Versions
 
 Changes since 2.2.3
 1. src/slpack.c: Typo affecting 64 bit integers ('q' & 'Q') (Paul

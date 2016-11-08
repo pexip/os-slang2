@@ -1,6 +1,6 @@
 /* This configuration file is for all non-Unix OS */
 /*
-Copyright (C) 2004-2013 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -283,10 +283,28 @@ USA.
 /* #define gid_t int */
 /* #define off_t int */
 /* #define size_t unsigned int */
-#define SIZEOF_OFF_T	4
-#define SIZEOF_SIZE_T	4
 
-#undef HAVE_LONG_LONG
+#if defined(__MINGW64__)
+# define _FILE_OFFSET_BITS 64 /* Makes sizeof(off_t) == 8 */
+# define SIZEOF_SIZE_T 8
+# define SIZEOF_OFF_T 8
+#else
+# if defined(__LP64__)   /* gcc only??? 64-bit */
+#  define SIZEOF_OFF_T	8
+#  define SIZEOF_SIZE_T	8
+# else
+#  if defined(__WIN64__)
+#   define SIZEOF_OFF_T	4	       /* yes, 4 */
+#   define SIZEOF_SIZE_T 8
+#  else
+#   define SIZEOF_OFF_T	4
+#   define SIZEOF_SIZE_T 4
+#  endif
+# endif
+#endif
+
+#define HAVE_LONG_LONG 1
+#define SIZEOF_LONG_LONG 8
 
 #define HAVE_SETVBUF
 

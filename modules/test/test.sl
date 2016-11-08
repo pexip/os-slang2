@@ -1,7 +1,7 @@
-#<already-handled-by-runtest.sh>
-prepend_to_slang_load_path ("..");
-set_import_module_path ("../${ARCH}objs:"$ + get_import_module_path ());
-#</already-handled-by-runtest.sh>
+% These tests load the uninstalled version of slsh.rc.  The
+% installation script appends code for SLSH_PATH processing.  Since
+% the uninstalled version of slsh.rc lacks this code, it is added here.
+prepend_to_slang_load_path(getenv("SLSH_PATH"));
 
 define testing_module (m)
 {
@@ -22,12 +22,11 @@ define failed ()
 
 define end_test ()
 {
-   ifnot (tests_failed)
-     {
-	() = fprintf(stdout, "OK\n");
-	() = fflush (stdout);
-     }
-   exit (tests_failed);
+   if (tests_failed)
+     exit (tests_failed);
+
+   () = fprintf(stdout, "OK\n");
+   () = fflush (stdout);
 }
 
 
@@ -131,3 +130,35 @@ define expect_error(%expected_error, expected_message, function, [args...]
    catch AnyError:
      failed (`expected %S to throw %s, but got %s "%s"`, function, expected_error_descr, e.descr, e.message);
 }
+
+private variable Random_Number = _time ();
+$1 = getenv ("SLSYSWRAP_RANDSEED");
+if ($1 != NULL) Random_Number = typecast (atol($1), ULong_Type);
+
+define urand_1 (x)
+{
+   Random_Number = typecast (Random_Number * 69069UL + 1013904243UL, UInt32_Type);
+   return Random_Number/4294967296.0;
+}
+define urand (n)
+{
+   if (n == 0)
+     return Double_Type[0];
+
+   return array_map (Double_Type, &urand_1, [1:n]);
+}
+
+$1 = path_concat (path_dirname(__FILE__), "../objs");
+set_import_module_path ($1);
+if ($1 != get_import_module_path ())
+{
+   () = fprintf (stderr, "\n\n***WARNING: get_import_module_path ==> %S, expected %S\n\n",
+		 get_import_module_path(), $1);
+}
+
+
+try
+{
+   import ("fofofof", "foobar");
+}
+catch ImportError;

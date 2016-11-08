@@ -1,6 +1,6 @@
 /* -*- mode: C; mode: fold; -*- */
 /*
- Copyright (C) 2006-2012 John E. Davis
+ Copyright (C) 2006-2016 John E. Davis
  *
  This file is part of the S-Lang Library.
  *
@@ -24,6 +24,8 @@
 
 /*{{{ Include Files */
 
+#define _BSD_SOURCE 1		       /* to get struct ip_mreq */
+#define _DEFAULT_SOURCE 1
 #include "config.h"
 #include <stdio.h>
 #include <string.h>
@@ -425,7 +427,7 @@ static Host_Addr_Info_Type *get_host_addr_info (char *host)
 # ifndef INADDR_NONE
 #  define INADDR_NONE ((in_addr_t)(-1))
 # endif
-   if ((isdigit (*host))
+   if ((isdigit ((unsigned char)*host))
        && (INADDR_NONE != (addr = inet_addr (host))))
      {
 	/* Numerical address */
@@ -661,14 +663,14 @@ static Domain_Methods_Type *lookup_domain_methods (int domain)
 
 static int close_socket (int fd)
 {
-   while (-1 == close (fd))
+   /* Do not call close again to avoid undefined behavior */
+   if (-1 == close (fd))
      {
 #ifdef EINTR
 	if (errno == EINTR)
 	  {
 	     if (-1 == SLang_handle_interrupt ())
 	       return -1;
-	     continue;
 	  }
 #endif
 	return -1;
@@ -800,10 +802,9 @@ static Socket_Type *pop_socket (SLFile_FD_Type **fp)
 static void socket_intrin (int *domain, int *type, int *protocol)
 {
    Socket_Type *s;
-   Domain_Methods_Type *a;
    int fd;
 
-   if (NULL == (a = lookup_domain_methods (*domain)))
+   if (NULL == lookup_domain_methods (*domain))
      return;
 
    fd = socket (*domain, *type, *protocol);

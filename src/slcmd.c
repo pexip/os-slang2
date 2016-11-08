@@ -1,6 +1,6 @@
 /* cmd line facility for slang */
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -55,7 +55,7 @@ static int extract_token (SLFUTURE_CONST char **strptr, char *buf)
 {
    SLFUTURE_CONST char *s;
    char *b;
-   char ch, quote;
+   char ch;
 
    *buf = 0;
 
@@ -76,7 +76,7 @@ static int extract_token (SLFUTURE_CONST char **strptr, char *buf)
 
    if ((ch == '\'') || (ch == '"'))
      {
-	quote = ch;
+	char quote = ch;
 	while ((ch = *s) != 0)
 	  {
 	     s++;

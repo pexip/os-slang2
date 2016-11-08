@@ -17,7 +17,7 @@
  permissions to the file, otherwise it will return -1 and set
  \ivar{errno} accordingly.
 
- Access to a file depend not only upon the file itself, but also upon
+ Access to a file depends not only upon the file itself, but also upon
  the permissions of each of the directories in the pathname.  The
  checks are done using the real user and group ids of the process, and
  not using the effective ids.
@@ -325,7 +325,7 @@
 \description
  This function may be used to change the last access (actime) and last
  modification (modtime) times associated with the specified file.  If
- sucessful, the function returns 0; otherwise it returns -1 and sets
+ successful, the function returns 0; otherwise it returns -1 and sets
  \ivar{errno} accordingly.
 \notes
  The \ifun{utime} function will call the C library \cfun{utimes}

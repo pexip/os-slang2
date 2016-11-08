@@ -250,7 +250,7 @@
     -         Use left-justification
     #         Use alternate form for formatting.
     0         Use 0 padding
-    +         Preceed a number by a plus or minus sign.
+    +         Precede a number by a plus or minus sign.
     (space)   Use a blank instead of a plus sign.
 #v-
 
@@ -377,8 +377,10 @@
        i     Matches either a hexadecimal integer, decimal integer, or
              octal integer.
        I     Equivalent to `li'.
-       x     Matches a hexadecimal integer.
-       X     Matches a long hexadecimal integer (same as `lx').
+       o     Matches an unsigned octal integer.
+       O     Matches an unsigned long octal integer.
+       x     Matches an unsigned hexadecimal integer.
+       X     Matches a long unsigned hexadecimal integer (same as `lx').
        e,f,g Matches a decimal floating point number (Float_Type).
        E,F,G Matches a double precision floating point number, same as `lf'.
        s     Matches a string of non-whitespace characters (String_Type).
@@ -799,7 +801,7 @@
   This function skips over a range of bytes in a string \exmp{str}.
   The byte range to be skipped is specified by the \exmp{range}
   parameter.  Optional start (\exmp{n0}) and stop (\exmp{nmax})
-  (0-based) parameters may be used to specifiy the part of the input
+  (0-based) parameters may be used to specify the part of the input
   string to be processed.  The function returns a 0-based offset from
   the beginning of the string where processing stopped.
 
@@ -1135,7 +1137,7 @@
   returned.  However, if \exmp{b} occurs in \exmp{a}, a non-zero integer is
   returned as well as the new string resulting from the replacement.
 \notes
-  This function has been superceded by \ifun{strreplace}.  It should no
+  This function has been superseded by \ifun{strreplace}.  It should no
   longer be used.
 \seealso{strreplace}
 \done
@@ -1204,5 +1206,37 @@
   The function \ifun{substr} may be used if character semantics are
   desired.
 \seealso{substr, strbytelen}
+\done
+
+
+\function{wchars_to_string,string_to_wchars}
+\synopsis{Convert a UTF-8 encoded string to and from character codes}
+\usage{Int_Type[] string_to_wchars(String_Type str)
+  String_Type wchars_to_string(Int_Type[] array)
+}
+\description
+The \ifun{string_to_wchars} function decodes a UTF-8 encoded string
+and returns the Unicode characters as an array of integer values. The
+\ifun{wchars_to_string} performs the opposite conversion to produce a
+UTF-8 encoded string from an array of Unicode characters.
+\notes
+A malformed UTF-8 encoded string will result in negative byte-values in the
+output array at the positions corresponding to the malformed sequence.
+For example, the following function will substitute a '?' character
+for each byte in the malformed sequence to produce a valid string:
+#v+
+  define handle_malformed_bytes (str)
+  {
+     variable codes = string_to_wchars (str);
+     variable is_bad = (codes < 0);
+     if (any(is_bad))
+       {
+          codes[where(is_bad)] = '?';
+          str = wchars_to_string (codes);
+       }
+     return str;
+  }
+#v-
+\seealso{char, substr, array_to_bstring, bstring_to_array}
 \done
 

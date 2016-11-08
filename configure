@@ -689,6 +689,8 @@ X_LIBS
 X_PRE_LIBS
 X_CFLAGS
 XMKMF
+LIB_SLSYSWRAP
+DSLSYSWRAP
 LIB_READLINE
 GNU_READLINE
 TERMINFO_LAYOUT
@@ -762,6 +764,7 @@ enable_option_checking
 with_pkgconfigdir
 with_terminfo
 with_readline
+with_slsyswrap
 with_x
 enable_largefile
 enable_warnings
@@ -1413,8 +1416,9 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-pkgconfigdir=DIR pkgconfig dir (libdir/pkgconfig)
-  --with-terminfo=xxx  Terminfo layout: default, hpux11, osf1r5, aix4, uwin
-  --with-readline=xxx       use slang(default) or gnu readline for slsh
+  --with-terminfo=xxx     Terminfo layout: default, hpux11, osf1r5, aix4, uwin
+  --with-readline=xxx     Use slang(default) or gnu readline for slsh
+  --with-slsyswrap=DIR    Not for production use
   --with-x                use the X Window System
   --with-pcre=DIR      Use DIR/lib and DIR/include for pcre
   --with-pcrelib=DIR   pcre library in DIR
@@ -4256,6 +4260,34 @@ esac
 
 
 
+
+# Check whether --with-slsyswrap was given.
+if test "${with_slsyswrap+set}" = set; then :
+  withval=$with_slsyswrap;  jd_with_slsyswrap_arg=$withval
+else
+  jd_with_slsyswrap_arg=no
+fi
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for slsyswrap" >&5
+$as_echo_n "checking for slsyswrap... " >&6; }
+
+case "x$jd_with_slsyswrap_arg" in
+  x|xno)
+    DSLSYSWRAP=""
+    LIB_SLSYSWRAP=""
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; };
+    ;;
+  *)
+    DSLSYSWRAP="-I$jd_with_slsyswrap_arg/include -DSLSYSWRAP=1"
+    LIB_SLSYSWRAP="-L$jd_with_slsyswrap_arg/lib -lslsyswrap"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; };
+    ;;
+esac
+
+
+
 # For the socket module
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for X" >&5
 $as_echo_n "checking for X... " >&6; }
@@ -4957,6 +4989,7 @@ sys/types.h \
 sys/wait.h \
 sys/utsname.h \
 sys/times.h \
+sys/statvfs.h \
 sys/time.h \
 utime.h \
 floatingpoint.h \
@@ -5259,6 +5292,7 @@ setvbuf \
 utime utimes \
 ttyname ttyname_r \
 newlocale strtod_l localeconv \
+statvfs \
 
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
@@ -8596,13 +8630,13 @@ done
  for program_module in $Program_Modules; do
 
 PROGRAM_OBJECT_RULES="$PROGRAM_OBJECT_RULES
-\$(OBJDIR)/$program_module.o : \$(SRCDIR)/$program_module.c \$(DOT_O_DEPS) \$("$program_module"_O_DEP)
+\$(OBJDIR)/$program_module.o : \$(SRCDIR)/$program_module.c \$(DOT_O_DEPS) \$(OBJ_O_DEPS) \$("$program_module"_O_DEP)
 	cd \$(OBJDIR) && \$(COMPILE_CMD) \$("$program_module"_C_FLAGS) \$(SRCDIR)/$program_module.c
 "
 
 
 PROGRAM_ELF_ORULES="$PROGRAM_ELF_ORULES
-\$(ELFDIR)/$program_module.o : \$(SRCDIR)/$program_module.c \$(DOT_O_DEPS) \$("$program_module"_O_DEP)
+\$(ELFDIR)/$program_module.o : \$(SRCDIR)/$program_module.c \$(DOT_O_DEPS) \$(ELF_O_DEPS) \$("$program_module"_O_DEP)
 	cd \$(ELFDIR) && \$(ELFCOMPILE_CMD) \$("$program_module"_C_FLAGS) \$(SRCDIR)/$program_module.c
 "
 

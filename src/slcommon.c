@@ -2,7 +2,7 @@
  * links to the library.
  */
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -42,16 +42,10 @@ USA.
 # include <windows.h>
 #endif
 
-#define DEBUG_MALLOC 0
-
-#if DEBUG_MALLOC
-# define SLREALLOC_FUN	SLdebug_realloc
-# define SLMALLOC_FUN	SLdebug_malloc
-# define SLFREE_FUN	SLdebug_free
-#else
-# define SLREALLOC_FUN	SLREALLOC
-# define SLMALLOC_FUN	SLMALLOC
-# define SLFREE_FUN	SLFREE
+#define SLSYSWRAP_REALLOC realloc
+#define SLSYSWRAP_MALLOC malloc
+#ifdef SLSYSWRAP
+# include <slsyswrap.h>
 #endif
 
 int SLang_Version = SLANG_VERSION;
@@ -100,6 +94,14 @@ static int utf8_enable (int mode)
 
 #ifdef HAVE_NL_LANGINFO_CODESET
    locale = nl_langinfo (CODESET);
+# ifdef SLSYSWRAP
+     {
+	char *env;
+	if ((NULL != (env = getenv ("SLTEST_NO_LANGINFO")))
+	    && (atoi (env) != 0))
+	  locale = NULL;		       /* skip this block of code */
+     }
+# endif
    if ((locale != NULL) && (*locale))
      {
 	if ((0 == strcmp (locale, "UTF-8"))
@@ -173,10 +175,10 @@ SLFUTURE_VOID *SLmalloc (SLstrlen_Type len)
 {
    SLFUTURE_VOID *p;
 
-   if (NULL != (p = (SLFUTURE_VOID *)SLMALLOC_FUN (len)))
+   if (NULL != (p = (SLFUTURE_VOID *)SLSYSWRAP_MALLOC(len)))
      return p;
 
-   if (len || (NULL == (p = (SLFUTURE_VOID *)SLMALLOC_FUN(1))))
+   if (len || (NULL == (p = (SLFUTURE_VOID *)SLSYSWRAP_MALLOC(1))))
      SLang_set_error (SL_MALLOC_ERROR);
 
    return p;
@@ -184,7 +186,7 @@ SLFUTURE_VOID *SLmalloc (SLstrlen_Type len)
 
 void SLfree (SLFUTURE_VOID *p)
 {
-   if (p != NULL) SLFREE_FUN (p);
+   if (p != NULL) free (p);
 }
 
 SLFUTURE_VOID *SLrealloc (SLFUTURE_VOID *p, SLstrlen_Type len)
@@ -198,7 +200,7 @@ SLFUTURE_VOID *SLrealloc (SLFUTURE_VOID *p, SLstrlen_Type len)
    if (p == NULL) p = SLmalloc (len);
    else
      {
-	p = (SLFUTURE_VOID *)SLREALLOC_FUN (p, len);
+	p = (SLFUTURE_VOID *) SLSYSWRAP_REALLOC(p, len);
 	if (p == NULL)
 	  SLang_set_error (SL_MALLOC_ERROR);
      }

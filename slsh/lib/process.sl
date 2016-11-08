@@ -1,4 +1,4 @@
-% Copyright (C) 2012-2014 John E. Davis
+% Copyright (C) 2012-2016 John E. Davis
 %
 % This file is part of the S-Lang Library and may be distributed under the
 % terms of the GNU General Public License.  See the file COPYING for
@@ -238,7 +238,7 @@ private define exec_child (argv, child_fds, required_child_ifds)
      }
 
    () = execvp (argv[0], argv);
-   throw OSError, "exec failed: " + errno_string ();
+   throw OSError, "exec failed: " + argv[0] + " : " + errno_string ();
 }
 
 private define wait_method ()

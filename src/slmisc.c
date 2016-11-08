@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -61,7 +61,7 @@ char *SLmake_nstring (SLFUTURE_CONST char *str, SLstrlen_Type n)
 void SLmake_lut (unsigned char *lut, unsigned char *range, unsigned char reverse)
 {
    /* register unsigned char *l = lut, *lmax = lut + 256; */
-   int i, r1, r2;
+   int i, r1;
 
    memset ((char *)lut, reverse, 256);
    /* while (l < lmax) *l++ = reverse; */
@@ -70,7 +70,7 @@ void SLmake_lut (unsigned char *lut, unsigned char *range, unsigned char reverse
    r1 = *range++;
    while (r1)
      {
-	r2 = *range++;
+	int r2 = *range++;
 	if ((r2 == '-') && (*range != 0))
 	  {
 	     r2 = *range++;
@@ -85,7 +85,7 @@ void SLmake_lut (unsigned char *lut, unsigned char *range, unsigned char reverse
 
 char *_pSLskip_whitespace (SLCONST char *s)
 {
-   while (isspace (*s))
+   while (isspace ((unsigned char)*s))
      s++;
 
    return (char *) s;
@@ -97,6 +97,7 @@ char *_pSLskip_whitespace (SLCONST char *s)
 char *_pSLexpand_escaped_char(char *p, char *pmax, SLwchar_Type *ch, int *isunicodep)
 {
    int i = 0;
+   int num_digits_processed = 1;
    SLwchar_Type max = 0;
    SLwchar_Type num, base = 0;
    SLwchar_Type ch1;
@@ -129,12 +130,17 @@ char *_pSLexpand_escaped_char(char *p, char *pmax, SLwchar_Type *ch, int *isunic
 	max = '7';
 	base = 8; i = 2; num = ch1 - '0';
 	break;
+      case '8': case '9':
+	goto malformed_error;
 
       case 'd':			       /* decimal -- S-Lang extension */
 	base = 10;
 	i = 3;
 	max = '9';
 	num = 0;
+	if (p == pmax)
+	  goto malformed_error;
+	num_digits_processed = 0;
 	break;
 
       case 'u':
@@ -143,8 +149,12 @@ char *_pSLexpand_escaped_char(char *p, char *pmax, SLwchar_Type *ch, int *isunic
       case 'x':			       /* hex */
 	base = 16;
 	max = '9';
-	i = 2;
+	if (isunicode)
+	  i = 4;		       /* \u.... */
+	else
+	  i = 2;
 	num = 0;
+	num_digits_processed = 0;
 
 	if (p == pmax)
 	  goto malformed_error;
@@ -190,11 +200,13 @@ char *_pSLexpand_escaped_char(char *p, char *pmax, SLwchar_Type *ch, int *isunic
 	if ((ch1 <= max) && (ch1 >= '0'))
 	  {
 	     num = base * num + (ch1 - '0');
+	     num_digits_processed++;
 	  }
 	else if (base == 16)
 	  {
 	     ch1 |= 0x20;
 	     if ((ch1 < 'a') || ((ch1 > 'f'))) break;
+	     num_digits_processed++;
 	     num = base * num + 10 + (ch1 - 'a');
 	  }
 	else break;
@@ -208,6 +220,16 @@ char *_pSLexpand_escaped_char(char *p, char *pmax, SLwchar_Type *ch, int *isunic
 	p++;
      }
 
+   if (num_digits_processed == 0)
+     {
+	_pSLang_verror (SL_SYNTAX_ERROR, "Empty \\x or \\d escape sequence seen");
+	return NULL;
+     }
+   if ((base == 10) && (num >= 256))
+     {
+	_pSLang_verror (SL_SYNTAX_ERROR, "\\d escape sequence specifies a byte value arger than 255");
+	return NULL;
+     }
    if (isunicodep != NULL)
      *isunicodep = isunicode;
 
@@ -215,7 +237,7 @@ char *_pSLexpand_escaped_char(char *p, char *pmax, SLwchar_Type *ch, int *isunic
    return p;
 
 malformed_error:
-   _pSLang_verror (SL_SYNTAX_ERROR, "Malformed escaped character.");
+   _pSLang_verror (SL_SYNTAX_ERROR, "Malformed escape sequence.");
    return NULL;
 }
 

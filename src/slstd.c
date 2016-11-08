@@ -2,7 +2,7 @@
 /* Standard intrinsic functions for S-Lang.  Included here are string
    and array operations */
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -22,6 +22,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
 */
 
+#define _BSD_SOURCE 1		       /* to get strtoll */
+#define _SVID_SOURCE		       /* for putenv */
+#define _DEFAULT_SOURCE 1
 #include "slinclud.h"
 /*{{{ Include Files */
 
@@ -260,7 +263,12 @@ void _pSLstring_intrinsic (void) /*{{{*/
    SLang_Object_Type x;
    char *s;
 
-   if (SLang_pop (&x)) return;
+   if (SLANG_STRING_TYPE == SLang_peek_at_stack ())
+     return;
+
+   if (-1 == SLang_pop (&x))
+     return;
+
    if (NULL != (s = _pSLstringize_object (&x)))
      _pSLang_push_slstring (s);
 
@@ -353,6 +361,11 @@ static int load_string_or_file (int (*f) (SLFUTURE_CONST char *, SLFUTURE_CONST 
      {
 	if (-1 == SLang_pop_slstring (&ns))
 	  return -1;
+	if (-1 == _pSLns_check_name (ns))
+	  {
+	     SLang_free_slstring (ns);
+	     return -1;
+	  }
      }
 
    if (-1 == SLang_pop_slstring (&file))
@@ -1153,7 +1166,9 @@ extern char **environ;                 /* POSIX and ??? */
 static char **get_sys_environ (void)
 {
 # if defined(__APPLE__)
-   return _NSGetEnviron ();
+   char ***e = _NSGetEnviron ();
+   if (e == NULL) return NULL;
+   return *e;
 # else
    return environ;
 # endif

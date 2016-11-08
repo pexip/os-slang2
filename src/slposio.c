@@ -1,7 +1,7 @@
 /* This module implements an interface to posix system calls */
 /* file stdio intrinsics for S-Lang */
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -29,9 +29,10 @@ USA.
 
 #ifdef HAVE_FCNTL_H
 # include <fcntl.h>
-#endif
-#ifdef HAVE_SYS_FCNTL_H
-# include <sys/fcntl.h>
+#else
+# ifdef HAVE_SYS_FCNTL_H
+#  include <sys/fcntl.h>
+# endif
 #endif
 
 #ifdef __unix__
@@ -61,6 +62,13 @@ USA.
 
 #include "slang.h"
 #include "_slang.h"
+
+#define SLSYSWRAP_OPEN open
+#define SLSYSWRAP_READ read
+#define SLSYSWRAP_WRITE write
+#ifdef SLSYSWRAP
+# include <slsyswrap.h>
+#endif
 
 typedef struct _Stdio_MMT_List_Type
 {
@@ -128,7 +136,6 @@ static void chain_fd_type (SLFile_FD_Type *f)
 
 static void unchain_fdtype (SLFile_FD_Type *f)
 {
-   SLFile_FD_Type *prev;
    SLFile_FD_Type *curr;
 
    curr = FD_Type_List;
@@ -140,7 +147,7 @@ static void unchain_fdtype (SLFile_FD_Type *f)
 
    while (curr != NULL)
      {
-	prev = curr;
+	SLFile_FD_Type *prev = curr;
 	curr = curr->next;
 	if (curr == f)
 	  {
@@ -199,6 +206,16 @@ void _pSLfclose_fdopen_fp (SLang_MMT_Type *mmt)
 
 	     SLang_free_mmt (mmt);
 	     SLfree ((char *) curr);
+	     /* Do not attempt to close the descriptor since fclose did it.
+	      * This avoids a problem if a new descriptor with the same fd
+	      * has been created before this has been called, e.g.,
+	      * fd = open(); fp = fdopen(fd); fclose(fp); fd = open();
+	      * The last open is the problem, since it is equive to the following:
+	      *   tmp = open(); close(fd); fd = tmp;
+	      * Here, after the first open, tmp may be set to the same integer
+	      * as fd.
+	      */
+	     f->is_closed = 1;
 	     return;
 	  }
 	f = f->next;
@@ -255,33 +272,32 @@ static int is_interrupt (int e, int check_eagain)
 static int do_close (SLFile_FD_Type *f)
 {
    int fd;
+   int status;
 
    if (-1 == get_fd (f, &fd))
      return -1;
 
-   while (1)
+   errno = 0;
+   if (f->close != NULL)
+     status = (*f->close)(f->clientdata);
+   else
+     status = close (fd);
+
+   if (status == 0)
      {
-	int status;
-
-	errno = 0;
-	if (f->close != NULL)
-	  status = (*f->close)(f->clientdata);
-	else
-	  status = close (fd);
-
-	if (status == 0)
-	  {
-	     f->fd = -1;
-	     f->is_closed = 1;
-	     if ((f->clientdata != NULL) && (f->free_client_data != NULL))
-	       (*f->free_client_data) (f->clientdata);
-	     f->clientdata = NULL;
-	     return status;
-	  }
-
-	if (0 == is_interrupt (errno, 1))
-	  return -1;
+	f->fd = -1;
+	f->is_closed = 1;
+	if ((f->clientdata != NULL) && (f->free_client_data != NULL))
+	  (*f->free_client_data) (f->clientdata);
+	f->clientdata = NULL;
+	return status;
      }
+
+   /* see http://lwn.net/Articles/576478/ */
+   if (0 == is_interrupt (errno, 1))
+     return -1;
+
+   return 0;
 }
 
 static int do_write (SLFile_FD_Type *f, char *buf, SLstrlen_Type *nump)
@@ -302,7 +318,7 @@ static int do_write (SLFile_FD_Type *f, char *buf, SLstrlen_Type *nump)
 	if (f->write != NULL)
 	  num = (*f->write)(f->clientdata, buf, *nump);
 	else
-	  num = write (fd, buf, *nump);
+	  num = SLSYSWRAP_WRITE (fd, buf, *nump);
 
 	if (num != -1)
 	  {
@@ -336,7 +352,7 @@ static int do_read (SLFile_FD_Type *f, char *buf, unsigned int *nump)
 	if (f->read != NULL)
 	  num = (*f->read)(f->clientdata, buf, *nump);
 	else
-	  num = read (fd, buf, *nump);
+	  num = SLSYSWRAP_READ (fd, buf, *nump);
 
 	if (num != -1)
 	  {
@@ -354,16 +370,16 @@ static int do_read (SLFile_FD_Type *f, char *buf, unsigned int *nump)
 
 static int posix_close_fd (int *fd)
 {
-   while (-1 == close (*fd))
+   if (-1 == close (*fd))
      {
+	/* see http://lwn.net/Articles/576478/ */
 	if (0 == is_interrupt (errno, 1))
 	  return -1;
      }
-
    return 0;
 }
 
-static int posix_close (SLFile_FD_Type *f)
+static int posix_close_slfd (SLFile_FD_Type *f)
 {
    int status = do_close (f);
 
@@ -567,8 +583,7 @@ SLFile_FD_Type *SLfile_dup_fd (SLFile_FD_Type *f0)
 
    if (NULL == (f = SLfile_create_fd (f0->name, fd)))
      {
-	while ((-1 == close (fd)) && is_interrupt (errno, 1))
-	  ;
+	(void) close (fd);
 	return NULL;
      }
 
@@ -685,12 +700,14 @@ static void posix_open (void)
      }
    SLang_free_slstring (file);
 
-   while (-1 == (f->fd = open (f->name, flags, mode)))
+   while (-1 == (f->fd = SLSYSWRAP_OPEN (f->name, flags, mode)))
      {
+	int e = errno;
 	if (is_interrupt (errno, 1))
 	  continue;
 
-	SLfile_free_fd (f);
+	SLfile_free_fd (f);	       /* could affect errno */
+	SLerrno_set_errno (e);
 	SLang_push_null ();
 	return;
      }
@@ -1002,7 +1019,7 @@ static SLang_Intrin_Fun_Type Fd_Name_Table [] =
    MAKE_INTRINSIC_2("write", posix_write, V, F, B),
    MAKE_INTRINSIC_1("dup_fd", posix_dup, V, F),
    MAKE_INTRINSIC_2("dup2_fd", posix_dup2, I, F, I),
-   MAKE_INTRINSIC_1("close", posix_close, I, F),
+   MAKE_INTRINSIC_1("close", posix_close_slfd, I, F),
    MAKE_INTRINSIC_1("_close", posix_close_fd, I, I),
 #if defined(TTYNAME_R)
    MAKE_INTRINSIC_0("ttyname", posix_ttyname, V),

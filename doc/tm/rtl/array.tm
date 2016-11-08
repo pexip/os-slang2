@@ -313,8 +313,8 @@
   A stable sorting algorithm is one that preserves the order of equal
   elements. Merge-sort is an inherently stable algorithm, whereas
   quick-sort is not. Nevertheless, the slang library ensures the
-  stability of the results because it uses the indices themeselves as
-  tie-breakers.  As a result, the following two statments may not
+  stability of the results because it uses the indices themselves as
+  tie-breakers.  As a result, the following two statements may not
   produce the same results:
 #v+
      i = array_sort (a; dir=-1);
@@ -387,7 +387,7 @@
 \synopsis{Check an array for NULL elements}
 \usage{Char_Type[] = _isnull (a[])}
 \description
-  This function may be used to test for the presence of NULL elements
+  This function may be used to test for the presence of \NULL elements
   of an array.   Specifically, it returns a \dtype{Char_Type} array of
   with the same number of elements and dimensionality of the input
   array.  If an element of the input array is \NULL, then the
@@ -500,6 +500,22 @@
   is, \exmp{minabs(x)} is equivalent to \exmp{min(abs(x)}. See the
   documentation for the \ifun{min} function for more information.
 \seealso{min, max, maxabs}
+\done
+
+\function{prod}
+\synopsis{Compute the product of the elements of an array}
+\usage{result = prod (Array_Type a [, Int_Type dim])}
+\description
+  The \ifun{prod} function computes the product of the elements of a
+  numeric array and returns the result.  If a second argument is
+  given, then it specifies the dimension of the array over which the
+  product is to be taken.  In this case, an array of dimension one
+  less than that of the input array will be returned.
+
+  If the input array is an integer type, then the resulting value will
+  be a \dtype{Double_Type}.  If the input array is a
+  \dtype{Complex_Type}, then the result will be a \dtype{Complex_Type}.
+\seealso{sum, sumsq}
 \done
 
 \function{_reshape}
@@ -723,19 +739,71 @@
           return NULL;
      }
 #v-
-\seealso{where, wherelast, wherfirstmin, wherfirstmax}
+\seealso{where, wherelast, wherfirstmin, wherfirstmax, wherefirst_eq}
 \done
+
+\function{wherefirst_eq,
+wherefirst_ne, wherefirst_ge, wherefirst_gt, wherefirst_le, wherefirst_lt,
+wherelast_eq, wherelast_ne, wherelast_ge, wherelast_gt, wherelast_le, wherelast_lt
+}
+\synopsis{Get the first or last matching element of an array}
+\usage{Int_Type wherefirst_eq (A, b [,istart])
+  Int_Type wherefirst_ne (A, b [,istart])
+  Int_Type wherefirst_ge (A, b [,istart])
+  Int_Type wherefirst_gt (A, b [,istart])
+  Int_Type wherefirst_le (A, b [,istart])
+  Int_Type wherefirst_lt (A, b [,istart])
+  Int_Type wherelast_eq (A, b [,istart])
+  Int_Type wherelast_ne (A, b [,istart])
+  Int_Type wherelast_ge (A, b [,istart])
+  Int_Type wherelast_gt (A, b [,istart])
+  Int_Type wherelast_le (A, b [,istart])
+  Int_Type wherelast_lt (A, b [,istart])
+}
+\description
+  These functions perform the indicated binary operation between the
+  elements of numeric array \exmp{A} and a number \exmp{b}.  The
+  \exmp{wherefirst_*} functions return the index of the first element for which the
+  comparison is true.  The \exmp{wherelast_*} functions return the last
+  index where the binary operation is true.  If no matching elements are
+  found, the functions return \NULL.
+
+  If the optional third parameter, \exmp{istart}, is given, then it
+  indicates the index into the array where the search is to start.
+
+  These functions have the following equivalent forms:
+#v+
+   wherefirst_eq (A, b, istart) <==> wherefirst (A == b, istart)
+   wherefirst_ne (A, b, istart) <==> wherefirst (A != b, istart)
+   wherefirst_ge (A, b, istart) <==> wherefirst (A >= b, istart)
+   wherefirst_gt (A, b, istart) <==> wherefirst (A > b, istart)
+   wherefirst_le (A, b, istart) <==> wherefirst (A <= b, istart)
+   wherefirst_lt (A, b, istart) <==> wherefirst (A < b, istart)
+
+   wherelast_eq (A, b, istart) <==> wherelast (A == b, istart)
+   wherelast_ne (A, b, istart) <==> wherelast (A != b, istart)
+   wherelast_ge (A, b, istart) <==> wherelast (A >= b, istart)
+   wherelast_gt (A, b, istart) <==> wherelast (A > b, istart)
+   wherelast_le (A, b, istart) <==> wherelast (A <= b, istart)
+   wherelast_lt (A, b, istart) <==> wherelast (A < b, istart)
+#v-
+  However, the \exmp{wherefirst_*} and \exmp{wherelast_*} function can
+  execute several orders of magnitude faster, depending upon the context.
+\notes
+  The current implementation of these functions is limited to numeric
+  types.
+\seealso{wherefirst, wherelast}
 
 \function{wherefirstmax}
 \synopsis{Get the index of the first maximum array value}
 \usage{Int_Type wherefirstmax (Array_Type a)}
 \description
-This function is equivalent to
+ This function is equivalent to
 #v+
    index = wherefirst (a == max(a));
 #v-
-It executes about 3 times faster, and does not require the creation of
-temporary arrays.
+ It executes about 3 times faster, and does not require the creation of
+ temporary arrays.
 \seealso{wherefirst, wherefirstmax, wherelastmin, min, max}
 \done
 
@@ -743,12 +811,12 @@ temporary arrays.
 \synopsis{Get the index of the first minimum array value}
 \usage{Int_Type wherefirstmin (Array_Type a)}
 \description
-This function is equivalent to
+ This function is equivalent to
 #v+
    index = wherefirst (a == min(a));
 #v-
-It executes about 3 times faster, and does not require the creation of
-temporary arrays.
+ It executes about 3 times faster, and does not require the creation of
+ temporary arrays.
 \seealso{wherefirst, wherelastmin, wherefirstmax, min, max}
 \done
 
@@ -773,19 +841,19 @@ temporary arrays.
           return NULL;
      }
 #v-
-\seealso{where, wherefirst, wherelastmin, wherelastmax}
+\seealso{where, wherefirst, wherelastmin, wherelastmax, wherefirst_eq}
 \done
 
 \function{wherelastmax}
 \synopsis{Get the index of the last maximum array value}
 \usage{Int_Type wherelastmax (Array_Type a)}
 \description
-This function is equivalent to
+  This function is equivalent to
 #v+
    index = wherelast (a == max(a));
 #v-
-It executes about 3 times faster, and does not require the creation of
-temporary arrays.
+  It executes about 3 times faster, and does not require the creation of
+  temporary arrays.
 \seealso{wherelast, wherefirstmin, wherelastmin, min, max}
 \done
 
@@ -793,12 +861,12 @@ temporary arrays.
 \synopsis{Get the index of the last minimum array value}
 \usage{Int_Type wherelastmin (Array_Type a)}
 \description
-This function is equivalent to
+  This function is equivalent to
 #v+
    index = wherelast (a == min(a));
 #v-
-It executes about 3 times faster, and does not require the creation of
-temporary arrays.
+  It executes about 3 times faster, and does not require the creation of
+  temporary arrays.
 \seealso{wherelast, wherefirstmin, wherelastmax, min, max}
 \done
 

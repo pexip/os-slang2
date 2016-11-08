@@ -1,6 +1,6 @@
 /* sllimits.h */
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -23,8 +23,8 @@ USA.
 #define USE_NEW_HASH_CODE	1
 
 /* slstring.c: Size of the hash table used for strings (prime numbers) */
-#define SLSTRING_HASH_TABLE_SIZE	32327 /* was 25013, 10007 */
-/* Other large primes: 70001, 100003, 140009,... */
+#define SLSTRING_HASH_TABLE_SIZE       140009  /* was 32327, 25013, 10007 */
+/* Other large primes: 70001, 100003, 300007,... */
 /* slang.c: maximum size of run time stack */
 #ifdef __MSDOS_16BIT__
 # define SLANG_MAX_STACK_LEN		500
@@ -32,11 +32,18 @@ USA.
 # define SLANG_MAX_STACK_LEN		2500
 #endif
 
-/* slang.c: This sets the size on the depth of function calls */
+/* slang.c: This sets the size on the depth of function calls.
+ * Note: The greater the recursion depth, the more likely it is to run
+ * out of C runtime library stackspace.  The numbers below are conservative
+ */
 #ifdef __MSDOS_16BIT__
 # define SLANG_MAX_RECURSIVE_DEPTH	50
 #else
-# define SLANG_MAX_RECURSIVE_DEPTH	2500
+# if (defined(__WIN32__) || defined(__CYGWIN__))
+#  define SLANG_MAX_RECURSIVE_DEPTH	500
+# else
+#  define SLANG_MAX_RECURSIVE_DEPTH	1500
+# endif
 #endif
 
 /* slang.c: Size of the stack used for local variables */
@@ -88,8 +95,10 @@ USA.
 #if !defined(__MSDOS_16BIT__)
 # define SLTT_MAX_SCREEN_COLS 512
 # define SLTT_MAX_SCREEN_ROWS 512
+# define SLTT_MAX_COLORS 0x8000       /* consistent with SLSMG_COLOR_MASK */
 #else
 # define SLTT_MAX_SCREEN_ROWS 64
 # define SLTT_MAX_SCREEN_COLS 75
+/* #define SLTT_MAX_COLORS 0x8000 */  /* use slvideo.c default */
 #endif
 

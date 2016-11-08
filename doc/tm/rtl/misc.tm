@@ -114,7 +114,7 @@
 \usage{String_Type[] = get_environ()}
 \description
    The \ifun{get_environ} function returns an array of strings
-   representing the environmen variables defined for the current
+   representing the environment variables defined for the current
    process.  Each element of the array will be of the form
    \exmp{NAME=VALUE}.
 
@@ -284,7 +284,7 @@
 \usage{putenv (String_Type s)}
 \description
     This functions adds string \exmp{s} to the environment.  Typically,
-    \exmp{s} should of the form \exmp{"name=value"}.  The function
+    \exmp{s} should have the form \exmp{"name=value"}.  The function
     throws an \exc{OSError} upon failure.
 \notes
     This function may not be available on all systems.

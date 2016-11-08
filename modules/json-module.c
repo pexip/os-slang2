@@ -1,6 +1,6 @@
 /* -*- mode: C; mode: fold -*- */
 /*
-Copyright (C) 2013 John E. Davis, Manfred Hanke
+Copyright (C) 2013-2016 John E. Davis, Manfred Hanke
 
 This file is part of the S-Lang Library.
 
@@ -20,6 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
 */
 
+#define _BSD_SOURCE 1		       /* to get strtoll */
+#define _DEFAULT_SOURCE 1
 #include "config.h"
 
 #include <stdlib.h>
@@ -162,13 +164,12 @@ static int parse_string_length_and_move_ptr (Parse_Type *p, unsigned int *lenp, 
 {
    unsigned int new_string_len = 0;
    char *s = p->ptr;
-   char ch;
 
    *lenp = 0; *is_binary_stringp = 0;
 
    while (1)
      {
-	ch = *s++;
+	char ch = *s++;
 
 	/* STRING_DELIMITER = 34, SPACE = 32 */
 	if ((unsigned char)ch <= STRING_DELIMITER)
@@ -662,7 +663,7 @@ static int parse_and_push_object_as_struct (Parse_Type *p, int toplevel) /*{{{*/
    char buf[512];
    unsigned int num_fields, max_fields;
    char **fields;
-   String_Hash_Type *h;
+   String_Hash_Type *h = NULL;
 
    max_fields = 16;
    num_fields = 0;
@@ -784,6 +785,9 @@ return_error:
 static int parse_and_push_array (Parse_Type *p, int toplevel) /*{{{*/
 {
    SLang_List_Type *list = SLang_create_list (8);   /* let's start with 8 elements */
+
+   if (list == NULL)
+     return -1;
 
    skip_white (p);
    if (! looking_at (p, END_ARRAY)) do
