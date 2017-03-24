@@ -6,7 +6,7 @@ XSBC-Pexip-Original-Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ub
 XSBC-Original-Maintainer: Alastair McKinstry <mckinstry@debian.org>
 Build-Depends: debhelper (>= 8.1.3), docbook-to-man, libpcre3-dev, libpng12-dev, zlib1g-dev, libncurses-dev, chrpath
 Standards-Version: 3.9.2
-XS-Pexip-Upstream: http://archive.ubuntu.com/ubuntu/ precise
+XS-Pexip-Upstream: http://ftp.debian.org/debian/ jessie
 
 Package: libslang2-dev
 Section: libdevel
