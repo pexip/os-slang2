@@ -2,7 +2,7 @@
  * links to the library.
  */
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -169,25 +169,25 @@ int SLutf8_enable (int mode)
  * and the library malloc function returns NULL, then malloc will be retried
  * using 1 byte.
  */
-char *SLmalloc (unsigned int len)
+SLFUTURE_VOID *SLmalloc (SLstrlen_Type len)
 {
-   char *p;
+   SLFUTURE_VOID *p;
 
-   if (NULL != (p = (char *) SLMALLOC_FUN (len)))
+   if (NULL != (p = (SLFUTURE_VOID *)SLMALLOC_FUN (len)))
      return p;
 
-   if (len || (NULL == (p = (char *)SLMALLOC_FUN(1))))
+   if (len || (NULL == (p = (SLFUTURE_VOID *)SLMALLOC_FUN(1))))
      SLang_set_error (SL_MALLOC_ERROR);
 
    return p;
 }
 
-void SLfree (char *p)
+void SLfree (SLFUTURE_VOID *p)
 {
    if (p != NULL) SLFREE_FUN (p);
 }
 
-char *SLrealloc (char *p, unsigned int len)
+SLFUTURE_VOID *SLrealloc (SLFUTURE_VOID *p, SLstrlen_Type len)
 {
    if (len == 0)
      {
@@ -198,14 +198,14 @@ char *SLrealloc (char *p, unsigned int len)
    if (p == NULL) p = SLmalloc (len);
    else
      {
-	p = (char *)SLREALLOC_FUN (p, len);
+	p = (SLFUTURE_VOID *)SLREALLOC_FUN (p, len);
 	if (p == NULL)
 	  SLang_set_error (SL_MALLOC_ERROR);
      }
    return p;
 }
 
-char *_SLrecalloc (char *p, unsigned int nelems, unsigned int len)
+SLFUTURE_VOID *_SLrecalloc (SLFUTURE_VOID *p, SLstrlen_Type nelems, SLstrlen_Type len)
 {
    unsigned int nlen = nelems * len;
 
@@ -217,9 +217,9 @@ char *_SLrecalloc (char *p, unsigned int nelems, unsigned int len)
    return SLrealloc (p, nlen);
 }
 
-char *_SLcalloc (unsigned int nelems, unsigned int len)
+SLFUTURE_VOID *_SLcalloc (SLstrlen_Type nelems, SLstrlen_Type len)
 {
-   unsigned int nlen = nelems * len;
+   SLstrlen_Type nlen = nelems * len;
 
    if (nelems && (nlen/nelems != len))
      {
@@ -229,9 +229,9 @@ char *_SLcalloc (unsigned int nelems, unsigned int len)
    return SLmalloc (nlen);
 }
 
-char *SLcalloc (unsigned int nelems, unsigned int len)
+SLFUTURE_VOID *SLcalloc (SLstrlen_Type nelems, SLstrlen_Type len)
 {
-   char *p = _SLcalloc (nelems, len);
+   SLFUTURE_VOID *p = _SLcalloc (nelems, len);
    if (p != NULL) memset (p, 0, len*nelems);
    return p;
 }
@@ -290,6 +290,7 @@ static Interrupt_Hook_Type *
 	       *prevp = prev;
 	     return h;
 	  }
+	prev = h;
 	h = h->next;
      }
    return NULL;
@@ -357,6 +358,9 @@ int SLerrno_set_errno (int sys_errno)
 
 #if defined(__WIN32__) && defined(SLANG_DLL)
 # include <windows.h>
+
+/* where is the prototype for DllMain? */
+BOOL WINAPI DllMain(HANDLE hInstance,DWORD dwReason,LPVOID lpParam);
 
 BOOL WINAPI DllMain(HANDLE hInstance,DWORD dwReason,LPVOID lpParam)
 {

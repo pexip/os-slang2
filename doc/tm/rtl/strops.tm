@@ -329,7 +329,7 @@
 \notes
   The \ifun{set_float_format} function controls the format for the
   \exmp{S} conversion of floating point numbers.
-\seealso{string, sscanf, message, pack}
+\seealso{string, sscanf, message, pack, set_float_format}
 \done
 
 \function{sscanf}
@@ -552,10 +552,10 @@
 \usage{Int_Type string_match(String_Type str, String_Type pat [,Int_Type pos])}
 \description
   The \ifun{string_match} function returns zero if \exmp{str} does not
-  match regular expression specified by \exmp{pat}.  This function
+  match the regular expression specified by \exmp{pat}.  This function
   performs the match starting at the first byte of the string.  The
   optional \exmp{pos} argument may be used to specify a different byte
-  offse (numbered from 1).  This function returns the position in
+  offset (numbered from 1).  This function returns the position in
   bytes (numbered from 1) of the start of the match in \exmp{str}.
   The exact substring matched may be found using
   \ifun{string_match_nth}.
@@ -614,7 +614,7 @@
 \description
   The \ifun{string_matches} function combines the functionality of
   \ifun{string_match} and \ifun{string_match_nth}.  Like
-  \ifun{string_match}, it matches the test string \exmp{str} against
+  \ifun{string_match}, it matches the string \exmp{str} against
   the regular expression \exmp{pat}.  If the string does not match the
   pattern the function will return \NULL.  Otherwise, the function
   will return an array of strings whose \exmp{ith} element is the string that
@@ -1176,11 +1176,8 @@
 #v-
   returns \exmp{"or no"}
 \notes
-  In many cases it is more convenient to use array indexing rather
-  than the \ifun{substr} function.  In fact, if UTF-8 mode is not in
-  effect, \exmp{substr(s,i+1,strlen(s))} is equivalent to
-  \exmp{s[[i:]]}.  Array indexing uses byte-semantics, not character
-  semantics assumed by the \ifun{substr} function.
+  This function assumes character semantics and not byte semantics.
+  Use the \ifun{substrbytes} function to extract bytes from a string.
 \seealso{is_substr, substrbytes, strlen}
 \done
 
@@ -1200,7 +1197,7 @@
   returns \exmp{"or no"}
 \notes
   In many cases it is more convenient to use array indexing rather
-  than the \ifun{substr} function.  In fact
+  than the \ifun{substrbytes} function.  In fact
   \exmp{substrbytes(s,i+1,-1)} is equivalent to
   \exmp{s[[i:]]}.
 

@@ -1,6 +1,6 @@
 /* slutty.c --- Unix Low level terminal (tty) functions for S-Lang */
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -272,6 +272,7 @@ static int TTY_Open = 0;
 # endif
 #endif
 
+/* If no_flow_control < 0, do not change the tty IXON bit */
 int SLang_init_tty (int abort_char, int no_flow_control, int opost)
 {
    TTY_Termio_Type newtty;
@@ -369,7 +370,10 @@ int SLang_init_tty (int abort_char, int no_flow_control, int opost)
 
    set_baud_rate (&newtty);
 
-   if (no_flow_control) newtty.c_iflag &= ~IXON; else newtty.c_iflag |= IXON;
+   if (no_flow_control > 0)
+     newtty.c_iflag &= ~IXON;
+   else if (no_flow_control == 0)
+     newtty.c_iflag |= IXON;
 
    newtty.c_cc[VEOF] = 1;
    newtty.c_cc[VMIN] = 1;
@@ -604,7 +608,10 @@ unsigned int _pSLsys_getkey (void)
 	if (errno == EINTR)
 	  {
 	     if (-1 == handle_interrupt ())
-	       return SLANG_GETKEY_ERROR;
+	       {
+		  errno = EINTR;
+		  return SLANG_GETKEY_ERROR;
+	       }
 
 	     if (SLKeyBoard_Quit)
 	       return SLang_Abort_Char;
@@ -620,7 +627,7 @@ unsigned int _pSLsys_getkey (void)
 
    while (1)
      {
-	int status = read(SLang_TT_Read_FD, (char *) &c, 1);
+	ssize_t status = read(SLang_TT_Read_FD, (char *) &c, 1);
 
 	if (status > 0)
 	  break;
@@ -634,7 +641,10 @@ unsigned int _pSLsys_getkey (void)
 	if (errno == EINTR)
 	  {
 	     if (-1 == handle_interrupt ())
-	       return SLANG_GETKEY_ERROR;
+	       {
+		  errno = EINTR;
+		  return SLANG_GETKEY_ERROR;
+	       }
 
 	     if (SLKeyBoard_Quit)
 	       return SLang_Abort_Char;
@@ -659,6 +669,7 @@ unsigned int _pSLsys_getkey (void)
 	if (errno == EIO)
 	  {
 	     _pSLang_verror (SL_Read_Error, "_pSLsys_getkey: EIO error");
+	     errno = EIO;
 	  }
 #endif
 	return SLANG_GETKEY_ERROR;

@@ -3,7 +3,7 @@
 /* header file for S-Lang internal structures that users do not (should not)
    need.  Use slang.h for that purpose. */
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -589,11 +589,6 @@ extern int _pSLstruct_pop_field (SLang_Struct_Type *s, SLFUTURE_CONST char *name
 
 extern int _pSLang_get_qualifiers_intrin (SLang_Struct_Type **);
 
-/* The following qualifier functions will eventually be part of the public API */
-extern int _pSLang_qualifier_exists (SLCONST char *);
-extern int _pSLang_get_int_qualifier (SLCONST char *, int *, int);
-extern int _pSLang_get_string_qualifier (SLCONST char *, char **p, SLFUTURE_CONST char *);
-
 struct _pSLang_Ref_Type
 {
    int num_refs;
@@ -635,14 +630,14 @@ extern int _pSLpush_malloced_string (char *, unsigned int);
  * very careful how they are used.  In particular, if len bytes are allocated,
  * then the string must be len characters long, no more and no less.
  */
-extern char *_pSLallocate_slstring (unsigned int);
-extern char *_pSLcreate_via_alloced_slstring (char *, unsigned int);
-extern void _pSLunallocate_slstring (char *, unsigned int);
-extern int _pSLpush_alloced_slstring (char *, unsigned int);
+extern char *_pSLallocate_slstring (size_t);
+extern char *_pSLcreate_via_alloced_slstring (char *, size_t);
+extern void _pSLunallocate_slstring (char *, size_t);
+extern int _pSLpush_alloced_slstring (char *, size_t);
 
-extern unsigned int _pSLstring_bytelen (SLstr_Type *);
+extern size_t _pSLstring_bytelen (SLCONST SLstr_Type *);
 extern void _pSLang_free_slstring (SLstr_Type *);   /* slstring required and assumed */
-extern unsigned long _pSLstring_get_hash (SLstr_Type *s);   /* slstring required */
+extern SLstr_Hash_Type _pSLstring_get_hash (SLstr_Type *s);   /* slstring required */
 
 typedef struct
 {
@@ -714,8 +709,8 @@ extern SLFUTURE_CONST char *_pSLang_cur_namespace_intrinsic (void);
 extern SLang_Array_Type *_pSLang_apropos (SLFUTURE_CONST char *, SLFUTURE_CONST char *, unsigned int);
 extern void _pSLang_implements_intrinsic (SLFUTURE_CONST char *);
 extern SLang_Array_Type *_pSLns_list_namespaces (void);
-extern SLang_Name_Type *_pSLns_locate_hashed_name (SLang_NameSpace_Type *, SLCONST char *, unsigned long);
-extern int _pSLns_add_hashed_name (SLang_NameSpace_Type *, SLang_Name_Type *, unsigned long);
+extern SLang_Name_Type *_pSLns_locate_hashed_name (SLang_NameSpace_Type *, SLCONST char *, SLstr_Hash_Type);
+extern int _pSLns_add_hashed_name (SLang_NameSpace_Type *, SLang_Name_Type *, SLstr_Hash_Type);
 extern SLang_NameSpace_Type *_pSLns_find_object_namespace (SLang_Name_Type *nt);
 extern SLang_Name_Type *_pSLns_locate_name (SLang_NameSpace_Type *, SLCONST char *);
 extern SLang_NameSpace_Type *_pSLns_get_private_namespace (SLFUTURE_CONST char *name, SLFUTURE_CONST char *nsname);
@@ -765,11 +760,10 @@ extern int _pSLcall_debug_hook (SLFUTURE_CONST char *file, int linenum);
 /* extern int _pSLcall_debug_hook (char *file, int linenum, char *funct); */
 #endif
 
-extern char *_pSLstring_dup_hashed_string (SLCONST char *, unsigned long);
-extern unsigned long _pSLcompute_string_hash (SLCONST char *);
-extern char *_pSLstring_make_hashed_string (SLCONST char *, unsigned int, unsigned long *);
-extern void _pSLfree_hashed_string (char *, unsigned int, unsigned long);
-unsigned long _pSLstring_hash (SLCONST unsigned char *, SLCONST unsigned char *);
+extern char *_pSLstring_dup_hashed_string (SLCONST char *, SLstr_Hash_Type);
+extern char *_pSLstring_make_hashed_string (SLCONST char *, SLstrlen_Type, SLstr_Hash_Type *);
+extern void _pSLfree_hashed_string (SLCONST char *, size_t, SLstr_Hash_Type);
+SLstr_Hash_Type _pSLstring_hash (SLCONST unsigned char *, SLCONST unsigned char *);
 extern int _pSLinit_slcomplex (void);
 
 extern int _pSLang_init_slstrops (void);
@@ -786,7 +780,7 @@ extern int _pSLang_init_sltime (void);
 extern void _pSLpack (void);
 extern void _pSLunpack (char *, SLang_BString_Type *);
 extern void _pSLpack_pad_format (char *);
-extern unsigned int _pSLpack_compute_size (char *);
+extern SLstrlen_Type _pSLpack_compute_size (char *);
 extern int _pSLusleep (unsigned long);
 
 /* frees upon error.  NULL __NOT__ ok. */
@@ -959,10 +953,10 @@ struct _pSLang_Class_Type
    int (*cl_sget) (SLtype, SLFUTURE_CONST char *);
 
    /* File I/O */
-   int (*cl_fread) (SLtype, FILE *, VOID_STAR, unsigned int, unsigned int *);
-   int (*cl_fwrite) (SLtype, FILE *, VOID_STAR, unsigned int, unsigned int *);
-   int (*cl_fdread) (SLtype, int, VOID_STAR, unsigned int, unsigned int *);
-   int (*cl_fdwrite) (SLtype, int, VOID_STAR, unsigned int, unsigned int *);
+   int (*cl_fread) (SLtype, FILE *, VOID_STAR, SLstrlen_Type, SLstrlen_Type *);
+   int (*cl_fwrite) (SLtype, FILE *, VOID_STAR, SLstrlen_Type, SLstrlen_Type *);
+   int (*cl_fdread) (SLtype, int, VOID_STAR, SLstrlen_Type, SLstrlen_Type *);
+   int (*cl_fdwrite) (SLtype, int, VOID_STAR, SLstrlen_Type, SLstrlen_Type *);
 
    int (*cl_to_bool) (SLtype, int *);
 
@@ -1071,8 +1065,8 @@ extern SLFUTURE_CONST char *_pSLdefines[];
 #define SL_ERRNO_NOT_IMPLEMENTED	0x7FFF
 extern int _pSLerrno_errno;
 extern int _pSLerrno_init (void);
-extern char *_SLcalloc (unsigned int, unsigned int);
-extern char *_SLrecalloc (char *, unsigned int, unsigned int);
+extern SLFUTURE_VOID *_SLcalloc (SLstrlen_Type, SLstrlen_Type);
+extern SLFUTURE_VOID *_SLrecalloc (SLFUTURE_VOID *, SLstrlen_Type, SLstrlen_Type);
 
 extern int _pSLstdio_fdopen (char *, int, char *);
 extern void _pSLfclose_fdopen_fp (SLang_MMT_Type *);
@@ -1143,7 +1137,7 @@ typedef struct
 	SLFUTURE_CONST char *s_val;		       /* (SLstring) concatenated strings */
 	SLang_BString_Type *b_val;     /* concatenated bstrings */
      } v;
-   unsigned long hash;		       /* for v.s_val */
+   SLstr_Hash_Type hash;		       /* for v.s_val */
    unsigned int len;		       /* length of v.?_val */
 }
 _pSLang_Multiline_String_Type;
@@ -1192,7 +1186,7 @@ _pSLang_Token_Type;
 
 /* return token type or EOF_TOKEN upon error */
 extern _pSLtok_Type _pSLtoken_init_slstring_token (_pSLang_Token_Type *, _pSLtok_Type,
-						   SLFUTURE_CONST char *, unsigned int);
+						   SLCONST char *, SLstrlen_Type);
 
 extern void _pSLcompile (_pSLang_Token_Type *);
 extern void (*_pSLcompile_ptr)(_pSLang_Token_Type *);

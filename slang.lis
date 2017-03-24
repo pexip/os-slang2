@@ -26,6 +26,7 @@
 @autoconf/mkinsdir.sh 0755
 @autoconf/iconv.m4
 @autoconf/slangpc.in
+@autoconf/scripts/getsyslibs.sh 0755
 
 @changes.txt
 @configure 0755
@@ -117,9 +118,9 @@
 @examples/assoc.sl
 @examples/colormap.sl
 @examples/life.sl
-@examples/prime.sl
+@examples/prime.sl 0755
 @examples/saveobj.sl
-@examples/sort.sl
+@examples/sort.sl 0755
 @examples/utmp.sl
 @examples/slsmgex2.sl
 
@@ -127,12 +128,24 @@
 @modules/mkfiles/README
 @modules/Makefile.in
 @modules/README
+@modules/base64-module.c
+@modules/base64.sl
+@modules/chksum-module.c
+@modules/chksum_sha1.c
+@modules/chksum_md5.c
+@modules/chksum.h
+@modules/chksum.sl
 @modules/csv-module.c
 @modules/csv.sl
 @modules/fcntl-module.c
 @modules/fcntl.sl
 @modules/fork.sl
 @modules/fork-module.c
+@modules/histogram.sl
+@modules/histogram-module.inc
+@modules/histogram-module.c
+@modules/json-module.c
+@modules/json.sl
 @modules/onig-module.c
 @modules/onig.sl
 @modules/pcre-module.c
@@ -145,6 +158,9 @@
 @modules/select.sl
 @modules/slsmg-module.c
 @modules/slsmg.sl
+@modules/stats.sl
+@modules/stats-module.c
+@modules/stats-module.inc
 @modules/sysconf-module.c
 @modules/sysconf.sl
 @modules/termios-module.c
@@ -160,30 +176,48 @@
 @modules/zlib-module.c
 @modules/zlib.sl
 
+@modules/test/runtests.sh 0755
+@modules/test/test.sl
+@modules/test/test_base64.sl
+@modules/test/test_chksum.sl
 @modules/test/test_csv.sl
 @modules/test/test_zlib.sl
 @modules/test/test_onig.sl
 @modules/test/test_rand.sl
+@modules/test/test_hist.sl
+@modules/test/test_stats.sl
+@modules/test/test_json.sl
+@modules/test/test_png.sl
 
+@modules/tm/Makefile
+@modules/tm/base64funs.tm
+@modules/tm/chksumfuns.tm
+@modules/tm/csvfuns.tm
+@modules/tm/forkfuns.tm
+@modules/tm/histfuns.tm
+@modules/tm/jsonfuns.tm
+@modules/tm/modfuns.tm
+@modules/tm/onigfuns.tm
 @modules/tm/pcrefuns.tm
 @modules/tm/pngfuns.tm
-@modules/tm/sockfuns.tm
-@modules/tm/onigfuns.tm
 @modules/tm/randfuns.tm
-@modules/tm/forkfuns.tm
-@modules/tm/Makefile
-@modules/tm/modfuns.tm
-@modules/tm/csvfuns.tm
 @modules/tm/slsmg.tm
+@modules/tm/sockfuns.tm
+@modules/tm/statsfuns.tm
 
+@modules/help/base64funs.hlp
+@modules/help/chksumfuns.hlp
+@modules/help/csvfuns.hlp
+@modules/help/forkfuns.hlp
+@modules/help/histfuns.hlp
+@modules/help/jsonfuns.hlp
+@modules/help/onigfuns.hlp
 @modules/help/pcrefuns.hlp
 @modules/help/pngfuns.hlp
 @modules/help/randfuns.hlp
-@modules/help/sockfuns.hlp
-@modules/help/onigfuns.hlp
-@modules/help/forkfuns.hlp
-@modules/help/csvfuns.hlp
 @modules/help/slsmg.hlp
+@modules/help/sockfuns.hlp
+@modules/help/statsfuns.hlp
 
 @modules/examples/newt_ex.sl
 @modules/examples/slsmg_ex.sl
@@ -217,6 +251,9 @@
 @modules/cmaps/ds9b.map
 @modules/cmaps/ds9sls.map
 @modules/cmaps/coolwarm.map
+@modules/cmaps/cubicl.map
+@modules/cmaps/cubicyf.map
+@modules/cmaps/edge.map
 #
 
 @slang.lis
@@ -237,6 +274,7 @@
 @slsh/lib/autoload.sl
 @slsh/lib/require.sl
 @slsh/lib/glob.sl
+@slsh/lib/fswalk.sl
 @slsh/lib/stkcheck.sl
 @slsh/lib/slshrl.sl
 @slsh/lib/sldb.sl
@@ -249,7 +287,8 @@
 @slsh/lib/readascii.sl
 @slsh/lib/process.sl
 @slsh/lib/setfuns.sl
-
+@slsh/lib/listfuns.sl
+#
 @slsh/lib/rline/editfuns.sl
 @slsh/lib/rline/emacskeys.sl
 @slsh/lib/rline/history.sl
@@ -261,6 +300,7 @@
 
 @slsh/lib/help/arrayfuns.hlp
 @slsh/lib/help/glob.hlp
+@slsh/lib/help/fswalk.hlp
 @slsh/lib/help/require.hlp
 @slsh/lib/help/structfuns.hlp
 @slsh/lib/help/cmdopt.hlp
@@ -269,10 +309,12 @@
 @slsh/lib/help/print.hlp
 @slsh/lib/help/process.hlp
 @slsh/lib/help/setfuns.hlp
+@slsh/lib/help/listfuns.hlp
 
 @slsh/lib/tm/Makefile
 @slsh/lib/tm/arrayfuns.tm
 @slsh/lib/tm/glob.tm
+@slsh/lib/tm/fswalk.tm
 @slsh/lib/tm/require.tm
 @slsh/lib/tm/structfuns.tm
 @slsh/lib/tm/cmdopt.tm
@@ -281,6 +323,7 @@
 @slsh/lib/tm/print.tm
 @slsh/lib/tm/process.tm
 @slsh/lib/tm/setfuns.tm
+@slsh/lib/tm/listfuns.tm
 
 @slsh/lib/test/test_cmdopt.sl
 @slsh/lib/test/test_structfuns.sl
@@ -288,6 +331,7 @@
 @slsh/lib/test/test_print.sl
 @slsh/lib/test/test_process.sl
 @slsh/lib/test/test_setfuns.sl
+@slsh/lib/test/test_listfuns.sl
 
 @slsh/doc/tm/slsh.tm
 @slsh/doc/tm/Makefile
@@ -304,6 +348,10 @@
 @slsh/doc/html/slshfun-7.html
 @slsh/doc/html/slshfun-8.html
 @slsh/doc/html/slshfun-9.html
+@slsh/doc/html/slshfun-10.html
+@slsh/doc/html/slshfun-11.html
+@slsh/doc/html/slshfun-12.html
+@slsh/doc/html/slshfun-13.html
 @slsh/scripts/badlinks 0755
 @slsh/scripts/htmlstrip 0755
 @slsh/scripts/ls 0755
@@ -344,6 +392,8 @@
 @src/mkfiles/makefile.all
 @src/mkfiles/mkmake.c
 *src/mkfiles/mkmake.exe
+*src/mkfiles/mkmake16.exe
+@src/mkfiles/mk_mkmake.bat
 @src/modules.unx
 @src/pcconf.c
 @src/sl-feat.h
@@ -434,8 +484,13 @@
 @src/slwcwidth.c
 @src/slwcwidth.h
 @src/slxstrng.c
+
+@src/test/runtests.sh 0755
 @src/test/Makefile
 @src/test/README
+@src/test/sltest.c
+@src/test/assoc.c
+@src/test/list.c
 @src/test/anytype.sl
 @src/test/arith.sl
 @src/test/argv.sl
@@ -479,7 +534,6 @@
 @src/test/selfload.sl
 @src/test/scircuit.sl
 @src/test/signal.sl
-@src/test/sltest.c
 @src/test/sort.sl
 @src/test/sscanf.sl
 @src/test/stdio.sl

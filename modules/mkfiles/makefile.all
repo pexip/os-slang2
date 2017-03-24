@@ -72,7 +72,7 @@ P = \\
 O = obj # Object extension
 OBJDIR = mw32objs# Location of objects
 RM = del
-COPY = copy
+COPY = copy /y
 TARGET_C = $(TARGET)-module.c
 TARGET_DLL = $(TARGET)-module.dll
 TARGET_OBJ = $(TARGET)-module.$(O)
@@ -114,7 +114,7 @@ COPY = cp
 !  else
 CFLAGS = -DWIN32 -O2 $(WFLAGS) $(DLL_FLAGS)
 RM = del
-COPY = copy
+COPY = copy /y
 !  endif
 TARGET_C = $(TARGET)-module.c
 TARGET_DLL = $(TARGET)-module.dll
@@ -142,8 +142,8 @@ SLANGDIR = ..$(P)src$(P)$(OBJDIR)
 # ---------------------------------------------------------------------------
 # List of modules to compile.  Some/Most require additional libraries to be
 # installed.
-MODULES = slsmg rand csv
-# slsmg, rand, csv: no external dependencies
+MODULES = slsmg rand csv base64 histogram stats json
+# slsmg, rand, csv base64 histogram stats: no external dependencies
 # iconv: iconv library
 # png:   png library
 # pcre: Ported to Win32 by GnuWin32 group.
@@ -165,6 +165,8 @@ rand:
 	$(MAKE) TARGET=rand TARGETLIBS=$(RANDLIBS) TARGETINCS=$(RANDINCS) build-target
 csv:
 	$(MAKE) TARGET=csv TARGETLIBS=$(CSVLIBS) TARGETINCS=$(CSVINCS) build-target
+base64:
+	$(MAKE) TARGET=base64 TARGETLIBS=$(BASE64LIBS) TARGETINCS=$(BASE64INCS) build-target
 pcre:
 	$(MAKE) TARGET=pcre TARGETLIBS=$(PCRELIBS) TARGETINCS=$(PCREINCS) build-target
 png:
@@ -173,6 +175,12 @@ zlib:
 	$(MAKE) TARGET=zlib TARGETLIBS=$(ZLIBLIBS) TARGETINCS=$(ZLIBINCS) build-target
 varray:
 	$(MAKE) TARGET=varray TARGETLIBS=$(VARRAYLIBS) TARGETINCS=$(VARRAYINCS) build-target
+histogram:
+	$(MAKE) TARGET=histogram TARGETLIBS=$(HISTOGRAMLIBS) TARGETINCS=$(HISTOGRAMINCS) build-target
+stats:
+	$(MAKE) TARGET=stats TARGETLIBS=$(STATSLIBS) TARGETINCS=$(STATSINCS) build-target
+json:
+	$(MAKE) TARGET=json TARGETLIBS=$(JSONLIBS) TARGETINCS=$(JSONINCS) build-target
 #
 build-target: $(TARGET_DLL)
 $(TARGET_DLL): $(TARGET_OBJ)
@@ -183,7 +191,7 @@ $(TARGET_OBJ): $(TARGET_C)
 $(OBJDIR) :
 	-mkdir $(OBJDIR)
 clean:
-	$(RM) *.$(O)
+	-$(RM) *.$(O)
 #
 .PHONY: $(MODULES) build-target
 !endif   #NOT HELP

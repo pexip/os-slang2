@@ -116,7 +116,7 @@
   returns the result.  If its argument is an array, the
   \ifun{cos} function will be applied to each element and the result returned
   as an array.
-\seealso{cos, atan, acosh, cosh}
+\seealso{sin, atan, acosh, cosh, sincos}
 \done
 
 \function{cosh}
@@ -168,7 +168,7 @@
 
 \function{feqs}
 \synopsis{Test the approximate equality of two numbers}
-\usage{Char_Type feqs (a, b [,reldiff [,absdiff]]}
+\usage{Char_Type feqs (a, b [,reldiff [,absdiff]])}
 \description
  This function compares two floating point numbers \exmp{a} and
  \exmp{b}, and returns a non-zero value if they are equal to within a
@@ -190,7 +190,7 @@
 
 \function{fgteqs}
 \synopsis{Compare two numbers using specified tolerances}.
-\usage{Char_Type feqs (a, b [,reldiff [,absdiff]]}
+\usage{Char_Type fgteqs (a, b [,reldiff [,absdiff]])}
 \description
   This function is functionally equivalent to:
 #v+
@@ -212,7 +212,7 @@
 
 \function{flteqs}
 \synopsis{Compare two numbers using specified tolerances}.
-\usage{Char_Type feqs (a, b [,reldiff [,absdiff]]}
+\usage{Char_Type flteqs (a, b [,reldiff [,absdiff]])}
 \description
   This function is functionally equivalent to:
 #v+
@@ -224,7 +224,7 @@
 
 \function{fneqs}
 \synopsis{Test the approximate inequality of two numbers}
-\usage{Char_Type feqs (a, b [,reldiff [,absdiff]]}
+\usage{Char_Type fneqs (a, b [,reldiff [,absdiff]])}
 \description
   This function is functionally equivalent to:
 #v+
@@ -319,6 +319,37 @@
   or 0 otherwise.  If the argument is an array, an array of
   the corresponding values will be returned.
 \seealso{isinf, _NaN}
+\done
+
+\function{_isneg}
+\synopsis{Test if a number is less than 0}
+\usage{Char_Type _isneg(x)}
+\description
+  This function returns 1 if a number is less than 0, and zero
+  otherwise.  If the argument is an array, then the corresponding
+  array of boolean (\dtype{Char_Type}) values will be returned.
+\seealso{_ispos, _isnonneg}
+\done
+
+\function{_isnonneg}
+\synopsis{Test if a number is greater than or equal to 0}
+\usage{Char_Type _isnonneg(x)}
+\description
+  This function returns 1 if a number is greater than or equal to 0,
+  and zero otherwise.  If the argument is an array, then the
+  corresponding array of boolean (\dtype{Char_Type}) values will be
+  returned.
+\seealso{_isneg, _ispos}
+\done
+
+\function{_ispos}
+\synopsis{Test if a number is greater than 0}
+\usage{Char_Type _ispos(x)}
+\description
+  This function returns 1 if a number is greater than 0, and zero
+  otherwise.  If the argument is an array, then the corresponding
+  array of boolean (\dtype{Char_Type}) values will be returned.
+\seealso{_isneg, _isnonneg}
 \done
 
 \function{log}
@@ -503,7 +534,18 @@
   returns the result.  If its argument is an array, the
   \ifun{sin} function will be applied to each element and the result returned
   as an array.
-\seealso{cos, atan, acosh, cosh}
+\seealso{cos, atan, acosh, cosh, sincos}
+\done
+
+\function{sincos}
+\synopsis{Compute the sine and cosine of a number}
+\usage{(s, c) = sincos (x)}
+\description
+  The \ifun{sincos} function computes the sine and cosine of a
+  number and returns the result.  If its argument is an array,
+  the \ifun{sincos} function will be applied to each element
+  and the result returned as an array.
+\seealso{sin, cos}
 \done
 
 \function{sinh}
@@ -566,32 +608,3 @@
 \seealso{cos, atan, acosh, cosh}
 \done
 
-\function{_ispos}
-\synopsis{Test if a number is greater than 0}
-\usage{Char_Type _ispos(x)}
-\description
-  This function returns 1 if a number is greater than 0, and zero
-  otherwise.  If the argument is an array, then the corresponding
-  array of boolean (\dtype{Char_Type}) values will be returned.
-\seealso{_isneg, _isnonneg}
-\done
-
-\function{_isneg}
-\synopsis{Test if a number is less than 0}
-\usage{Char_Type _isneg(x)}
-\description
-  This function returns 1 if a number is less than 0, and zero
-  otherwise.  If the argument is an array, then the corresponding
-  array of boolean (\dtype{Char_Type}) values will be returned.
-\seealso{_ispos, _isnonneg}
-\done
-
-\function{_isnonneg}
-\synopsis{Test if a number is greater than or equal to 0}
-\usage{Char_Type _isnonneg(x)}
-\description
-  This function returns 1 if a number is greater or equal to 0, and zero
-  otherwise.  If the argument is an array, then the corresponding
-  array of boolean (\dtype{Char_Type}) values will be returned.
-\seealso{_isneg, _isnonneg}
-\done

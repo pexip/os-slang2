@@ -35,7 +35,7 @@ all
 
 
  SEE ALSO
-  where, any
+  where, any, wherediff
 
 --------------------------------------------------------------
 
@@ -70,7 +70,7 @@ any
 
 
  SEE ALSO
-  where, all
+  all, where, wherediff
 
 --------------------------------------------------------------
 
@@ -112,26 +112,33 @@ array_map
   Apply a function to each element of an array
 
  USAGE
-  Array_Type array_map (type, func, arg0, ...)
+  Array_Type array_map (type, func, args...)
+  % or
+  (Array_Type, ...) array_map (type, ..., func, args...)
 
-    DataType_Type type;
+    DataType_Type type, ...;
     Ref_Type func;
 
 
  DESCRIPTION
-  The `array_map' function may be used to apply a function to each
-  element of an array and returns the resulting values as an array of
-  the specified type.  The `type' parameter indicates what kind of
-  array should be returned and generally corresponds to the return
-  type of the function.  The `arg0' parameter should be an array
-  and is used to determine the dimensions of the resulting array.  If
-  any subsequent arguments correspond to an array of the same size,
-  then those array elements will be passed in parallel with the first
-  arrays arguments.
+  The `array_map' function may be used to apply a function to
+  each element of an array and returns the resulting values as an
+  array of the specified type.  The `type' parameter indicates
+  what kind of array should be returned and generally corresponds to
+  the return type of the function.  If the function returns multiple
+  values, then the type of each return value must be given.  The first
+  array-valued argument is used to determine the dimensions of the
+  resulting array(s).  If any subsequent arguments correspond to an array
+  of the same size, then those array elements will be passed in
+  parallel with the elements of the first array argument.
+
+  To use `array_map' with functions that return no value, either
+  omit the `type' argument, or explicitly indicate that it
+  returns no value using the Void_Type type.
 
  EXAMPLE
   The first example illustrates how to apply the `strlen' function
-  to an array of strings:
+  to an array of strings.
 
      S = ["", "Train", "Subway", "Car"];
      L = array_map (Integer_Type, &strlen, S);
@@ -156,6 +163,25 @@ array_map
      % ==> xfiles = ["slang.a", "slstring.b", "slarray.c"];
 
 
+  Here is an example of its application to a function that returns 3
+  values.  Suppose `A' is an array of arrays whose types and
+  sizes are arbitrary, and we wish to find the indices of `A'
+  that contain arrays of type `String_Type'.  For this purpose, the
+  `array_info' function will be used:
+
+    (dims, ndims, types)
+        = array_map (Array_Type, Int_Type, DataType_Type, &array_info, A);
+    i = where (types == String_Type);
+
+
+   The `message' function prints a string and returns no value.
+   This example shows how it may be used to print an array of strings:
+
+     a = ["Line 1", "Line 2", "Line 3"];
+     array_map (&message, a);              % Form 1
+     array_map (Void_Type, &message, a);   % Form 2
+
+
  NOTES
   Many mathematical functions already work transparently on arrays.
   For example, the following two statements produce identical results:
@@ -163,6 +189,11 @@ array_map
      B = sin (A);
      B = array_map (Double_Type, &sin, A);
 
+
+ NOTES
+  A number of the string functions have been vectorized, including the
+  `strlen' function.  This means that there is no need to use the
+  `array_map' function with the `strlen' function.
 
  SEE ALSO
   array_info, strlen, strcat, sin
@@ -430,8 +461,8 @@ init_char_array
 
  DESCRIPTION
   The `init_char_array' function may be used to initialize a
-  character array `a' by setting the elements of the array
-  `a' to the corresponding characters of the string `s'.
+  Char_Type array `a' by setting the elements of the array
+  `a' to the corresponding bytes of the string `s'.
 
  EXAMPLE
   The statements
@@ -440,11 +471,11 @@ init_char_array
      init_char_array (a, "HelloWorld");
 
    creates an character array and initializes its elements to the
-   characters in the string `"HelloWorld"'.
+   bytes in the string `"HelloWorld"'.
 
  NOTES
    The character array must be large enough to hold all the characters
-   of the initialization string.
+   of the initialization string.  This function uses byte-semantics.
 
  SEE ALSO
   bstring_to_array, strlen, strcat
@@ -819,6 +850,17 @@ where
   are equivalent, but the latter form is preferred since it executes
   about twice as fast as the former.
 
+  The `where' function can also be used with relational operators
+  and with the boolean binary `or' and `and' operators, e.g.,
+
+     a = where (array == "a string");
+     a = where (array <= 5);
+     a = where (2 <= array <= 10);
+     a = where ((array == "a string") or (array == "another string"));
+
+  Using in the last example the short-circuiting `||' and
+  `&&' operators, will result in a `TypeMismatchError' exception.
+
   Although this function may appear to be simple or even trivial, it
   is arguably one of the most important and powerful functions for
   manipulating arrays.
@@ -844,24 +886,44 @@ where
   Support for the optional argument was added to version 2.1.0.
 
  SEE ALSO
-  wherefirst, wherelast, wherenot, array_info, array_shape, _isnull
+  wherefirst, wherelast, wherenot, wherediff, array_info, array_shape, _isnull
 
 --------------------------------------------------------------
 
-wherenot
+wherediff
 
  SYNOPSIS
-  Get indices where a numeric array is 0
+  Get the indices where adjacent elements differ
 
  USAGE
-  Array_Type wherenot (Array_Type)
+  Array_Type wherediff (Array_Type A [, Ref_Type jp])
 
  DESCRIPTION
-  This function is equivalent to `where(not a)'.  See the
-  documentation for `where' for more information.
+  This function returns an array of the indices where adjacent
+  elements of the array `A' differ.  If the optional second
+  argument is given, it must be a reference to a variable whose value
+  will be set to the complement indices (those where adjacient
+  elements are the same).
+
+  The returned array of indices will consist of those elements
+  `i' where `A[i] != A[i-1]'.  Since no element preceeds the
+  0th element, `A[0]' differs from its non-existing
+  preceeding element; hence the index `0' will a member of the
+  returned array.
+
+ EXAMPLE
+  Suppose that `A = [1, 1, 3, 0, 0, 4, 7, 7]'.  Then,
+
+     i = wherediff (A, &j);
+
+  will result in `i = [0, 2, 3, 5, 6]' and `j = [1, 4, 7]'.
+
+ NOTES
+  Higher dimensional arrays are treated as a 1-d array of contiguous
+  elements.
 
  SEE ALSO
-  where, wherefirst, wherelast
+  where, wherenot
 
 --------------------------------------------------------------
 
@@ -894,7 +956,49 @@ wherefirst
 
 
  SEE ALSO
-  where, wherelast
+  where, wherelast, wherfirstmin, wherfirstmax
+
+--------------------------------------------------------------
+
+wherefirstmax
+
+ SYNOPSIS
+  Get the index of the first maximum array value
+
+ USAGE
+  Int_Type wherefirstmax (Array_Type a)
+
+ DESCRIPTION
+This function is equivalent to
+
+   index = wherefirst (a == max(a));
+
+It executes about 3 times faster, and does not require the creation of
+temporary arrays.
+
+ SEE ALSO
+  wherefirst, wherefirstmax, wherelastmin, min, max
+
+--------------------------------------------------------------
+
+wherefirstmin
+
+ SYNOPSIS
+  Get the index of the first minimum array value
+
+ USAGE
+  Int_Type wherefirstmin (Array_Type a)
+
+ DESCRIPTION
+This function is equivalent to
+
+   index = wherefirst (a == min(a));
+
+It executes about 3 times faster, and does not require the creation of
+temporary arrays.
+
+ SEE ALSO
+  wherefirst, wherelastmin, wherefirstmax, min, max
 
 --------------------------------------------------------------
 
@@ -916,7 +1020,7 @@ wherelast
  NOTES
   The single parameter version of this function is equivalent to
 
-     define wherefirst (a)
+     define wherelast (a)
      {
         variable i = where (a);
         if (length(i))
@@ -927,7 +1031,66 @@ wherelast
 
 
  SEE ALSO
-  where, wherefirst
+  where, wherefirst, wherelastmin, wherelastmax
+
+--------------------------------------------------------------
+
+wherelastmax
+
+ SYNOPSIS
+  Get the index of the last maximum array value
+
+ USAGE
+  Int_Type wherelastmax (Array_Type a)
+
+ DESCRIPTION
+This function is equivalent to
+
+   index = wherelast (a == max(a));
+
+It executes about 3 times faster, and does not require the creation of
+temporary arrays.
+
+ SEE ALSO
+  wherelast, wherefirstmin, wherelastmin, min, max
+
+--------------------------------------------------------------
+
+wherelastmin
+
+ SYNOPSIS
+  Get the index of the last minimum array value
+
+ USAGE
+  Int_Type wherelastmin (Array_Type a)
+
+ DESCRIPTION
+This function is equivalent to
+
+   index = wherelast (a == min(a));
+
+It executes about 3 times faster, and does not require the creation of
+temporary arrays.
+
+ SEE ALSO
+  wherelast, wherefirstmin, wherelastmax, min, max
+
+--------------------------------------------------------------
+
+wherenot
+
+ SYNOPSIS
+  Get indices where a numeric array is 0
+
+ USAGE
+  Array_Type wherenot (Array_Type a)
+
+ DESCRIPTION
+  This function is equivalent to `where(not a)'.  See the
+  documentation for `where' for more information.
+
+ SEE ALSO
+  where, wherediff, wherefirst, wherelast
 
 --------------------------------------------------------------
 
@@ -986,7 +1149,7 @@ assoc_get_values
 
       variable a = Assoc_Type[Integer_Type];
 
-  The the following may be used to print the values of the array in
+  Then the following may be used to print the values of the array in
   ascending order:
 
       define print_sorted_values (a)
@@ -1003,7 +1166,7 @@ assoc_get_values
 
 
  SEE ALSO
-  assoc_get_values, assoc_key_exists, assoc_delete_key, array_sort
+  assoc_get_keys, assoc_key_exists, assoc_delete_key, array_sort
 
 --------------------------------------------------------------
 
@@ -1045,7 +1208,7 @@ array_to_bstring
 bstring_to_array
 
  SYNOPSIS
-  Convert a binary string to an array of characters
+  Convert a binary string to an array of bytes
 
  USAGE
   UChar_Type[] bstring_to_array (BString_Type b)
@@ -1057,6 +1220,47 @@ bstring_to_array
 
  SEE ALSO
   array_to_bstring, init_char_array
+
+--------------------------------------------------------------
+
+bstrcat
+
+ SYNOPSIS
+  Concatenate binary strings
+
+ USAGE
+  String_Type bstrcat (BString_Type a_1, ...,  BString_Type a_N)
+
+ DESCRIPTION
+  The `bstrcat' function concatenates its N binary string
+  arguments `a_1', ... `a_N' together and returns the result.
+
+ NOTES
+  This function will produce a result that is identical to that of
+  `strcat' if the input strings do not contain null characters.
+
+ SEE ALSO
+  strcat, bstrjoin
+
+--------------------------------------------------------------
+
+bstrjoin
+
+ SYNOPSIS
+  Concatenate elements of an array of BString_Type objects
+
+ USAGE
+  String_Type bstrjoin (Array_Type a [, BString_Type delim])
+
+ DESCRIPTION
+   The `bstrjoin' function operates on an array of binary strings
+   by joining successive elements together separated with the optional
+   delimiter `delim'.  If `delim' is not specified, then
+   empty string `""' will be used resulting in a concatenation of
+   the elements.
+
+ SEE ALSO
+  bstrcat, strjoin
 
 --------------------------------------------------------------
 
@@ -1103,6 +1307,35 @@ count_byte_occurrences
 
  SEE ALSO
   count_char_occurrences
+
+--------------------------------------------------------------
+
+is_substrbytes
+
+ SYNOPSIS
+  test if a binary string contains a series of bytes
+
+ USAGE
+  Int_Type is_substrbytes (a, b [,ofs])
+
+ DESCRIPTION
+This function may be used to see if the binary string `a'
+contains the byte-sequence given by the binary string `b'.  If
+`b' is contained in `a', then a ones-based offset of the
+first occurance of `b' in `a' is returned.  Otherwise, the
+function will return 0 to indicate that `a' does not contain
+`b'.
+
+An optional 1-based parameter `ofs' may be passed to the function
+to indicate where in `a' the search is to start.  The returned
+value is still a 1-based offset from the beginning of `a' where
+`b' is located.
+
+ NOTES
+  Support for the optional argument was added in version 2.3.0.
+
+ SEE ALSO
+  is_substr, count_byte_occurrences
 
 --------------------------------------------------------------
 
@@ -1331,6 +1564,48 @@ Assoc_Type
 
 --------------------------------------------------------------
 
+File_Type
+
+ SYNOPSIS
+  A type representing a C stdio object
+
+ DESCRIPTION
+  An File_Type is the interpreter's representation of a C
+  stdio FILE object and is usually created using the `fopen'
+  function, i.e.,
+
+    fp = fopen ("file.dat", "r");
+
+  Functions that utilize the File_Type include:
+
+    fopen
+    fclose
+    fgets
+    fputs
+    ferror
+    feof
+    fflush
+    fprintf
+    fseek
+    ftell
+    fread
+    fwrite
+    fread_bytes
+
+  The `foreach' construct may be used with File_Type
+  objects via one of the following forms:
+
+   foreach line (fp) {...}
+   foreach byte (A) using ("char") { ... }   % read bytes
+   foreach line (A) using ("line") { ... }   % read lines (default)
+   foreach line (A) using ("wsline") { ... } % whitespace stripped from lines
+
+
+ SEE ALSO
+  List_Type, Array_Type, Struct_Type
+
+--------------------------------------------------------------
+
 List_Type
 
  SYNOPSIS
@@ -1533,48 +1808,6 @@ Struct_Type
 
 --------------------------------------------------------------
 
-File_Type
-
- SYNOPSIS
-  A type representing a C stdio object
-
- DESCRIPTION
-  An File_Type is the interpreter's representation of a C
-  stdio FILE object and is usually created using the `fopen'
-  function, i.e.,
-
-    fp = fopen ("file.dat", "r");
-
-  Functions that utilize the File_Type include:
-
-    fopen
-    fclose
-    fgets
-    fputs
-    ferror
-    feof
-    fflush
-    fprintf
-    fseek
-    ftell
-    fread
-    fwrite
-    fread_bytes
-
-  The `foreach' construct may be used with File_Type
-  objects via one of the following forms:
-
-   foreach line (fp) {...}
-   foreach byte (A) using ("char") { ... }   % read bytes
-   foreach line (A) using ("line") { ... }   % read lines (default)
-   foreach line (A) using ("wsline") { ... } % whitespace stripped from lines
-
-
- SEE ALSO
-  List_Type, Array_Type, Struct_Type
-
---------------------------------------------------------------
-
 _bofeof_info
 
  SYNOPSIS
@@ -1704,6 +1937,57 @@ _clear_error
 
  SEE ALSO
   _trace_function, _slangtrace, _traceback
+
+--------------------------------------------------------------
+
+_get_frame_info
+
+ SYNOPSIS
+  Get information about a stack frame
+
+ USAGE
+  Struct_Type _get_frame_info (Integer_Type depth)
+
+ DESCRIPTION
+  `_get_frame_info' returns a structure with information about
+  the function call stack from of depth `depth'. The structure
+  contains the following fields:
+
+    file: The file that contains the code of the stack frame.
+    line: The line number the file the stack frame is in.
+    function: the name of the function containing the code of the stack
+      frame; it might be NULL if the code isn't inside a function.
+    locals: Array of String_Type containing the names of variables local
+      to the stack frame; it might be NULL if the stack frame doesn't
+      belong to a function.
+    namespace: The namespace the code of this stack frame is in.
+
+
+ SEE ALSO
+  _get_frame_variable, _use_frame_namespace
+
+--------------------------------------------------------------
+
+_get_frame_variable
+
+ SYNOPSIS
+  Get the value of a variable local to a stack frame
+
+ USAGE
+  Any_Type _get_frame_variable (Integer_Type depth, String_Type name)
+
+ DESCRIPTION
+  This function returns value of the variable `name' in the stack
+  frame at depth `depth'.  This might not only be a local variable but
+  also variables from outer scopes, e.g., a variable private to the
+  namespace.
+
+  If no variable with this name is found an `UndefinedNameError'
+  will be thrown.  An `VariableUninitializedError' will be
+  generated if the variable has no value.
+
+ SEE ALSO
+  _get_frame_info, _use_frame_namespace
 
 --------------------------------------------------------------
 
@@ -1901,57 +2185,6 @@ _trace_function
 
 --------------------------------------------------------------
 
-_get_frame_info
-
- SYNOPSIS
-  Get information about a stack frame
-
- USAGE
-  Struct_Type _get_frame_info (Integer_Type depth)
-
- DESCRIPTION
-  `_get_frame_info' returns a structure with information about
-  the function call stack from of depth `depth'. The structure
-  contains the following fields:
-
-    file: The file that contains the code of the stack frame.
-    line: The line number the file the stack frame is in.
-    function: the name of the function containing the code of the stack
-      frame; it might be NULL if the code isn't inside a function.
-    locals: Array of String_Type containing the names of variables local
-      to the stack frame; it might be NULL if the stack frame doesn't
-      belong to a function.
-    namespace: The namespace the code of this stack frame is in.
-
-
- SEE ALSO
-  _get_frame_variable, _use_frame_namespace
-
---------------------------------------------------------------
-
-_get_frame_variable
-
- SYNOPSIS
-  Get the value of a variable local to a stack frame
-
- USAGE
-  Any_Type _get_frame_variable (Integer_Type depth, String_Type name)
-
- DESCRIPTION
-  This function returns value of the variable `name' in the stack
-  frame at depth `depth'.  This might not only be a local variable but
-  also variables from outer scopes, e.g., a variable private to the
-  namespace.
-
-  If no variable with this name is found an `UndefinedNameError'
-  will be thrown.  An `VariableUninitializedError' will be
-  generated if the variable has no value.
-
- SEE ALSO
-  _get_frame_info, _use_frame_namespace
-
---------------------------------------------------------------
-
 _use_frame_namespace
 
  SYNOPSIS
@@ -2064,7 +2297,7 @@ chown
   Some systems do not support this function.
 
  SEE ALSO
-  chmod, stat_file
+  lchown, chmod, stat_file
 
 --------------------------------------------------------------
 
@@ -2111,6 +2344,26 @@ hardlink
 
  SEE ALSO
   symlink
+
+--------------------------------------------------------------
+
+lchown
+
+ SYNOPSIS
+  Change the owner of a file
+
+ USAGE
+  Int_Type lchown (String_Type file, Int_Type uid, Int_Type gid)
+
+ DESCRIPTION
+  The `lchown' function is like `chown', except that it does
+  not dereference a symbolic link.  Hence, it may be used to change
+  the ownership of a symbolic link itself, and not to what it
+  references.  See the documentation for the `chown' function for
+  more details.
+
+ SEE ALSO
+  chown, chmod, stat_file
 
 --------------------------------------------------------------
 
@@ -2410,7 +2663,7 @@ symlink
   Create a symbolic link
 
  USAGE
-  status = symlink (String_Type oldpath, String_Type new_path)
+  Int_Type symlink (String_Type oldpath, String_Type new_path)
 
  DESCRIPTION
   The `symlink' function may be used to create a symbolic link
@@ -2818,6 +3071,30 @@ _apropos
 
  SEE ALSO
   is_defined, sprintf, _get_namespaces
+
+--------------------------------------------------------------
+
+__FILE__
+
+ SYNOPSIS
+  Path of the compilation unit
+
+ USAGE
+  String_Type __FILE__
+
+ DESCRIPTION
+  Every private namespace has `__FILE__' variable associated with
+  it.  If the namespace is associated with a file, then the value of
+  this variable will be equal to the pathname of the file.  If the
+  namespace is associated with a string, such as one passed to the
+  `eval' function, then the value of this variable will be
+  `"***string***"';
+
+ NOTES
+  In the case of a file, the pathname may be an absolute path or a
+  relative one.  If it is a relative one, then it will be relative to
+  the directory from where the file was loaded, i.e., the value
+  returned by the `getcwd' function.
 
 --------------------------------------------------------------
 
@@ -3511,7 +3788,7 @@ cos
   as an array.
 
  SEE ALSO
-  cos, atan, acosh, cosh
+  sin, atan, acosh, cosh, sincos
 
 --------------------------------------------------------------
 
@@ -3600,7 +3877,7 @@ feqs
   Test the approximate equality of two numbers
 
  USAGE
-  Char_Type feqs (a, b [,reldiff [,absdiff]]
+  Char_Type feqs (a, b [,reldiff [,absdiff]])
 
  DESCRIPTION
  This function compares two floating point numbers `a' and
@@ -3631,7 +3908,7 @@ fgteqs
 .
 
  USAGE
-  Char_Type feqs (a, b [,reldiff [,absdiff]]
+  Char_Type fgteqs (a, b [,reldiff [,absdiff]])
 
  DESCRIPTION
   This function is functionally equivalent to:
@@ -3670,7 +3947,7 @@ flteqs
 .
 
  USAGE
-  Char_Type feqs (a, b [,reldiff [,absdiff]]
+  Char_Type flteqs (a, b [,reldiff [,absdiff]])
 
  DESCRIPTION
   This function is functionally equivalent to:
@@ -3690,7 +3967,7 @@ fneqs
   Test the approximate inequality of two numbers
 
  USAGE
-  Char_Type feqs (a, b [,reldiff [,absdiff]]
+  Char_Type fneqs (a, b [,reldiff [,absdiff]])
 
  DESCRIPTION
   This function is functionally equivalent to:
@@ -3829,6 +4106,61 @@ isnan
 
  SEE ALSO
   isinf, _NaN
+
+--------------------------------------------------------------
+
+_isneg
+
+ SYNOPSIS
+  Test if a number is less than 0
+
+ USAGE
+  Char_Type _isneg(x)
+
+ DESCRIPTION
+  This function returns 1 if a number is less than 0, and zero
+  otherwise.  If the argument is an array, then the corresponding
+  array of boolean (Char_Type) values will be returned.
+
+ SEE ALSO
+  _ispos, _isnonneg
+
+--------------------------------------------------------------
+
+_isnonneg
+
+ SYNOPSIS
+  Test if a number is greater than or equal to 0
+
+ USAGE
+  Char_Type _isnonneg(x)
+
+ DESCRIPTION
+  This function returns 1 if a number is greater than or equal to 0,
+  and zero otherwise.  If the argument is an array, then the
+  corresponding array of boolean (Char_Type) values will be
+  returned.
+
+ SEE ALSO
+  _isneg, _ispos
+
+--------------------------------------------------------------
+
+_ispos
+
+ SYNOPSIS
+  Test if a number is greater than 0
+
+ USAGE
+  Char_Type _ispos(x)
+
+ DESCRIPTION
+  This function returns 1 if a number is greater than 0, and zero
+  otherwise.  If the argument is an array, then the corresponding
+  array of boolean (Char_Type) values will be returned.
+
+ SEE ALSO
+  _isneg, _isnonneg
 
 --------------------------------------------------------------
 
@@ -4121,7 +4453,26 @@ sin
   as an array.
 
  SEE ALSO
-  cos, atan, acosh, cosh
+  cos, atan, acosh, cosh, sincos
+
+--------------------------------------------------------------
+
+sincos
+
+ SYNOPSIS
+  Compute the sine and cosine of a number
+
+ USAGE
+  (s, c) = sincos (x)
+
+ DESCRIPTION
+  The `sincos' function computes the sine and cosine of a
+  number and returns the result.  If its argument is an array,
+  the `sincos' function will be applied to each element
+  and the result returned as an array.
+
+ SEE ALSO
+  sin, cos
 
 --------------------------------------------------------------
 
@@ -4223,60 +4574,6 @@ tanh
 
  SEE ALSO
   cos, atan, acosh, cosh
-
---------------------------------------------------------------
-
-_ispos
-
- SYNOPSIS
-  Test if a number is greater than 0
-
- USAGE
-  Char_Type _ispos(x)
-
- DESCRIPTION
-  This function returns 1 if a number is greater than 0, and zero
-  otherwise.  If the argument is an array, then the corresponding
-  array of boolean (Char_Type) values will be returned.
-
- SEE ALSO
-  _isneg, _isnonneg
-
---------------------------------------------------------------
-
-_isneg
-
- SYNOPSIS
-  Test if a number is less than 0
-
- USAGE
-  Char_Type _isneg(x)
-
- DESCRIPTION
-  This function returns 1 if a number is less than 0, and zero
-  otherwise.  If the argument is an array, then the corresponding
-  array of boolean (Char_Type) values will be returned.
-
- SEE ALSO
-  _ispos, _isnonneg
-
---------------------------------------------------------------
-
-_isnonneg
-
- SYNOPSIS
-  Test if a number is greater than or equal to 0
-
- USAGE
-  Char_Type _isnonneg(x)
-
- DESCRIPTION
-  This function returns 1 if a number is greater or equal to 0, and zero
-  otherwise.  If the argument is an array, then the corresponding
-  array of boolean (Char_Type) values will be returned.
-
- SEE ALSO
-  _isneg, _isnonneg
 
 --------------------------------------------------------------
 
@@ -4768,16 +5065,40 @@ _eqs
   values are equal.
 
  EXAMPLE
+
    _eqs (1, 1)             ===> 1
    _eqs (1, 1.0)           ===> 1
    _eqs ("a", 1)           ===> 0
    _eqs ([1,2], [1.0,2.0]) ===> 1
 
- SEE ALSO
-  typeof, _eqs, __get_reference, __is_callable
 
  NOTES
    For testing sameness, use `__is_same'.
+
+ SEE ALSO
+  typeof, __is_same, __get_reference, __is_callable
+
+--------------------------------------------------------------
+
+get_environ
+
+ SYNOPSIS
+  Get all environment variables
+
+ USAGE
+  String_Type[] = get_environ()
+
+ DESCRIPTION
+   The `get_environ' function returns an array of strings
+   representing the environmen variables defined for the current
+   process.  Each element of the array will be of the form
+   `NAME=VALUE'.
+
+   This function will return NULL if the system does not support this
+   feature.
+
+ SEE ALSO
+  getenv, putenv, is_defined
 
 --------------------------------------------------------------
 
@@ -4806,7 +5127,7 @@ getenv
 
 
  SEE ALSO
-  putenv, strlen, is_defined
+  get_environ, putenv, strlen, is_defined
 
 --------------------------------------------------------------
 
@@ -4908,43 +5229,16 @@ __is_callable
   or zero otherwise.
 
  EXAMPLE
+
    __is_callable (7)      ==> 0
    __is_callable (&sin)   ==> 1
    a = [&sin];
    __is_callable (a[0])   ==> 1
    __is_callable (&a[0])  ==> 0
 
+
  SEE ALSO
   __is_numeric, is_defined
-
---------------------------------------------------------------
-
-__is_numeric
-
- SYNOPSIS
-  Determine whether or not an object is a numeric type
-
- USAGE
-  Int_Type __is_numeric (obj)
-
- DESCRIPTION
-  This function may be used to determine if an object represents a
-  numeric type.  It returns 0 if the argument is non-numeric, 1 if it
-  is an integer, 2 if a floating point number, and 3 if it is complex.
-  If the argument is an array, then the array type will be used for
-  the test.
-
- EXAMPLE
-   __is_numeric ("foo");  ==> 0
-   __is_numeric ("0");    ==> 0
-   __is_numeric (0);      ==> 1
-   __is_numeric (PI);     ==> 2
-   __is_numeric (2j);     ==> 3
-   __is_numeric ([1,2]);  ==> 1
-   __is_numeric ({1,2});  ==> 0
-
- SEE ALSO
-  typeof, __is_datatype_numeric
 
 --------------------------------------------------------------
 
@@ -4967,6 +5261,37 @@ __is_datatype_numeric
 
 --------------------------------------------------------------
 
+__is_numeric
+
+ SYNOPSIS
+  Determine whether or not an object is a numeric type
+
+ USAGE
+  Int_Type __is_numeric (obj)
+
+ DESCRIPTION
+  This function may be used to determine if an object represents a
+  numeric type.  It returns 0 if the argument is non-numeric, 1 if it
+  is an integer, 2 if a floating point number, and 3 if it is complex.
+  If the argument is an array, then the array type will be used for
+  the test.
+
+ EXAMPLE
+
+   __is_numeric ("foo");  ==> 0
+   __is_numeric ("0");    ==> 0
+   __is_numeric (0);      ==> 1
+   __is_numeric (PI);     ==> 2
+   __is_numeric (2j);     ==> 3
+   __is_numeric ([1,2]);  ==> 1
+   __is_numeric ({1,2});  ==> 0
+
+
+ SEE ALSO
+  typeof, __is_datatype_numeric
+
+--------------------------------------------------------------
+
 __is_same
 
  SYNOPSIS
@@ -4982,16 +5307,18 @@ __is_same
   reference the same underlying object.
 
  EXAMPLE
+
    __is_same (1, 1)         ===> 1
    __is_same (1, 1.0)       ===> 0
    __is_same ("a", 1)       ===> 0
    __is_same ([1,2], [1,2]) ===> 0
 
- SEE ALSO
-  typeof, _eqs, __get_reference, __is_callable
 
  NOTES
    For testing equality, use `_eqs'.
+
+ SEE ALSO
+  typeof, _eqs, __get_reference, __is_callable
 
 --------------------------------------------------------------
 
@@ -5013,6 +5340,19 @@ putenv
 
  SEE ALSO
   getenv, sprintf
+
+--------------------------------------------------------------
+
+__set_argc_argv
+
+ SYNOPSIS
+  Set the argument list
+
+ USAGE
+  __set_argc_argv (Array_Type a)
+
+ DESCRIPTION
+  This function sets the `__argc' and `__argv' intrinsic variables.
 
 --------------------------------------------------------------
 
@@ -5069,30 +5409,6 @@ _slang_utf8_ok
 
 --------------------------------------------------------------
 
-__uninitialize
-
- SYNOPSIS
-  Uninitialize a variable
-
- USAGE
-  __uninitialize (Ref_Type x)
-
- DESCRIPTION
-  The `__uninitialize' function may be used to uninitialize the
-  variable referenced by the parameter `x'.
-
- EXAMPLE
-  The following two lines are equivalent:
-
-     () = __tmp(z);
-     __uninitialize (&z);
-
-
- SEE ALSO
-  __tmp, __is_initialized
-
---------------------------------------------------------------
-
 __tmp
 
  SYNOPSIS
@@ -5124,6 +5440,30 @@ __tmp
 
  SEE ALSO
   __uninitialize, __is_initialized
+
+--------------------------------------------------------------
+
+__uninitialize
+
+ SYNOPSIS
+  Uninitialize a variable
+
+ USAGE
+  __uninitialize (Ref_Type x)
+
+ DESCRIPTION
+  The `__uninitialize' function may be used to uninitialize the
+  variable referenced by the parameter `x'.
+
+ EXAMPLE
+  The following two lines are equivalent:
+
+     () = __tmp(z);
+     __uninitialize (&z);
+
+
+ SEE ALSO
+  __tmp, __is_initialized
 
 --------------------------------------------------------------
 
@@ -5309,12 +5649,30 @@ close
   Int_Type close (FD_Type fd)
 
  DESCRIPTION
-  The `close' function is used to close and open file descriptor
+  The `close' function is used to close an open file descriptor
   created by the `open' function.  Upon success 0 is returned,
   otherwise the function returns -1 and sets `errno' accordingly.
 
  SEE ALSO
-  open, fclose, read, write
+  open, _close, fclose, read, write
+
+--------------------------------------------------------------
+
+_close
+
+ SYNOPSIS
+  Close an open file descriptor
+
+ USAGE
+  Int_Type _close (Int_Type fd)
+
+ DESCRIPTION
+  The `_close' function is used to close the underlying integer
+  open file descriptor.  Upon success 0 is returned, otherwise the
+  function returns -1 and sets `errno' accordingly.
+
+ SEE ALSO
+  open, _fileno, close, fclose, read, write
 
 --------------------------------------------------------------
 
@@ -5340,13 +5698,31 @@ dup_fd
 
 --------------------------------------------------------------
 
+dup2_fd
+
+ SYNOPSIS
+  Duplicate a file descriptor
+
+ USAGE
+  Int_Type dup2_fd (FD_Type fd, int newfd)
+
+ DESCRIPTION
+  The `dup2_fd' function makes `newfd' a copy of the
+  specified file descriptor `fd'. Upon success returns `newfd',
+  otherwise it returns -1 and sets `errno' accordingly.
+
+ SEE ALSO
+  dup, open, close, _close, _fileno, read
+
+--------------------------------------------------------------
+
 _fileno
 
  SYNOPSIS
   Get the underlying integer file descriptor
 
  USAGE
-  Int_Type fileno (File_Type|FD_Type fp)
+  Int_Type _fileno (File_Type|FD_Type fp)
 
  DESCRIPTION
   The `_fileno' function returns the underlying integer
@@ -5605,6 +5981,47 @@ getgid
 
 --------------------------------------------------------------
 
+getpgid
+
+ SYNOPSIS
+  Get the process group id
+
+ USAGE
+  Int_Type getpgid (Int_Type pid)
+
+ DESCRIPTION
+  The `getpgid' function returns the process group id of the
+  process whose process is `pid'.  If `pid' is 0, then the
+  current process will be used.
+
+ NOTES
+  This function is not supported by all systems.
+
+ SEE ALSO
+  getpgrp, getpid, getppid
+
+--------------------------------------------------------------
+
+getpgrp
+
+ SYNOPSIS
+  Get the process group id of the calling process
+
+ USAGE
+  Int_Type getpgrp ()
+
+ DESCRIPTION
+  The `getpgrp' function returns the process group id of the
+  current process.
+
+ NOTES
+  This function is not supported by all systems.
+
+ SEE ALSO
+  getpgid, getpid, getppid
+
+--------------------------------------------------------------
+
 getpid
 
  SYNOPSIS
@@ -5673,6 +6090,94 @@ getpriority
 
 --------------------------------------------------------------
 
+getrusage
+
+ SYNOPSIS
+  Get process resource usage
+
+ USAGE
+  Struct_Type getrusage ([Int_Type who]
+
+ DESCRIPTION
+  This function returns a structure whose fields contain information
+  about the resource usage of calling process, summed over all threads
+  of the process.  The optional integer argument `who' may be
+  used to obtain resource usage of child processes, or of the calling
+  thread itself. Specifically, the optional integer argument
+  `who' may take on one of the following values:
+
+    RUSAGE_SELF (default)
+    RUSAGE_CHILDREN
+
+  If `RUSAGE_CHILDREN' is specified, then the process information
+  will be the sum of all descendents of the calling process that have
+  terminated and have been waited for (via, e.g., `waitpid').  It
+  will not contain any information about child processes that have not
+  terminated.
+
+  The structure that is returned will contain the following fields:
+
+   ru_utimesecs       user CPU time used (Double_Type secs)
+   ru_stimesecs       system CPU time used (Double_Type secs)
+   ru_maxrss          maximum resident_set_size
+   ru_minflt          page reclaims (soft page faults)
+   ru_majflt          page faults (hard page faults)
+   ru_inblock         block input operations
+   ru_oublock         block output operations
+   ru_nvcsw           voluntary context switches
+   ru_nivcsw          involuntary context switches
+   ru_ixrss           integral shared memory size
+   ru_idrss           integral unshared data size
+   ru_isrss           integral unshared stack size
+   ru_nswap           swaps
+   ru_msgsnd          IPC messages sent
+   ru_msgrcv          IPC messages received
+   ru_nsignals        signals received
+
+  Some of the fields may not be supported for a particular OS or
+  kernel version.  For example, on Linux the 2.6.32 kernel supports
+  only the following fields:
+
+    ru_utimesecs
+    ru_stimesecs
+    ru_maxrss (since Linux 2.6.32)
+    ru_minflt
+    ru_majflt
+    ru_inblock (since Linux 2.6.22)
+    ru_oublock (since Linux 2.6.22)
+    ru_nvcsw (since Linux 2.6)
+    ru_nivcsw (since Linux 2.6)
+
+
+ NOTES
+  The underlying system call returns the CPU user and system times
+  as C `struct timeval' objects.  For convenience, the interpreter
+  interface represents these objects as double precision floating point
+  values.
+
+ SEE ALSO
+  times
+
+--------------------------------------------------------------
+
+getsid
+
+ SYNOPSIS
+  get the session id of a process
+
+ USAGE
+  Int_Type getsid ([Int_Type pid])
+
+ DESCRIPTION
+  The `getsid' function returns the session id of the current
+  process.  If the optional integer `pid' argument is given, then
+  the function returns the session id of the specified process id.
+
+ SEE ALSO
+  setsid, getpid, getpid
+
+--------------------------------------------------------------
+
 getuid
 
  SYNOPSIS
@@ -5722,7 +6227,28 @@ kill
   This function is not supported by all systems.
 
  SEE ALSO
-  getpid
+  killpg, getpid
+
+--------------------------------------------------------------
+
+killpg
+
+ SYNOPSIS
+  Send a signal to a process group
+
+ USAGE
+  Integer_Type killpg (Integer_Type pgrppid, Integer_Type sig)
+
+ DESCRIPTION
+  This function may be used to send a signal given by the integer `sig'
+  to the process group specified by `pgrppid'.  The function returns zero upon
+  success or `-1' upon failure setting `errno' accordingly.
+
+ NOTES
+  This function is not supported by all systems.
+
+ SEE ALSO
+  kill, getpid
 
 --------------------------------------------------------------
 
@@ -5844,6 +6370,27 @@ setpriority
 
  SEE ALSO
   getpriority, getpid
+
+--------------------------------------------------------------
+
+setsid
+
+ SYNOPSIS
+  Create a new session for the current process
+
+ USAGE
+  Int_Type setsid ()
+
+ DESCRIPTION
+  If the current process is not a session leader, the `setsid'
+  function will create a new session and make the process the session
+  leader for the new session.  It returns the the process group id of
+  the new session.
+
+  Upon failure, -1 will be returned and `errno' set accordingly.
+
+ SEE ALSO
+  getsid, setpgid
 
 --------------------------------------------------------------
 
@@ -6135,26 +6682,6 @@ rline_bolp
 
 --------------------------------------------------------------
 
-rline_eolp
-
- SYNOPSIS
-  Test of the editing point is at the end of the line
-
- USAGE
-  Int_Type rline_eolp()
-
- DESCRIPTION
-  The `rline_bolp' function returns a non-zero value if the
-  current editing position is at the end of the line.
-
- NOTES
- This function is part of the S-Lang readline interface.
-
- SEE ALSO
-  rline_bolp, rline_get_point, rline_get_line
-
---------------------------------------------------------------
-
 rline_call
 
  SYNOPSIS
@@ -6200,6 +6727,46 @@ rline_del
 
  SEE ALSO
   rline_ins, rline_setkey
+
+--------------------------------------------------------------
+
+rline_eolp
+
+ SYNOPSIS
+  Test of the editing point is at the end of the line
+
+ USAGE
+  Int_Type rline_eolp()
+
+ DESCRIPTION
+  The `rline_bolp' function returns a non-zero value if the
+  current editing position is at the end of the line.
+
+ NOTES
+ This function is part of the S-Lang readline interface.
+
+ SEE ALSO
+  rline_bolp, rline_get_point, rline_get_line
+
+--------------------------------------------------------------
+
+rline_getkey
+
+ SYNOPSIS
+  Obtain the next byte in the readline input stream
+
+ USAGE
+  Int_Type rline_getkey ()
+
+ DESCRIPTION
+  This function returns the next byte in the readline input stream.
+  If no byte is available, the function will wait until one is.
+
+ NOTES
+ This function is part of the S-Lang readline interface.
+
+ SEE ALSO
+  rline_input_pending, rline_setkey
 
 --------------------------------------------------------------
 
@@ -6282,26 +6849,6 @@ rline_get_point
 
 --------------------------------------------------------------
 
-rline_getkey
-
- SYNOPSIS
-  Obtain the next byte in the readline input stream
-
- USAGE
-  Int_Type rline_getkey ()
-
- DESCRIPTION
-  This function returns the next byte in the readline input stream.
-  If no byte is available, the function will wait until one is.
-
- NOTES
- This function is part of the S-Lang readline interface.
-
- SEE ALSO
-  rline_input_pending, rline_setkey
-
---------------------------------------------------------------
-
 rline_input_pending
 
  SYNOPSIS
@@ -6340,66 +6887,6 @@ rline_ins
 
  SEE ALSO
   rline_set_line, rline_del
-
---------------------------------------------------------------
-
-rline_set_history
-
- SYNOPSIS
-  Replace the current history list with a new one
-
- USAGE
-  rline_set_history (Array_Type lines)
-
- DESCRIPTION
-  The `rline_set_history' function replaces the current history
-  by the specified array of strings.
-
- NOTES
- This function is part of the S-Lang readline interface.
-
- SEE ALSO
-  rline_get_history
-
---------------------------------------------------------------
-
-rline_set_line
-
- SYNOPSIS
-  Replace the current line with a new one
-
- USAGE
-  rline_set_line (String_Type line)
-
- DESCRIPTION
-  The `rline_set_line' function replaces the line being edited by
-  the specified one.
-
- NOTES
- This function is part of the S-Lang readline interface.
-
- SEE ALSO
-  rline_get_line
-
---------------------------------------------------------------
-
-rline_set_point
-
- SYNOPSIS
-  Move the current editing position to another
-
- USAGE
-  rline_set_point (Int_Type ofs)
-
- DESCRIPTION
- The `rline_set_point' function sets the editing point to the
- specified byte-offset from the beginning of the line.
-
- NOTES
- This function is part of the S-Lang readline interface.
-
- SEE ALSO
-  rline_get_point
 
 --------------------------------------------------------------
 
@@ -6446,23 +6933,74 @@ rline_setkey
 
 --------------------------------------------------------------
 
-rline_unsetkey
+rline_set_completion_callback
 
  SYNOPSIS
-  Unset a key binding from the readline keymap
+  Set the function to be used for completion at the readline prompt
 
  USAGE
-  rline_unsetkey (String_Type keyseq)
+  rline_set_completion_callback (Ref_Type func)
 
  DESCRIPTION
-  The `rline_unsetkey' function unbinds the specified key sequence
-  from the readline keymap.
+  This function sets the callback function to be used for completion at the
+  readline prompt.  The callback function must be defined to accept
+  two values, the first being a string containing the text of the line
+  being edited, and an integer giving the position of the byte-offset
+  into the string where completion was requested.
+
+  The callback function must return two values: an array giving the
+  list of possible completion strings, and an integer giving the byte
+  offset into the string of the start of the text to be completed.
+
+ EXAMPLE
+  See completion-callback function defined in the `slsh' library file
+  `rline/complete.sl'.
 
  NOTES
  This function is part of the S-Lang readline interface.
 
  SEE ALSO
-  rline_setkey
+  rline_set_list_completions_callback
+
+--------------------------------------------------------------
+
+rline_set_history
+
+ SYNOPSIS
+  Replace the current history list with a new one
+
+ USAGE
+  rline_set_history (Array_Type lines)
+
+ DESCRIPTION
+  The `rline_set_history' function replaces the current history
+  by the specified array of strings.
+
+ NOTES
+ This function is part of the S-Lang readline interface.
+
+ SEE ALSO
+  rline_get_history
+
+--------------------------------------------------------------
+
+rline_set_line
+
+ SYNOPSIS
+  Replace the current line with a new one
+
+ USAGE
+  rline_set_line (String_Type line)
+
+ DESCRIPTION
+  The `rline_set_line' function replaces the line being edited by
+  the specified one.
+
+ NOTES
+ This function is part of the S-Lang readline interface.
+
+ SEE ALSO
+  rline_get_line
 
 --------------------------------------------------------------
 
@@ -6498,34 +7036,43 @@ rline_set_list_completions_callback
 
 --------------------------------------------------------------
 
-rline_set_completion_callback
+rline_set_point
 
  SYNOPSIS
-  Set the function to be used for completion at the readline prompt
+  Move the current editing position to another
 
  USAGE
-  rline_set_completion_callback (Ref_Type func)
+  rline_set_point (Int_Type ofs)
 
  DESCRIPTION
-  This function sets the callback function to be used for completion at the
-  readline prompt.  The callback function must be defined to accept
-  two values, the first being a string containing the text of the line
-  being edited, and an integer giving the position of the byte-offset
-  into the string where completion was requested.
-
-  The callback function must return two values: an array giving the
-  list of possible completion strings, and an integer giving the byte
-  offset into the string of the start of the text to be completed.
-
- EXAMPLE
-  See completion-callback function defined in the `slsh' library file
-  `rline/complete.sl'.
+ The `rline_set_point' function sets the editing point to the
+ specified byte-offset from the beginning of the line.
 
  NOTES
  This function is part of the S-Lang readline interface.
 
  SEE ALSO
-  rline_set_list_completions_callback
+  rline_get_point
+
+--------------------------------------------------------------
+
+rline_unsetkey
+
+ SYNOPSIS
+  Unset a key binding from the readline keymap
+
+ USAGE
+  rline_unsetkey (String_Type keyseq)
+
+ DESCRIPTION
+  The `rline_unsetkey' function unbinds the specified key sequence
+  from the readline keymap.
+
+ NOTES
+ This function is part of the S-Lang readline interface.
+
+ SEE ALSO
+  rline_setkey
 
 --------------------------------------------------------------
 
@@ -6547,8 +7094,8 @@ alarm
   place.
 
  EXAMPLE
-  This example shows demonstrates how the `alarm' function may be
-  used to read from a file within a specified amount of time:
+  This example demonstrates how the `alarm' function may be
+  used to read from `stdin' within a specified amount of time:
 
     define sigalrm_handler (sig)
     {
@@ -6556,17 +7103,20 @@ alarm
     }
     define read_or_timeout (secs)
     {
-       variable line, e;
-       variable fp = fopen ("/dev/tty", "r");
+       variable line, err;
        signal (SIGALRM, &sigalrm_handler);
+       () = fputs ("Enter some text> ", stdout); () = fflush (stdout);
        alarm (secs);
-       try (e)
+       try (err)
          {
-            () = fputs ("Enter some text> ", stdout); () = fflush (stdout);
-            if (-1 == fgets (&line, fp))
-              line = NULL;
+            if (-1 == fgets (&line, stdin))
+              throw ReadError, "Failed to read from stdin";
          }
-       catch IOError: { message (e.message); line = NULL; }
+       catch IOError:
+         {
+            message (err.message);
+            return NULL;
+         }
        return line;
     }
 
@@ -6581,7 +7131,82 @@ alarm
   handler for `SIGALRM'.
 
  SEE ALSO
-  signal, sleep
+  signal, sleep, setitimer, getitimer
+
+--------------------------------------------------------------
+
+getitimer
+
+ SYNOPSIS
+  Get the value of an interval timer
+
+ USAGE
+  (secs, period) = getitimer (Int_Type timer)
+
+ DESCRIPTION
+  This function returns the value of the specified interval timer as a
+  pair of double precision values: `period' and `secs'.
+
+  The value of `secs' indicates the number of seconds
+  remaining before the timer expires.  A value of 0 for
+  `secs' indicates that the timer is inactive.
+  The value of `period' indicates the periodicity of the timer.
+  That is, when the timer goes off, it will automatically be reset to
+  go off again after `period' seconds.
+
+  There are 3 interval timers available: ITIMER_REAL,
+  ITIMER_VIRTUAL, and ITIMER_PROF.
+
+  The ITIMER_REAL timer operates in real time and when the time
+  elapses, a SIGALRM will be sent to the process.
+
+  The ITIMER_VIRTUAL timer operates in the virtual time of the
+  process; that is, when process is actively running.  When it
+  elapses, SIGVTALRM will be sent to the process.
+
+  The ITIMER_PROF operates when the process is actively
+  running, or when the kernel is performing a task on behalf of the
+  process.  It sends a SIGPROF signal to the process.
+
+ NOTES
+  The interaction between these timers and the `sleep' and
+  `alarm' functions is OS dependent.
+
+  The resolution of a timer is system dependent; typical values are on
+  the order of milliseconds.
+
+ SEE ALSO
+  setitimer, alarm, signal
+
+--------------------------------------------------------------
+
+setitimer
+
+ SYNOPSIS
+  Set the value of an interval timer
+
+ USAGE
+  setitimer (Int_Type timer, secs [, period] [,&old_secs, &old_period])
+
+ DESCRIPTION
+  This function sets the value of a specified interval timer, and
+  optionally returns the previous value.  The value of the
+  `timer' argument must be one of the 3 interval timers
+  ITIMER_REAL, ITIMER_VIRTUAL, or ITIMER_PROF.
+  See the documentation for the `getitimer' function for
+  information about the semantics of these timers.
+
+  The value of the `secs' parameter specifies the expiration time
+  for the timer.  If this value is 0, the timer will be disabled.
+  Unless a non-zero value for the optional `period' parameter is
+  given, the timer will be disabled after it expires.  Otherwise,
+  the timer will reset to go off with a period of `period' seconds.
+
+  The final two optional arguments are references to variables that
+  will be set to the previous values associated with the timer.
+
+ SEE ALSO
+  getitimer, alarm, signal
 
 --------------------------------------------------------------
 
@@ -6687,9 +7312,7 @@ sigsuspend
   sigsuspend ([Array_Type signal_mask])
 
  DESCRIPTION
-  The
-sigsuspend
- function suspends the current process
+  The `sigsuspend' function suspends the current process
   until a signal is received.  An optional array argument may be
   passed to the function to specify a list of signals that should be
   temporarily blocked while waiting for a signal.
@@ -7023,7 +7646,7 @@ clearerr
   Clear the error of a file stream
 
  USAGE
-  clearerr (File_Type fp
+  clearerr (File_Type fp)
 
  DESCRIPTION
   The `clearerr' function clears the error and end-of-file flags
@@ -7247,7 +7870,7 @@ fgetslines
   String_Type[] fgetslines (File_Type fp [,Int_Type num])
 
  DESCRIPTION
-  The `fgetslines' function reads lines a specified number of
+  The `fgetslines' function reads a specified number of
   lines as an array of strings from the file associated with the
   file pointer `fp'.  If the number of lines to be read is left
   unspecified, the function will return the rest of the lines in the
@@ -7385,8 +8008,8 @@ fputs
        fp = fopen (file, "a");
        if (fp == NULL)
          throw OpenError, "Unable to open $file"$;
-       if ((-1 == fputs (s, fp))
-           or (-1 == fclose (fp)))
+       if ((-1 == fputs (str, fp))
+           || (-1 == fclose (fp)))
          throw WriteError, "Error writing to $file"$;
     }
 
@@ -7512,7 +8135,7 @@ fseek
   Reposition a stdio stream
 
  USAGE
-  Integer_Type fseek (File_Type fp, LLong_Type ofs, Integer_Type whence
+  Integer_Type fseek (File_Type fp, LLong_Type ofs, Integer_Type whence)
 
  DESCRIPTION
   The `fseek' function may be used to reposition the file position
@@ -7612,10 +8235,10 @@ pclose
 
  DESCRIPTION
   The `pclose' function waits for the process associated with
-  `fp' to exit and the returns the exit status of the command.
+  `fp' to exit and then returns the exit status of the command.
 
  SEE ALSO
-  pclose, fclose
+  popen, fclose
 
 --------------------------------------------------------------
 
@@ -7677,6 +8300,39 @@ printf
 
  SEE ALSO
   fputs, fprintf, fwrite, message
+
+--------------------------------------------------------------
+
+setvbuf
+
+ SYNOPSIS
+
+ USAGE
+  Int_Type setvbuf (File_Type fp, Int_Type mode, Int_Type size)
+
+ DESCRIPTION
+  The `setvbuf' function may be used to control how the stdio
+  stream specified by the open File_Type object is buffered.
+
+  The `mode' argument must be one of the following values:
+
+   _IONBF   : unbuffered
+   _IOFBF   : fully buffered
+   _IOLBF   : line buffered
+
+  The `size' argument controls the size of the buffer.  If
+  `size' is 0, then the function will not change the size of the
+  buffer, only the mode.  Otherwise, `size' is expected to be
+  larger than 0 and a buffer of the requested size will be allocated
+  for the stream.
+  are buffered.
+
+ NOTES
+  This function must be used only after the stream has been opened and
+  before any other operations have been performed on the stream.
+
+ SEE ALSO
+  fopen, fclose, fflush
 
 --------------------------------------------------------------
 
@@ -8078,7 +8734,7 @@ sprintf
   `S' conversion of floating point numbers.
 
  SEE ALSO
-  string, sscanf, message, pack
+  string, sscanf, message, pack, set_float_format
 
 --------------------------------------------------------------
 
@@ -8399,10 +9055,10 @@ string_match
 
  DESCRIPTION
   The `string_match' function returns zero if `str' does not
-  match regular expression specified by `pat'.  This function
+  match the regular expression specified by `pat'.  This function
   performs the match starting at the first byte of the string.  The
   optional `pos' argument may be used to specify a different byte
-  offse (numbered from 1).  This function returns the position in
+  offset (numbered from 1).  This function returns the position in
   bytes (numbered from 1) of the start of the match in `str'.
   The exact substring matched may be found using
   `string_match_nth'.
@@ -8480,7 +9136,7 @@ string_matches
  DESCRIPTION
   The `string_matches' function combines the functionality of
   `string_match' and `string_match_nth'.  Like
-  `string_match', it matches the test string `str' against
+  `string_match', it matches the string `str' against
   the regular expression `pat'.  If the string does not match the
   pattern the function will return NULL.  Otherwise, the function
   will return an array of strings whose `ith' element is the string that
@@ -9272,11 +9928,8 @@ substr
   returns `"or no"'
 
  NOTES
-  In many cases it is more convenient to use array indexing rather
-  than the `substr' function.  In fact, if UTF-8 mode is not in
-  effect, `substr(s,i+1,strlen(s))' is equivalent to
-  `s[[i:]]'.  Array indexing uses byte-semantics, not character
-  semantics assumed by the `substr' function.
+  This function assumes character semantics and not byte semantics.
+  Use the `substrbytes' function to extract bytes from a string.
 
  SEE ALSO
   is_substr, substrbytes, strlen
@@ -9306,7 +9959,7 @@ substrbytes
 
  NOTES
   In many cases it is more convenient to use array indexing rather
-  than the `substr' function.  In fact
+  than the `substrbytes' function.  In fact
   `substrbytes(s,i+1,-1)' is equivalent to
   `s[[i:]]'.
 
@@ -9511,8 +10164,10 @@ get_struct_field
   x = get_struct_field (Struct_Type s, String field_name)
 
  DESCRIPTION
-   The `get_struct_field' function gets the value of the field
-   whose name is specified by `field_name' of the structure `s'.
+  The `get_struct_field' function gets the value of the field
+  whose name is specified by `field_name' of the structure
+  `s'. If the specified name is not a field of the structure, the
+  function will throw an `InvalidParmError' exception.
 
  SEE ALSO
   set_struct_field, get_struct_field_names, array_info
@@ -9553,6 +10208,25 @@ get_struct_field_names
 
  SEE ALSO
   _push_struct_field_values, get_struct_field
+
+--------------------------------------------------------------
+
+_is_struct_type
+
+ SYNOPSIS
+  Determine whether or not an object is a structure
+
+ USAGE
+  Integer_Type _is_struct_type (X)
+
+ DESCRIPTION
+  The `_is_struct_type' function returns 1 if the parameter
+  refers to a structure or a user-defined type, or to an array of
+  structures or user-defined types.  If the object is neither, 0 will
+  be returned.
+
+ SEE ALSO
+  typeof, _typeof, is_struct_type
 
 --------------------------------------------------------------
 
@@ -9847,7 +10521,7 @@ tic
   function.
 
  SEE ALSO
-  toc, times
+  toc, _toc, _tic, times
 
 --------------------------------------------------------------
 
@@ -9953,7 +10627,7 @@ _toc
   tic/toc functions may be more useful for small time-intervals.
 
  SEE ALSO
-  _tic, _tic, _toc, times, _time
+  _tic, tic, toc, times, _time
 
 --------------------------------------------------------------
 

@@ -1,6 +1,6 @@
 /* Structure type implementation */
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -265,10 +265,10 @@ static _pSLang_Struct_Type *
 	     _pSLang_verror (SL_APPLICATION_ERROR, "A struct field name cannot be NULL");
 	     goto return_error;
 	  }
-
+#if 0
 	if (-1 == _pSLcheck_identifier_syntax (name))
 	  goto return_error;
-
+#endif
 	if (NULL == (f->name = SLang_create_slstring (name)))
 	  goto return_error;
 
@@ -400,7 +400,7 @@ static int pop_to_struct_field (_pSLang_Struct_Type *s, SLCONST char *name)
 static int merge_struct_fields (SLCONST char *atname, _pSLang_Struct_Type *a, _pSLang_Struct_Type *b)
 {
    unsigned int i, j;
-   char **new_names;
+   SLFUTURE_CONST char **new_names;
    _pSLstruct_Field_Type *f, *fmax, *new_fields;
    _pSLstruct_Field_Type *atfield;
    unsigned int num_before, num_insert, num_after, new_num;
@@ -418,7 +418,7 @@ static int merge_struct_fields (SLCONST char *atname, _pSLang_Struct_Type *a, _p
    if (b != NULL)
      {
 	unsigned int nb = b->nfields;
-	new_names = (char **)_SLcalloc (nb, sizeof (char *));
+	new_names = (SLFUTURE_CONST char **)_SLcalloc (nb, sizeof (char *));
 	if (new_names == NULL)
 	  return -1;
 
@@ -912,16 +912,16 @@ static int struct_unary_result (int op, SLtype t, SLtype *result)
    return 1;
 }
 
-static int check_struct_array (SLtype t, SLang_Struct_Type **sp, unsigned int n)
+static int check_struct_array (SLtype t, SLang_Struct_Type **sp, SLuindex_Type n)
 {
-   unsigned int i;
+   SLuindex_Type i;
 
    for (i = 0; i < n; i++)
      {
 	if (sp[i] == NULL)
 	  {
-	     _pSLang_verror (SL_VARIABLE_UNINITIALIZED, "%s[%u] not initialized for binary/unary operation",
-			   SLclass_get_datatype_name(t), i);
+	     _pSLang_verror (SL_VARIABLE_UNINITIALIZED, "%s[%lu] not initialized for binary/unary operation",
+			   SLclass_get_datatype_name(t), (unsigned long) i);
 	     return -1;
 	  }
        }
@@ -933,12 +933,12 @@ static int struct_unary (int op, SLtype a_type, VOID_STAR ap, SLuindex_Type na,
 {
    SLang_Struct_Type **sa;
    Unary_Op_Info_Type *ui;
-   unsigned int i;
+   SLuindex_Type i;
    SLtype result_type;
    SLang_Name_Type *function;
    SLang_Class_Type *bcl;
    int (*apop) (SLtype, VOID_STAR);
-   unsigned int binc;
+   size_t binc;
 
    if (NULL == (ui = find_unary_info (op, a_type)))
      {
@@ -1031,17 +1031,17 @@ static int any_binary_this_result (int op, SLtype a, SLtype b, SLtype *result)
 }
 
 static int do_struct_binary (SLang_Name_Type *function,
-			     SLang_Class_Type *cla, VOID_STAR ap, unsigned int na,
-			     SLang_Class_Type *clb, VOID_STAR bp, unsigned int nb,
+			     SLang_Class_Type *cla, VOID_STAR ap, SLuindex_Type na,
+			     SLang_Class_Type *clb, VOID_STAR bp, SLuindex_Type nb,
 			     SLang_Class_Type *clc, VOID_STAR cp)
 {
-   unsigned int i;
+   SLuindex_Type i;
    SLtype a_type, b_type, c_type;
    int (*cpop) (SLtype, VOID_STAR);
    int (*apush) (SLtype, VOID_STAR);
    int (*bpush) (SLtype, VOID_STAR);
-   unsigned int ainc, binc, cinc;
-   unsigned int num;
+   size_t ainc, binc, cinc;
+   SLuindex_Type num;
 
    if (na == 1) ainc = 0; else ainc = cla->cl_sizeof_type;
    if (nb == 1) binc = 0; else binc = clb->cl_sizeof_type;
@@ -1512,7 +1512,7 @@ static int typecast_method (SLtype a_type, VOID_STAR ap, SLuindex_Type na,
    SLang_Class_Type *acl, *bcl;
    int (*apush) (SLtype, VOID_STAR);
    int (*bpop) (SLtype, VOID_STAR);
-   unsigned int ainc, binc;
+   size_t ainc, binc;
    SLang_Name_Type *f;
 
    if (NULL == (si = find_struct_info (a_type, 1)))
@@ -2162,7 +2162,7 @@ void _pSLstruct_pop_args (int *np)
 void _pSLstruct_push_args (SLang_Array_Type *at)
 {
    _pSLang_Struct_Type **sp;
-   unsigned int num;
+   SLuindex_Type num;
 
    if (at->data_type != SLANG_STRUCT_TYPE)
      {
@@ -2425,3 +2425,69 @@ int _pSLstruct_push_field_ref (SLFUTURE_CONST char *name)
    return ret;
 }
 
+SLang_Struct_Type *SLang_create_struct (SLFUTURE_CONST char **field_names, unsigned int nfields)
+{
+   SLang_Struct_Type *s = create_struct (nfields, field_names, NULL, NULL);
+   if (s != NULL)
+     s->num_refs = 1;
+   return s;
+}
+
+int SLang_pop_struct_field (SLang_Struct_Type *s, char *name)
+{
+   _pSLstruct_Field_Type *f;
+   SLang_Object_Type obj;
+
+   if (NULL == (f = pop_field (s, name, find_field_via_strcmp)))
+     return -1;
+
+   if (-1 == SLang_pop (&obj))
+     return -1;
+
+   if (f->obj.o_data_type != SLANG_NULL_TYPE)
+     SLang_free_object (&f->obj);
+
+   f->obj = obj;
+   return 0;
+}
+
+int SLang_push_struct_field (SLang_Struct_Type *s, char *name)
+{
+   _pSLstruct_Field_Type *f;
+
+   if (NULL == (f = pop_field (s, name, find_field_via_strcmp)))
+     return -1;
+
+   return _pSLpush_slang_obj (&f->obj);
+}
+
+int SLang_pop_struct_fields (SLang_Struct_Type *s, int n)
+{
+   _pSLstruct_Field_Type *fields, *f;
+
+   if (n < 0)
+     n = (int) s->nfields;
+   else if ((unsigned int)n > s->nfields)
+     {
+	_pSLang_verror (SL_Application_Error, "SLang_pop_struct_fields called with too many field values");
+	return -1;
+     }
+
+   fields = s->fields;
+   f = fields + n;
+   while (f > fields)
+     {
+	SLang_Object_Type obj;
+
+	f--;
+
+	if (-1 == SLang_pop (&obj))
+	  return -1;
+
+	if (f->obj.o_data_type != SLANG_NULL_TYPE)
+	  SLang_free_object (&f->obj);
+
+	f->obj = obj;
+     }
+   return 0;
+}

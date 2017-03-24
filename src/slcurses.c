@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -372,6 +372,7 @@ SLcurses_Window_Type *SLcurses_initscr (void)
    SLtt_set_mono (SLCURSES_EXTRACT_COLOR(A_UNDERLINE), NULL, SLTT_ULINE_MASK);
    SLtt_set_mono (SLCURSES_EXTRACT_COLOR(A_REVERSE), NULL, SLTT_REV_MASK);
    /* SLtt_set_mono (SLCURSES_EXTRACT_COLOR(A_BLINK), NULL, SLTT_BLINK_MASK); */
+   /* SLtt_set_mono (SLCURSES_EXTRACT_COLOR(A_ITALIC), NULL, SLTT_ITALIC_MASK); */
    SLtt_set_mono ((SLCURSES_EXTRACT_COLOR(A_BOLD|A_UNDERLINE)), NULL, SLTT_ULINE_MASK|SLTT_BOLD_MASK);
    SLtt_set_mono ((SLCURSES_EXTRACT_COLOR(A_REVERSE|A_UNDERLINE)), NULL, SLTT_ULINE_MASK|SLTT_REV_MASK);
 

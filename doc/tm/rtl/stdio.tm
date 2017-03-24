@@ -1,6 +1,6 @@
 \function{clearerr}
 \synopsis{Clear the error of a file stream}
-\usage{clearerr (File_Type fp}
+\usage{clearerr (File_Type fp)}
 \description
   The \ifun{clearerr} function clears the error and end-of-file flags
   associated with the open file stream \exmp{fp}.
@@ -163,7 +163,7 @@
 \synopsis{Read lines as an array from an open file}
 \usage{String_Type[] fgetslines (File_Type fp [,Int_Type num])}
 \description
-  The \ifun{fgetslines} function reads lines a specified number of
+  The \ifun{fgetslines} function reads a specified number of
   lines as an array of strings from the file associated with the
   file pointer \exmp{fp}.  If the number of lines to be read is left
   unspecified, the function will return the rest of the lines in the
@@ -273,8 +273,8 @@
        fp = fopen (file, "a");
        if (fp == NULL)
          throw OpenError, "Unable to open $file"$;
-       if ((-1 == fputs (s, fp))
-           or (-1 == fclose (fp)))
+       if ((-1 == fputs (str, fp))
+           || (-1 == fclose (fp)))
          throw WriteError, "Error writing to $file"$;
     }
 #v-
@@ -364,7 +364,7 @@
 
 \function{fseek}
 \synopsis{Reposition a stdio stream}
-\usage{Integer_Type fseek (File_Type fp, LLong_Type ofs, Integer_Type whence}
+\usage{Integer_Type fseek (File_Type fp, LLong_Type ofs, Integer_Type whence)}
 \description
   The \ifun{fseek} function may be used to reposition the file position
   pointer associated with the open file stream \exmp{fp}. Specifically,
@@ -436,8 +436,8 @@
 \usage{Integer_Type pclose (File_Type fp)}
 \description
   The \ifun{pclose} function waits for the process associated with
-  \exmp{fp} to exit and the returns the exit status of the command.
-\seealso{pclose, fclose}
+  \exmp{fp} to exit and then returns the exit status of the command.
+\seealso{popen, fclose}
 \done
 
 \function{popen}
@@ -481,5 +481,31 @@
      () = printf ("%s laid %d eggs\n", chicken_name, num_egg);
 #v-
 \seealso{fputs, fprintf, fwrite, message}
+\done
+
+
+\function{setvbuf}
+\synopsis{}
+\usage{Int_Type setvbuf (File_Type fp, Int_Type mode, Int_Type size)}
+\description
+  The \ifun{setvbuf} function may be used to control how the stdio
+  stream specified by the open \dtype{File_Type} object is buffered.
+
+  The \ifun{mode} argument must be one of the following values:
+#v+
+   _IONBF   : unbuffered
+   _IOFBF   : fully buffered
+   _IOLBF   : line buffered
+#v-
+  The \exmp{size} argument controls the size of the buffer.  If
+  \exmp{size} is 0, then the function will not change the size of the
+  buffer, only the mode.  Otherwise, \exmp{size} is expected to be
+  larger than 0 and a buffer of the requested size will be allocated
+  for the stream.
+  are buffered.
+\notes
+  This function must be used only after the stream has been opened and
+  before any other operations have been performed on the stream.
+\seealso{fopen, fclose, fflush}
 \done
 

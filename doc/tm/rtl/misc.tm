@@ -98,13 +98,29 @@
   are equal if they contain identical fields, and the corresponding
   values are equal.
 \example
+#v+
    _eqs (1, 1)             ===> 1
    _eqs (1, 1.0)           ===> 1
    _eqs ("a", 1)           ===> 0
    _eqs ([1,2], [1.0,2.0]) ===> 1
-\seealso{typeof, _eqs, __get_reference, __is_callable}
+#v-
 \notes
    For testing sameness, use \ifun{__is_same}.
+\seealso{typeof, __is_same, __get_reference, __is_callable}
+\done
+
+\function{get_environ}
+\synopsis{Get all environment variables}
+\usage{String_Type[] = get_environ()}
+\description
+   The \ifun{get_environ} function returns an array of strings
+   representing the environmen variables defined for the current
+   process.  Each element of the array will be of the form
+   \exmp{NAME=VALUE}.
+
+   This function will return \NULL if the system does not support this
+   feature.
+\seealso{getenv, putenv, is_defined}
 \done
 
 \function{getenv}
@@ -124,7 +140,7 @@
         USE_ANSI_COLORS = 1;
       }
 #v-
-\seealso{putenv, strlen, is_defined}
+\seealso{get_environ, putenv, strlen, is_defined}
 \done
 
 \function{__get_reference}
@@ -200,32 +216,14 @@
   dereferencing the object.  It returns 1 if the argument is callable,
   or zero otherwise.
 \example
+#v+
    __is_callable (7)      ==> 0
    __is_callable (&sin)   ==> 1
    a = [&sin];
    __is_callable (a[0])   ==> 1
    __is_callable (&a[0])  ==> 0
+#v-
 \seealso{__is_numeric, is_defined}
-\done
-
-\function{__is_numeric}
-\synopsis{Determine whether or not an object is a numeric type}
-\usage{Int_Type __is_numeric (obj)}
-\description
-  This function may be used to determine if an object represents a
-  numeric type.  It returns 0 if the argument is non-numeric, 1 if it
-  is an integer, 2 if a floating point number, and 3 if it is complex.
-  If the argument is an array, then the array type will be used for
-  the test.
-\example
-   __is_numeric ("foo");  ==> 0
-   __is_numeric ("0");    ==> 0
-   __is_numeric (0);      ==> 1
-   __is_numeric (PI);     ==> 2
-   __is_numeric (2j);     ==> 3
-   __is_numeric ([1,2]);  ==> 1
-   __is_numeric ({1,2});  ==> 0
-\seealso{typeof, __is_datatype_numeric}
 \done
 
 \function{__is_datatype_numeric}
@@ -239,6 +237,28 @@
 \seealso{typeof, __is_numeric, __is_callable}
 \done
 
+\function{__is_numeric}
+\synopsis{Determine whether or not an object is a numeric type}
+\usage{Int_Type __is_numeric (obj)}
+\description
+  This function may be used to determine if an object represents a
+  numeric type.  It returns 0 if the argument is non-numeric, 1 if it
+  is an integer, 2 if a floating point number, and 3 if it is complex.
+  If the argument is an array, then the array type will be used for
+  the test.
+\example
+#v+
+   __is_numeric ("foo");  ==> 0
+   __is_numeric ("0");    ==> 0
+   __is_numeric (0);      ==> 1
+   __is_numeric (PI);     ==> 2
+   __is_numeric (2j);     ==> 3
+   __is_numeric ([1,2]);  ==> 1
+   __is_numeric ({1,2});  ==> 0
+#v-
+\seealso{typeof, __is_datatype_numeric}
+\done
+
 \function{__is_same}
 \synopsis{Test for sameness of two objects}
 \usage{Int_Type __is_same (a, b)}
@@ -248,13 +268,15 @@
   the arguments must match and the values of the objects must
   reference the same underlying object.
 \example
+#v+
    __is_same (1, 1)         ===> 1
    __is_same (1, 1.0)       ===> 0
    __is_same ("a", 1)       ===> 0
    __is_same ([1,2], [1,2]) ===> 0
-\seealso{typeof, _eqs, __get_reference, __is_callable}
+#v-
 \notes
    For testing equality, use \ifun{_eqs}.
+\seealso{typeof, _eqs, __get_reference, __is_callable}
 \done
 
 \function{putenv}
@@ -267,6 +289,13 @@
 \notes
     This function may not be available on all systems.
 \seealso{getenv, sprintf}
+\done
+
+\function{__set_argc_argv}
+\synopsis{Set the argument list}
+\usage{__set_argc_argv (Array_Type a)}
+\description
+  This function sets the \ivar{__argc} and \ivar{__argv} intrinsic variables.
 \done
 
 \variable{_slang_install_prefix}
@@ -304,21 +333,6 @@
 \seealso{strbytelen, strlen, strcharlen}
 \done
 
-\function{__uninitialize}
-\synopsis{Uninitialize a variable}
-\usage{__uninitialize (Ref_Type x)}
-\description
-  The \ifun{__uninitialize} function may be used to uninitialize the
-  variable referenced by the parameter \exmp{x}.
-\example
-  The following two lines are equivalent:
-#v+
-     () = __tmp(z);
-     __uninitialize (&z);
-#v-
-\seealso{__tmp, __is_initialized}
-\done
-
 \function{__tmp}
 \synopsis{Returns the value of a variable and uninitialize the variable}
 \usage{__tmp (x)}
@@ -341,6 +355,21 @@
       __tmp(sin(x));
 #v-
 \seealso{__uninitialize, __is_initialized}
+\done
+
+\function{__uninitialize}
+\synopsis{Uninitialize a variable}
+\usage{__uninitialize (Ref_Type x)}
+\description
+  The \ifun{__uninitialize} function may be used to uninitialize the
+  variable referenced by the parameter \exmp{x}.
+\example
+  The following two lines are equivalent:
+#v+
+     () = __tmp(z);
+     __uninitialize (&z);
+#v-
+\seealso{__tmp, __is_initialized}
 \done
 
 \function{use_namespace}

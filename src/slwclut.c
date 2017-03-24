@@ -1,6 +1,6 @@
 /* slwclut.c: wide character lookup tables */
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -338,7 +338,7 @@ static Posix_Char_Class_Type Posix_Char_Class_Table [] =
 static int is_posix_charclass (SLuchar_Type **up, SLuchar_Type *umax, SLwchar_Type *char_classp)
 {
    SLuchar_Type *u, *u1;
-   unsigned int len;
+   size_t len;
    Posix_Char_Class_Type *p;
 
    u = *up;
@@ -1201,7 +1201,7 @@ SLuchar_Type *SLuchar_apply_char_map (SLwchar_Map_Type *map, SLuchar_Type *str)
    SLuchar_Type *str_max;
    SLuchar_Type *output, *output_max, *outptr;
    int use_chmap;
-   unsigned int len;
+   size_t len;
    SLwchar_Type *chmap;
 
    if ((map == NULL) || (str == NULL))
@@ -1252,9 +1252,13 @@ SLuchar_Type *SLuchar_apply_char_map (SLwchar_Map_Type *map, SLuchar_Type *str)
 	unsigned int encoded_len;
 
 	w_in = (SLwchar_Type) *str;
+	if (w_in < 0x80)
+	  str++;
+	else if (NULL == (str = _pSLinterp_decode_wchar (str, str_max, &w_in)))
+	  goto return_error;
+
 	if (w_in < 0x100)
 	  {
-	     str++;
 	     w_out = chmap[w_in];
 	     if ((w_out < 0x80) && (outptr < output_max))
 	       {
@@ -1264,9 +1268,6 @@ SLuchar_Type *SLuchar_apply_char_map (SLwchar_Map_Type *map, SLuchar_Type *str)
 	  }
 	else
 	  {
-	     if (NULL == (str = _pSLinterp_decode_wchar (str, str_max, &w_in)))
-	       goto return_error;
-
 	     if (-1 == SLwchar_apply_char_map (map, &w_in, &w_out, 1))
 	       goto return_error;
 	  }

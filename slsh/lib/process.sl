@@ -1,3 +1,9 @@
+% Copyright (C) 2012-2014 John E. Davis
+%
+% This file is part of the S-Lang Library and may be distributed under the
+% terms of the GNU General Public License.  See the file COPYING for
+% more information.
+%---------------------------------------------------------------------------
 require ("fork");
 require ("fcntl");
 
@@ -210,11 +216,16 @@ private define exec_child (argv, child_fds, required_child_ifds)
    variable hook = qualifier ("pre_exec_hook");
    if (hook != NULL)
      {
+	variable hook_arg = qualifier ("pre_exec_hook_optarg");
 	% Call the hook.  Pass it the list of open descriptors.  All others
 	% will be closed.
 	variable list = {};
 	foreach ifd (child_open_ifds) list_append (list, ifd);
-	(@hook)(list);
+	if (hook_arg == NULL)
+	  (@hook)(list);
+	else
+	  (@hook)(list, hook_arg);
+
 	child_open_ifds = list_to_array (list);
      }
 

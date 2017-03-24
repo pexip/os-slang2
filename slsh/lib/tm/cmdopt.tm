@@ -7,10 +7,10 @@
   \sfun{cmdopt_new} function takes a reference to an error handling
   function that will get called upon error.  In most cases, this
   function should print out the error message, display a usage
-  message, and the call \ifun{exit}.  If the error handler is \NULL,
+  message, and then call \ifun{exit}.  If the error handler is \NULL,
   or it returns instead of calling exit, then an exception will be thrown.
 
-  The error hander must be defined to take a single string argument
+  The error handler must be defined to take a single string argument
   (the error message) and must return nothing.
 \example
 #v+
@@ -155,7 +155,7 @@
 
   Options whose value is optional:
 #v+
-    cmdopt_add (optobj, "f|foo", &v; type="string", optional=DLFT);
+    cmdopt_add (optobj, "f|foo", &v; type="string", optional=DFLT);
     cmdline: pgm -f ...            % set v to DFLT
     cmdline: pgm -fVAL ...         % set v to VAL
     cmdline: pgm --foo ...         % set v to DFLT

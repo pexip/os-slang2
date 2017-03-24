@@ -1,5 +1,6 @@
+/* This configuration file is for all non-Unix OS */
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2013 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -22,7 +23,6 @@ USA.
 #ifndef SL_CONFIG_H
 #define SL_CONFIG_H
 
-/* This configuration file is for all non-Unix OS */
 #ifdef VMS
 # ifdef __DECC
 #  define HAVE_STDLIB_H
@@ -150,6 +150,10 @@ USA.
 # define HAVE_FCNTL_H
 #endif
 
+#if defined(__WIN32__)
+# define HAVE_ENVIRON 1
+#endif
+
 #define HAVE_GETCWD 1
 
 #ifndef VMS
@@ -171,6 +175,9 @@ USA.
 # define HAVE_CHOWN 1
 #endif
 
+#undef HAVE_LSTAT
+#undef HAVE_LCHOWN
+
 #define HAVE_ATEXIT	1
 
 /* Do these systems have these functions?  For now, assume the worst */
@@ -189,6 +196,9 @@ USA.
 
 #undef HAVE_ALARM
 #undef HAVE_PAUSE
+
+#undef HAVE_GETITIMER
+#undef HAVE_SETITIMER
 
 #undef HAVE_SYS_TIME_H
 #undef HAVE_GETTIMEOFDAY
@@ -234,6 +244,8 @@ USA.
 #undef HAVE_FREXPF
 #define HAVE_LDEXP	1
 #undef HAVE_LDEXPF
+#undef HAVE_SINCOS
+#undef HAVE_SINCOSF
 
 #if defined(__WIN32__)
 # define isnan _isnan
@@ -334,6 +346,7 @@ USA.
 #undef HAVE_WAITPID
 #undef HAVE_TTYNAME
 #undef HAVE_TTYNAME_R
+#undef HAVE_GETRUSAGE
 
 /* Files used by the slang-readline interface.  The interface first tries
  * to read SLRLINE_USER_INIT_FILE from $HOME, and if that does not exist, it

@@ -1,6 +1,6 @@
 /* file intrinsics for S-Lang */
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -235,16 +235,16 @@ static void lstat_cmd (char *file)
 	return;
      }
 
-#ifdef __WIN32__
+# ifdef __WIN32__
    opt_attrs = GetFileAttributes (file);
-#else
+# else
    opt_attrs = 0;
-#endif
+# endif
 
    push_stat_struct (&st, opt_attrs);
 #else
    stat_cmd (file);
-#endif
+#endif				       /* HAVE_LSTAT */
 }
 
 #if defined(HAVE_UTIME) || defined(HAVE_UTIMES)
@@ -369,7 +369,7 @@ static char stat_is_cmd (char *what, int *mode_ptr)
 static void readlink_cmd (char *s)
 {
    char buf[2048];
-   int n;
+   ssize_t n;
 
    while ((-1 == (n = readlink (s, buf, sizeof (buf)-1)))
 	  && is_interrupt (errno))
@@ -450,66 +450,37 @@ static int chown_cmd (char *file, int *owner, int *group)
      }
    return 0;
 }
-#endif
 
-/* add trailing slash to dir */
-static void fixup_dir (char *dir)
+static int lchown_cmd (char *file, int *owner, int *group)
 {
-#ifndef VMS
-   int n;
-
-   if ((n = strlen(dir)) > 1)
+#ifdef HAVE_LCHOWN
+   while (-1 == lchown(file, (uid_t) *owner, (gid_t) *group))
      {
-	n--;
-#if defined(IBMPC_SYSTEM)
-      if ( dir[n] != '/' && dir[n] != '\\' )
-      	strcat(dir, "\\" );
-#else
-      if (dir[n] != '/' )
-      	strcat(dir, "/" );
-#endif
+	if (is_interrupt (errno))
+	  continue;
+
+	_pSLerrno_errno = errno;
+	return -1;
      }
-#endif /* !VMS */
+   return 0;
+#else
+   return chown_cmd (file, owner, group);
+#endif
 }
+#endif				       /* HAVE_CHOWN */
 
 static void slget_cwd (void)
 {
-   char cwd[1024];
-   char *p;
-
-#ifndef HAVE_GETCWD
-   p = getwd (cwd);
-#else
-# if defined (__EMX__)
-   p = _getcwd2(cwd, 1022);	       /* includes drive specifier */
-# else
-   p = getcwd(cwd, 1022);	       /* djggp includes drive specifier */
-# endif
-#endif
+   char *p = SLpath_getcwd ();
 
    if (p == NULL)
      {
 	_pSLerrno_errno = errno;
-	SLang_push_null ();
+	(void) SLang_push_null ();
 	return;
      }
 
-#ifndef VMS
-#ifdef __GO32__
-   /* You never know about djgpp since it favors unix */
-     {
-	char ch;
-	p = cwd;
-	while ((ch = *p) != 0)
-	  {
-	     if (ch == '/') *p = '\\';
-	     p++;
-	  }
-     }
-#endif
-   fixup_dir (cwd);
-#endif
-   SLang_push_string (cwd);
+   (void) SLang_push_malloced_string (p);     /* free string even when push fails */
 }
 
 static int chdir_cmd (char *s)
@@ -1121,6 +1092,7 @@ static SLang_Intrin_Fun_Type PosixDir_Name_Table [] =
 #endif
 #ifdef HAVE_CHOWN
    MAKE_INTRINSIC_SII("chown", chown_cmd, SLANG_INT_TYPE),
+   MAKE_INTRINSIC_SII("lchown", lchown_cmd, SLANG_INT_TYPE),
 #endif
    MAKE_INTRINSIC_SI("chmod", chmod_cmd, SLANG_INT_TYPE),
 #ifdef HAVE_UMASK

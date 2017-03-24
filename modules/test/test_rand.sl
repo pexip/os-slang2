@@ -1,5 +1,4 @@
-prepend_to_slang_load_path (".");
-set_import_module_path (".:" + get_import_module_path ());
+() = evalfile("./test.sl");
 require("rand.sl");
 
 private variable CLOSED_UPPER = 1;
@@ -11,17 +10,17 @@ define test_generic (func, ret_type, parms, exp_mean, exp_variance,
    variable a, b, r;
 
    if (typeof ((@func) (__push_list(parms))) != ret_type)
-     () = fprintf (stderr, "${func} did not produce a ${ret_type}\n"$);
+     failed ("${func} did not produce a ${ret_type}"$);
    variable num = 10000;
 
    a = (@func) (__push_list(parms), num);
    if ((length (a) != num)
        || (_typeof (a) != ret_type))
-     () = fprintf (stderr, "${func}(${num}) did not produce a ${num} ${ret_type}\n"$);
+     failed ("${func}(${num}) did not produce a ${num} ${ret_type}"$);
 
    if (any(isnan (a)))
      {
-	() = fprintf (stderr, "${func} produced NaN values\n"$);
+	failed ("${func} produced NaN values"$);
      }
 
    if ((min_r != NULL) && (max_r != NULL))
@@ -33,7 +32,7 @@ define test_generic (func, ret_type, parms, exp_mean, exp_variance,
 	range_error += (((interval_flags & CLOSED_UPPER) == 0) && any (a >= max_r));
 
 	if (range_error)
-	  () = fprintf (stderr, "${func} produced values outside the ${min_r}-${max_r} range\n"$);
+	  failed ("${func} produced values outside the ${min_r}-${max_r} range"$);
      }
 
    if (exp_variance != NULL)
@@ -45,20 +44,17 @@ define test_generic (func, ret_type, parms, exp_mean, exp_variance,
 	variable mean_hi = exp_mean + 3*exp_stddev*w;
 
 	ifnot (mean_lo <= mean <= mean_hi)
-	  () = fprintf (stderr, "${func}'s mean ${mean} outside the expected range: ${mean_lo} - ${mean_hi}\n"$);
+	  failed ("${func}'s mean ${mean} outside the expected range: ${mean_lo} - ${mean_hi}"$);
 
 	variable stddev = sqrt(sum((a-mean)^2)/num);
 	ifnot (feqs (stddev, exp_stddev, 0.1, 1e-4))
-	  {
-	     () = fprintf (stderr, "${func}'s stddev ${stddev} differs from expected value ${exp_stddev} (var=${exp_variance})\n"$);
-	     %print (a);
-	  }
+	  failed ("${func}'s stddev ${stddev} differs from expected value ${exp_stddev} (var=${exp_variance})"$);
      }
 
    b = Int_Type[3,2,1];
    a = (@func) (__push_list(parms), b);
    ifnot (all (array_shape (a) == array_shape(b)))
-     () = fprintf (stderr, "${func}(a) failed to produce an array with the dimensions of a");
+     failed ("${func}(a) failed to produce an array with the dimensions of a");
 }
 
 define test_rand_uniform ()
@@ -211,6 +207,46 @@ define test_rand_int ()
    test_generic (&rand_int, Int_Type, {x0, x1},
 		 0.5*(x0+x1), ((x1-x0+1)^2-1)/12.0, x0, x1,
 		 CLOSED_LOWER|CLOSED_UPPER);
+   variable n = 10000, s = sqrt(n);
+   x0 = -2, x1 = 2;
+   variable r = rand_int (x0, x1, (x1-x0+1)*n);
+   variable failed = 0;
+   _for (x0, x1, 1)
+     {
+	variable x = ();
+	variable i = where (x == r);
+	if (n-3*s < length(i) < n+3*s)
+	  continue;
+	failed++;
+     }
+
+   x0 = INT_MIN; x1 = INT_MAX;
+   variable nbins = 10, binsize = typecast (x1 - x0, UInt_Type);
+   binsize = typecast (binsize/nbins, Int_Type);
+
+   r = rand_int (x0, x1, nbins * n);
+   loop (nbins)
+     {
+	x1 = x0 + binsize;
+	if (x1 < x0)
+	  break;
+
+	i = where (x0 <= r < x1);
+	ifnot (n - 3*s < length(i) < n + 3*s)
+	  failed++;
+
+	x0 = x1;
+     }
+
+   if (failed)
+     {
+	() = fputs ("\
+***WARNING: rand_int produced random numbers outside the 3 sigma range.\n\
+            Run the test again, and if it fails with this warning then\n\
+            file a possible bug report.  This is a statistical test and can\n\
+            produce false positives a small fraction of the time.\n",
+		    stderr);
+     }
 }
 
 define test_rand_exp ()
@@ -245,10 +281,10 @@ private define test_rand ()
    variable b = rand (r, a);
 
    if (any (a != expected_values))
-     () = fprintf (stderr, "The generator failed to produce the expected values");
+     failed ("The generator failed to produce the expected values");
 
    if (any (a != b))
-     () = fprintf (stderr, "Seeding of the new generator failed\n");
+     failed ("Seeding of the new generator failed");
 }
 
 define test_rand_permutation ()
@@ -258,7 +294,7 @@ define test_rand_permutation ()
 	variable p = 1+rand_permutation (10);
 	if ((prod(p) != 3628800) || (sum(p) != (10*11)/2))
 	  {
-	     () = fprintf (stderr, "rand_permutation failed\n");
+	     failed ("rand_permutation failed");
 	  }
      }
 }
@@ -268,7 +304,7 @@ private define check_sampled_array (rt, a, b, n)
    variable dims = array_shape (a);
    dims[0] = n;
    ifnot (_eqs (dims, array_shape(b)))
-     () = fprintf (stderr, "rand_sample failed for %S array using rt=%S, n=%S: found %S\n", a, rt, n,b);
+     failed ("rand_sample failed for %S array using rt=%S, n=%S: found %S", a, rt, n,b);
 }
 
 private define sample_and_check_array (rt, a, n)
@@ -311,6 +347,8 @@ define test_rand_sample ()
 
 define slsh_main ()
 {
+   testing_module ("rand");
+
    test_rand ();
    test_rand_permutation ();
    test_rand_sample ();
@@ -330,4 +368,6 @@ define slsh_main ()
    test_rand_tdist ();
    test_rand_int ();
    test_rand_exp ();
+
+   end_test ();
 }

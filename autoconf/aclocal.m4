@@ -1,4 +1,8 @@
 dnl# -*- mode: sh; mode: fold -*-
+dnl# 0.3.2-0: Add rpath support for freebsd
+dnl# 0.3.1-0: New output variable: CC_SHARED_FLAGS; CC_SHARED is deprecated
+dnl# 0.3.0-0: Added support for parsing /etc/ld.so.conf
+dnl# 0.2.7-3: Change ncurses5w-config to ncursesw5-config (Gilles Espinasse)
 dnl# 0.2.7-2: For the Makefile rules, use cd foo && bar instead of cd foo; bar
 dnl# 0.2.7-1: Use "$ARCH"elfobjs instead of elf"$ARCH"objs for better flexibility
 dnl# 0.2.7-0: Instead of expanding $ARCH at configure time, use \$ARCH for compile-time expansion
@@ -84,6 +88,17 @@ EOF
 ])
 #}}}
 
+AC_DEFUN([JD_GET_SYS_INCLIBS], dnl#{{{
+[
+  if test -x $ac_aux_dir/scripts/getsyslibs.sh
+  then
+    JD_SYS_INCLIBS=`$ac_aux_dir/scripts/getsyslibs.sh`
+  else
+    JD_SYS_INCLIBS=""
+  fi
+])
+dnl#}}}
+
 AC_DEFUN([JD_SET_OBJ_SRC_DIR], dnl#{{{
 [
 #---------------------------------------------------------------------------
@@ -133,7 +148,7 @@ case "$host_os" in
       fi
     fi
   ;;
-  *osf*|*openbsd*)
+  *osf*|*openbsd*|*freebsd*)
     if test "X$GCC" = Xyes
     then
       RPATH="-Wl,-rpath,"
@@ -164,7 +179,19 @@ then
       RPATH="$RPATH$1"
     fi
   else
-    RPATH="$RPATH:$1"
+    _already_there=0
+    for X in `echo $RPATH | sed 's/:/ /g'`
+    do
+      if test "$X" = "$1"
+      then
+        _already_there=1
+	break
+      fi
+    done
+    if test $_already_there = 0
+    then
+      RPATH="$RPATH:$1"
+    fi
   fi
 fi
 ])
@@ -283,12 +310,12 @@ fi
 JD_UP_NAME[]_INC="-I[$]JD_UP_NAME[]_INCLUDE"
 JD_UP_NAME[]_LIB="-L[$]JD_UP_NAME[]_LIB_DIR"
 JD_SET_RPATH([$]JD_UP_NAME[]_LIB_DIR)
-dnl if test "X$GCC" = Xyes
-dnl then
-dnl    RPATH_[]JD_UP_NAME="-Wl,-R[$]JD_UP_NAME[]_LIB_DIR"
-dnl else
-dnl    RPATH_[]JD_UP_NAME="-R[$]JD_UP_NAME[]_LIB_DIR"
-dnl fi
+dnl# if test "X$GCC" = Xyes
+dnl# then
+dnl#    RPATH_[]JD_UP_NAME="-Wl,-R[$]JD_UP_NAME[]_LIB_DIR"
+dnl# else
+dnl#    RPATH_[]JD_UP_NAME="-R[$]JD_UP_NAME[]_LIB_DIR"
+dnl# fi
 
 # gcc under solaris is often not installed correctly.  Avoid specifying
 # -I/usr/include.
@@ -307,7 +334,7 @@ AC_SUBST(JD_UP_NAME[]_LIB)dnl
 AC_SUBST(JD_UP_NAME[]_INC)dnl
 AC_SUBST(JD_UP_NAME[]_LIB_DIR)dnl
 AC_SUBST(JD_UP_NAME[]_INCLUDE)dnl
-dnl AC_SUBST(RPATH_[]JD_UP_NAME)dnl
+dnl# AC_SUBST(RPATH_[]JD_UP_NAME)dnl
 undefine([JD_UP_NAME])dnl
 ])
 
@@ -469,7 +496,7 @@ AC_DEFUN([JD_TERMCAP], dnl#{{{
 AC_PATH_PROG(nc5config, ncurses5-config, no)
 if test "$nc5config" = "no"
 then
-  AC_PATH_PROG(nc5config, ncurses5w-config, no)
+  AC_PATH_PROG(nc5config, ncursesw5-config, no)
 fi
 AC_MSG_CHECKING(for terminfo)
 if test "$nc5config" != "no"
@@ -589,7 +616,8 @@ case "$host_os" in
     ELF_CFLAGS="\$(CFLAGS) -fPIC"
     ELF_LINK="\$(CC) \$(LDFLAGS) -shared -Wl,-O1 -Wl,--version-script,\$(VERSION_SCRIPT) -Wl,-soname,\$(ELFLIB_MAJOR)"
     ELF_DEP_LIBS="\$(DL_LIB) -lm -lc"
-    CC_SHARED="\$(CC) \$(CFLAGS) -shared -fPIC"
+    CC_SHARED_FLAGS="-shared -fPIC"
+    CC_SHARED="\$(CC) $CC_SHARED_FLAGS \$(CFLAGS)"
     ;;
   *solaris* )
     if test "$GCC" = yes
@@ -599,14 +627,16 @@ case "$host_os" in
       ELF_CFLAGS="\$(CFLAGS) -fPIC"
       ELF_LINK="\$(CC) \$(LDFLAGS) -shared -Wl,-ztext -Wl,-h,\$(ELFLIB_MAJOR)"
       ELF_DEP_LIBS="\$(DL_LIB) -lm -lc"
-      CC_SHARED="\$(CC) \$(CFLAGS) -G -fPIC"
+      CC_SHARED_FLAGS="-G -fPIC"
+      CC_SHARED="\$(CC) $CC_SHARED_FLAGS \$(CFLAGS)"
     else
       DYNAMIC_LINK_FLAGS=""
       ELF_CC="\$(CC)"
       ELF_CFLAGS="\$(CFLAGS) -K PIC"
       ELF_LINK="\$(CC) \$(LDFLAGS) -G -h\$(ELFLIB_MAJOR)"
       ELF_DEP_LIBS="\$(DL_LIB) -lm -lc"
-      CC_SHARED="\$(CC) \$(CFLAGS) -G -K PIC"
+      CC_SHARED_FLAGS="-G -K PIC"
+      CC_SHARED="\$(CC) $CC_SHARED_FLAGS \$(CFLAGS)"
     fi
     ;;
    # osr5 or unixware7 with current or late autoconf
@@ -618,7 +648,8 @@ case "$host_os" in
        ELF_CFLAGS="\$(CFLAGS) -fPIC"
        ELF_LINK="\$(CC) \$(LDFLAGS) -shared -Wl,-h,\$(ELFLIB_MAJOR)"
        ELF_DEP_LIBS=
-       CC_SHARED="\$(CC) \$(CFLAGS) -G -fPIC"
+       CC_SHARED_FLAGS="-G -fPIC"
+       CC_SHARED="\$(CC) $CC_SHARED_FLAGS \$(CFLAGS)"
      else
        DYNAMIC_LINK_FLAGS=""
        ELF_CC="\$(CC)"
@@ -626,7 +657,8 @@ case "$host_os" in
        # ELF_LINK="ld -G -z text -h#"
        ELF_LINK="\$(CC) \$(LDFLAGS) -G -z text -h\$(ELFLIB_MAJOR)"
        ELF_DEP_LIBS=
-       CC_SHARED="\$(CC) \$(CFLAGS) -G -K pic"
+       CC_SHARED_FLAGS="-G -K pic"
+       CC_SHARED="\$(CC) $CC_SHARED_FLAGS \$(CFLAGS)"
      fi
      ;;
   *irix6.5* )
@@ -640,14 +672,16 @@ case "$host_os" in
        ELF_CFLAGS="\$(CFLAGS) -fPIC"
        ELF_LINK="\$(CC) \$(LDFLAGS) -shared -Wl,-h,\$(ELFLIB_MAJOR)"
        ELF_DEP_LIBS=
-       CC_SHARED="\$(CC) \$(CFLAGS) -shared -fPIC"
+       CC_SHARED_FLAGS="-shared -fPIC"
+       CC_SHARED="\$(CC) $CC_SHARED_FLAGS \$(CFLAGS)"
      else
        DYNAMIC_LINK_FLAGS=""
        ELF_CC="\$(CC)"
        ELF_CFLAGS="\$(CFLAGS)"     # default anyhow
        ELF_LINK="\$(CC) \$(LDFLAGS) -shared -o \$(ELFLIB_MAJOR)"
        ELF_DEP_LIBS=
-       CC_SHARED="\$(CC) \$(CFLAGS) -shared"
+       CC_SHARED_FLAGS="-shared"
+       CC_SHARED="\$(CC) $CC_SHARED_FLAGS \$(CFLAGS)"
      fi
      ;;
   *darwin* )
@@ -656,7 +690,8 @@ case "$host_os" in
      ELF_CFLAGS="\$(CFLAGS) -fno-common"
      ELF_LINK="\$(CC) \$(LDFLAGS) -dynamiclib -install_name \$(install_lib_dir)/\$(ELFLIB_MAJOR) -compatibility_version \$(ELF_MAJOR_VERSION) -current_version \$(ELF_MAJOR_VERSION).\$(ELF_MINOR_VERSION)"
      ELF_DEP_LIBS="\$(LDFLAGS) \$(DL_LIB)"
-     CC_SHARED="\$(CC) -bundle -flat_namespace -undefined suppress \$(CFLAGS) -fno-common"
+     CC_SHARED_FLAGS="-bundle -flat_namespace -undefined suppress -fno-common"
+     CC_SHARED="\$(CC) $CC_SHARED_FLAGS \$(CFLAGS)"
      ELFLIB="lib\$(THIS_LIB).dylib"
      ELFLIB_MAJOR="lib\$(THIS_LIB).\$(ELF_MAJOR_VERSION).dylib"
      ELFLIB_MAJOR_MINOR="lib\$(THIS_LIB).\$(ELF_MAJOR_VERSION).\$(ELF_MINOR_VERSION).dylib"
@@ -672,7 +707,8 @@ case "$host_os" in
     #fi
     ELF_LINK="\$(CC) \$(LDFLAGS) -shared -Wl,-soname,\$(ELFLIB_MAJOR)"
     ELF_DEP_LIBS="\$(DL_LIB) -lm"
-    CC_SHARED="\$(CC) \$(CFLAGS) -shared -fPIC"
+    CC_SHARED_FLAGS="-shared -fPIC"
+    CC_SHARED="\$(CC) $CC_SHARED_FLAGS \$(CFLAGS)"
     ;;
   *cygwin* )
     DYNAMIC_LINK_FLAGS=""
@@ -683,7 +719,8 @@ case "$host_os" in
     #ELF_LINK="\$(CC) \$(LDFLAGS) -shared -Wl,-O1 -Wl,--version-script,\$(VERSION_SCRIPT) -Wl,-soname,\$(ELFLIB_MAJOR) -Wl,--out-implib=\$(DLL_IMPLIB_NAME) -Wl,-export-all-symbols -Wl,-enable-auto-import"
     ELF_LINK="\$(CC) \$(LDFLAGS) -shared -Wl,-O1 -Wl,--version-script,\$(VERSION_SCRIPT) -Wl,-soname,\$(ELFLIB_MAJOR) -Wl,--out-implib=\$(DLL_IMPLIB_NAME)"
     ELF_DEP_LIBS="\$(DL_LIB) -lm"
-    CC_SHARED="\$(CC) \$(CFLAGS) -shared -DSLANG_DLL=1"
+    CC_SHARED_FLAGS="-shared -DSLANG_DLL=1"
+    CC_SHARED="\$(CC) $CC_SHARED_FLAGS \$(CFLAGS)"
     dnl# CYGWIN prohibits undefined symbols when linking shared libs
     SLANG_LIB_FOR_MODULES="-L\$(ELFDIR) -lslang"
     INSTALL_MODULE="\$(INSTALL)"
@@ -701,7 +738,8 @@ case "$host_os" in
     ELF_CFLAGS="\$(CFLAGS) -fPIC"
     ELF_LINK="\$(CC) \$(LDFLAGS) -shared -Wl,-O1 -Wl,--version-script,\$(VERSION_SCRIPT) -Wl,-soname,\$(ELFLIB_MAJOR)"
     ELF_DEP_LIBS="\$(DL_LIB)"
-    CC_SHARED="\$(CC) \$(CFLAGS) -shared -fPIC"
+    CC_SHARED_FLAGS="-shared -fPIC"
+    CC_SHARED="\$(CC) $CC_SHARED_FLAGS \$(CFLAGS)"
     ;;
   * )
     echo "Note: ELF compiler for host_os=$host_os may be wrong"
@@ -709,7 +747,8 @@ case "$host_os" in
     ELF_CFLAGS="\$(CFLAGS) -fPIC"
     ELF_LINK="\$(CC) \$(LDFLAGS) -shared"
     ELF_DEP_LIBS="\$(DL_LIB) -lm -lc"
-    CC_SHARED="\$(CC) \$(CFLAGS) -shared -fPIC"
+    CC_SHARED_FLAGS="-shared -fPIC"
+    CC_SHARED="\$(CC) $CC_SHARED_FLAGS \$(CFLAGS)"
 esac
 
 AC_SUBST(ELF_CC)
@@ -718,6 +757,7 @@ AC_SUBST(ELF_LINK)
 AC_SUBST(ELF_LINK_CMD)
 AC_SUBST(ELF_DEP_LIBS)
 AC_SUBST(DYNAMIC_LINK_FLAGS)
+AC_SUBST(CC_SHARED_FLAGS)
 AC_SUBST(CC_SHARED)
 AC_SUBST(ELFLIB)
 AC_SUBST(ELFLIB_MAJOR)
@@ -844,6 +884,7 @@ dnl# If $3 is present, then also look in $3/include+$3/lib
 AC_DEFUN([JD_CHECK_FOR_LIBRARY], dnl#{{{
 [
   AC_REQUIRE([JD_EXPAND_PREFIX])dnl
+  AC_REQUIRE([JD_GET_SYS_INCLIBS])dnl
   dnl JD_UPPERCASE($1,JD_ARG1)
   JD_WITH_LIBRARY_PATHS($1)
   AC_MSG_CHECKING(for the $1 library and header files $2)
@@ -864,6 +905,7 @@ AC_DEFUN([JD_CHECK_FOR_LIBRARY], dnl#{{{
 	 /usr/local/$1/include,/usr/local/$1/lib \
 	 /usr/local/include/$1,/usr/local/lib \
 	 /usr/local/include,/usr/local/lib \
+	 $JD_SYS_INCLIBS \
 	 /usr/include/$1,/usr/lib \
 	 /usr/$1/include,/usr/$1/lib \
 	 /usr/include,/usr/lib \
@@ -927,7 +969,7 @@ AC_DEFUN([JD_CHECK_FOR_LIBRARY], dnl#{{{
     dnl#  gcc on some solaris systems.
     JD_ARG1[]_LIB=-L$jd_$1_library_dir
     JD_ARG1[]_LIB_DIR=$jd_$1_library_dir
-    if test "X$jd_$1_library_dir" = "X/usr/lib"
+    if test "X$jd_$1_library_dir" = "X/usr/lib" -o "X$jd_$1_include_dir" = "X/usr/include"
     then
       JD_ARG1[]_LIB=""
     else

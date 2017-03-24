@@ -17,7 +17,7 @@ slsh.sgml: slsh.tm
 view: slsh.1
 	nroff -man slsh.1 | most
 #----------------------------------------------------------------------------
-slshfun.sgml : slshfun.tm
+slshfun.sgml : slshfun.tm slshifun.tm
 	$(TM2SGML) slshfun.tm slshfun.sgml
 slshfun.html : slshfun.sgml
 	$(SGML2HTML) slshfun.sgml
@@ -25,7 +25,7 @@ slshfun.html : slshfun.sgml
 clean:
 	-rm -f *~ *-error manpage.refs manpage.links
 distclean: clean
-	-rm -f slsh.1 slsh.sgml
+	-rm -f slsh.1 slsh.sgml slshfun.sgml slshfun*.html
 install: slsh.1 slshfun.html
 	-mkdir ../man
 	-mv slsh.1 ../man

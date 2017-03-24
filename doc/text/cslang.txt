@@ -1,6 +1,6 @@
-  S-Lang Library C Programmer's Guide (v2.2.4)
+  S-Lang Library C Programmer's Guide (v2.3.0)
   John E. Davis <www.jedsoft.org>
-  Mar 28, 2011
+  Sep 14, 2014
   ____________________________________________________________
 
 
@@ -60,6 +60,7 @@
 
   John Burnell for the OS/2 port of the video and keyboard routines. He
   also made value suggestions regarding the interpreter interface.
+
   Darrel Hankerson for cleaning up and unifying some of the code and the
   makefiles.
 
@@ -478,10 +479,10 @@
   its parameters as pointers to constant objects and make no attempt to
   modify the value to which they point. For example,
 
-        void truncate (char *s)
-        {
-           s[0] = 0;
-        }
+             void truncate (char *s)
+             {
+                s[0] = 0;
+             }
 
   is illegal since the function modifies the string s.
 
@@ -613,24 +614,24 @@
   It is useful to extend this function to take an arbitray number of
   arguments and return the lesser. Consider the following variant:
 
-      double intrin_min_n (int *num_ptr)
-      {
-         double min_value, x;
-         unsigned int num = (unsigned int) *num_ptr;
-
-         if (-1 == SLang_pop_double (&min_value))
-           return 0.0;
-         num--;
-
-         while (num > 0)
+           double intrin_min_n (int *num_ptr)
            {
-              num--;
-              if (-1 == SLang_pop_double (&x))
+              double min_value, x;
+              unsigned int num = (unsigned int) *num_ptr;
+
+              if (-1 == SLang_pop_double (&min_value))
                 return 0.0;
-              if (x < min_value) min_value = x;
+              num--;
+
+              while (num > 0)
+                {
+                   num--;
+                   if (-1 == SLang_pop_double (&x))
+                     return 0.0;
+                   if (x < min_value) min_value = x;
+                }
+              return min_value;
            }
-         return min_value;
-      }
 
   Here the number to compare is passed to the function and the actual
   numbers are removed from the stack via the SLang_pop_double function.
@@ -654,25 +655,25 @@
   An intrinsic function can query the value of the variable
   SLang_Num_Function_Args to obtain the necessary information:
 
-      double intrin_min (void)
-      {
-         double min_value, x;
-
-         unsigned int num = SLang_Num_Function_Args;
-
-         if (-1 == SLang_pop_double (&min_value, NULL, NULL))
-           return 0.0;
-         num--;
-
-         while (num > 0)
+           double intrin_min (void)
            {
-              num--;
-              if (-1 == SLang_pop_double (&x, NULL, NULL))
+              double min_value, x;
+
+              unsigned int num = SLang_Num_Function_Args;
+
+              if (-1 == SLang_pop_double (&min_value, NULL, NULL))
                 return 0.0;
-              if (x < min_value) min_value = x;
+              num--;
+
+              while (num > 0)
+                {
+                   num--;
+                   if (-1 == SLang_pop_double (&x, NULL, NULL))
+                     return 0.0;
+                   if (x < min_value) min_value = x;
+                }
+              return min_value;
            }
-         return min_value;
-      }
 
   This may be declared as an intrinsic using:
 
@@ -698,6 +699,7 @@
 
   One can make it known to the interpreter as I_Variable via a statement
   such as
+
             if (-1 == SLadd_intrinsic_variable ("I_Variable", &I,
                                                  SLANG_INT_TYPE, 0))
               exit (EXIT_FAILURE);
@@ -732,20 +734,20 @@
   One should not make the mistake of trying to use the same address for
   different variables as the following example illustrates:
 
-       int do_not_try_this (void)
-       {
-          static char *names[3] = {"larry", "curly", "moe"};
-          unsigned int i;
-
-          for (i = 0; i < 3; i++)
+            int do_not_try_this (void)
             {
-               int value;
-               if (-1 == SLadd_intrinsic_variable (names[i], (VOID_STAR) &value,
-                                                   SLANG_INT_TYPE, 1))
-                 return -1;
+               static char *names[3] = {"larry", "curly", "moe"};
+               unsigned int i;
+
+               for (i = 0; i < 3; i++)
+                 {
+                    int value;
+                    if (-1 == SLadd_intrinsic_variable (names[i], (VOID_STAR) &value,
+                                                        SLANG_INT_TYPE, 1))
+                      return -1;
+                 }
+               return 0;
             }
-          return 0;
-       }
 
   Not only does this piece of code create intrinsic variables that use
   the same address, it also uses the address of a local variable that
@@ -869,30 +871,30 @@
   stack. A diagonal array is a 2-d array with all elements zero except
   for those along the diagonal, which have a value of one:
 
-     void make_diagonal_array (SLindex_Type n)
-     {
-        SLang_Array_Type *at;
-        SLindex_Type dims[2];
-        SLindex_Type i, one;
-
-        dims[0] = dims[1] = n;
-        at = SLang_create_array (SLANG_INT_TYPE, 0, NULL, dims, 2);
-        if (at == NULL)
-          return;
-
-        one = 1;
-        for (i = 0; i < n; i++)
+          void make_diagonal_array (SLindex_Type n)
           {
-             dims[0] = dims[1] = i;
-             if (-1 == SLang_set_array_element (at, dims, &one))
-               {
-                  SLang_free_array (at);
-                  return;
-               }
-          }
+             SLang_Array_Type *at;
+             SLindex_Type dims[2];
+             SLindex_Type i, one;
 
-        (void) SLang_push_array (at, 1);
-     }
+             dims[0] = dims[1] = n;
+             at = SLang_create_array (SLANG_INT_TYPE, 0, NULL, dims, 2);
+             if (at == NULL)
+               return;
+
+             one = 1;
+             for (i = 0; i < n; i++)
+               {
+                  dims[0] = dims[1] = i;
+                  if (-1 == SLang_set_array_element (at, dims, &one))
+                    {
+                       SLang_free_array (at);
+                       return;
+                    }
+               }
+
+             (void) SLang_push_array (at, 1);
+          }
 
   In this example, only the diagonal elements of the array were set.
   This is bacause when the array was created, all its elements were set
@@ -902,36 +904,36 @@
   particular, consider one that computes the trace of a 2-d matrix,
   i.e., the sum of the diagonal elements:
 
-     double compute_trace (void)
-     {
-        SLang_Array_Type *at;
-        double trace;
-        SLindex_Type dims[2];
-
-        if (-1 == SLang_pop_array_of_type (&at, SLANG_DOUBLE_TYPE))
-          return 0.0;
-
-        /* We want a 2-d square matrix.  If the matrix is 1-d and has only one
-           element, then return that element. */
-        trace = 0.0;
-        if (((at->num_dims == 1) && (at->dims[0] == 1))
-            || ((at->num_dims == 2) && (at->dims[0] == at->dims[1])))
+          double compute_trace (void)
           {
-             double dtrace;
-             SLindex_Type n = at->dims[0];
+             SLang_Array_Type *at;
+             double trace;
+             SLindex_Type dims[2];
 
-             for (i = 0; i < n; i++)
+             if (-1 == SLang_pop_array_of_type (&at, SLANG_DOUBLE_TYPE))
+               return 0.0;
+
+             /* We want a 2-d square matrix.  If the matrix is 1-d and has only one
+                element, then return that element. */
+             trace = 0.0;
+             if (((at->num_dims == 1) && (at->dims[0] == 1))
+                 || ((at->num_dims == 2) && (at->dims[0] == at->dims[1])))
                {
-                  dims[0] = dims[1] = i;
-                  (void) SLang_get_array_element (at, &dims, &dtrace);
-                  trace += dtrace;
-               }
-          }
-       else SLang_verror (SL_TYPE_MISMATCH, "Expecting a square matrix");
+                  double dtrace;
+                  SLindex_Type n = at->dims[0];
 
-       SLang_free_array (at);
-       return trace;
-     }
+                  for (i = 0; i < n; i++)
+                    {
+                       dims[0] = dims[1] = i;
+                       (void) SLang_get_array_element (at, &dims, &dtrace);
+                       trace += dtrace;
+                    }
+               }
+            else SLang_verror (SL_TYPE_MISMATCH, "Expecting a square matrix");
+
+            SLang_free_array (at);
+            return trace;
+          }
 
   In this example, SLang_pop_array_of_type was used to pop an array of
   doubles from the stack. This function will make implicit typecasts in
@@ -950,25 +952,25 @@
   create and return a structure with a string and integer field to the
   interpreter's stack:
 
-      int push_struct_example (char *string_value, int int_value)
-      {
-         char *field_names[2];
-         SLtype field_types[2];
-         VOID_STAR field_values[2];
+           int push_struct_example (char *string_value, int int_value)
+           {
+              char *field_names[2];
+              SLtype field_types[2];
+              VOID_STAR field_values[2];
 
-         field_names[0] = "string_field";
-         field_types[0] = SLANG_STRING_TYPE;
-         field_values[0] = &string_value;
+              field_names[0] = "string_field";
+              field_types[0] = SLANG_STRING_TYPE;
+              field_values[0] = &string_value;
 
-         field_names[1] = "int_field";
-         field_types[1] = SLANG_INT_TYPE;
-         field_values[1] = &int_value;
+              field_names[1] = "int_field";
+              field_types[1] = SLANG_INT_TYPE;
+              field_values[1] = &int_value;
 
-         if (-1 == SLstruct_create_struct (2, field_names,
-                                              field_types, field_values))
-           return -1;
-         return 0;
-      }
+              if (-1 == SLstruct_create_struct (2, field_names,
+                                                   field_types, field_values))
+                return -1;
+              return 0;
+           }
 
   Here, SLstruct_create_struct is used to push a structure with the
   specified field names and values onto the interpreter's stack.
@@ -1148,7 +1150,7 @@
 
   Now suppose that My_Window is a pointer to a Window_Type object, i.e.,
 
-      Window_Type *My_Window;
+           Window_Type *My_Window;
 
   We can make this variable available to the interpreter via the
   SLadd_istruct_table function:
@@ -1191,11 +1193,11 @@
   signal can be made off-limits to the interpreter via the
   SLsig_forbid_signal function:
 
-      /* forbid a signal handler for SIGHUP */
-      SLsig_forbid_signal (SIGHUP, 1);
+           /* forbid a signal handler for SIGHUP */
+           SLsig_forbid_signal (SIGHUP, 1);
 
-      /* Allow a signal handler for SIGTERM */
-      SLsig_forbid_signal (SIGTERM, 0);
+           /* Allow a signal handler for SIGTERM */
+           SLsig_forbid_signal (SIGTERM, 0);
 
   By default, all signals are allowed access from the interpreter.
 
@@ -1214,7 +1216,7 @@
   SLang_init_tty. Before exiting the program, the function
   SLang_reset_tty must be called to restore the keyboard interface to
   its original state. Once initialized, the low-level SLang_getkey
-  function may be used to read simgle keyboard characters from the
+  function may be used to read single keyboard characters from the
   terminal. An application using the higher-level SLkp interface will
   read charcters using the SLkp_getkey function.
 
@@ -1252,10 +1254,15 @@
   facilitate this task.
 
   The second parameter is used to specify whether or not flow control
-  should be used. If this parameter is zero, flow control is enabled
-  otherwise it is disabled. Disabling flow control is necessary to pass
-  certain characters to the application (e.g., Ctrl-S and Ctrl-Q).  For
-  some systems such as MSDOS, this parameter is meaningless.
+  should be used. If this parameter is zero, flow control is enabled.
+  If the value is positive, flow control will be disabled. Disabling
+  flow control is necessary to pass certain characters to the
+  application (e.g., Ctrl-S and Ctrl-Q). Otherwise, the value is
+  negative and the flow control behavior will be inherited from the
+  terminal. The latter interpretation was added to version 2.3.0 of the
+  library; earlier versions disabled flow control for both positive and
+  negative values of this parameter. For some systems such as MSDOS,
+  this parameter is meaningless.
 
   The third parameter, opost, is used to turn output processing on or
   off. If opost is zero, output processing is not turned on otherwise,
@@ -1394,40 +1401,40 @@
   Here is a simple example that reads keys from the terminal until one
   presses Ctrl-G or until 5 seconds have gone by with no input:
 
-        #include <stdio.h>
-        #include <slang.h>
-        int main ()
-        {
-           int abort_char = 7;  /* For MSDOS, use 34 as scan code */
-           unsigned int ch;
-
-           if (-1 == SLang_init_tty (abort_char, 0, 1))
+             #include <stdio.h>
+             #include <slang.h>
+             int main ()
              {
-                fprintf (stderr, "Unable to initialize the terminal.\n");
-                exit (-1);
-             }
-           SLang_set_abort_signal (NULL);
-           while (1)
-             {
-                fputs ("\nPress any key.  To quit, press Ctrl-G: ", stdout);
-                fflush (stdout);
-                if (SLang_input_pending (50) == 0)  /* 50/10 seconds */
-                  {
-                     fputs ("Waited too long! Bye\n", stdout);
-                     break;
-                  }
+                int abort_char = 7;  /* For MSDOS, use 34 as scan code */
+                unsigned int ch;
 
-                ch = SLang_getkey ();
-                if (SLang_get_error () == SL_UserBreak_Error)
+                if (-1 == SLang_init_tty (abort_char, 0, 1))
                   {
-                     fputs ("Ctrl-G pressed!  Bye\n", stdout);
-                     break;
+                     fprintf (stderr, "Unable to initialize the terminal.\n");
+                     exit (-1);
                   }
-                putc ((int) ch, stdout);
+                SLang_set_abort_signal (NULL);
+                while (1)
+                  {
+                     fputs ("\nPress any key.  To quit, press Ctrl-G: ", stdout);
+                     fflush (stdout);
+                     if (SLang_input_pending (50) == 0)  /* 50/10 seconds */
+                       {
+                          fputs ("Waited too long! Bye\n", stdout);
+                          break;
+                       }
+
+                     ch = SLang_getkey ();
+                     if (SLang_get_error () == SL_UserBreak_Error)
+                       {
+                          fputs ("Ctrl-G pressed!  Bye\n", stdout);
+                          break;
+                       }
+                     putc ((int) ch, stdout);
+                  }
+                SLang_reset_tty ();
+                return 0;
              }
-           SLang_reset_tty ();
-           return 0;
-        }
 
   6.6.  Reading Keyboard Input with SLkp_getkey
 
@@ -1731,33 +1738,33 @@
   handler. The following code illustrates the main ideas involved in
   handling such events:
 
-       static volatile int Screen_Size_Changed;
-       static sigwinch_handler (int sig)
-       {
-          Screen_Size_Changed = 1;
-          SLsignal (SIGWINCH, sigwinch_handler);
-       }
-
-       int main (int argc, char **argv)
-       {
-          SLsignal (SIGWINCH, sigwinch_handler);
-          SLsmg_init_smg ();
-            .
-            .
-          /* Now enter main loop */
-          while (not_done)
+            static volatile int Screen_Size_Changed;
+            static sigwinch_handler (int sig)
             {
-               if (Screen_Size_Changed)
-                 {
-                    SLtt_get_screen_size ();
-                    SLsmg_reinit_smg ();
-                    redraw_display ();
-                 }
-               .
-               .
+               Screen_Size_Changed = 1;
+               SLsignal (SIGWINCH, sigwinch_handler);
             }
-         return 0;
-       }
+
+            int main (int argc, char **argv)
+            {
+               SLsignal (SIGWINCH, sigwinch_handler);
+               SLsmg_init_smg ();
+                 .
+                 .
+               /* Now enter main loop */
+               while (not_done)
+                 {
+                    if (Screen_Size_Changed)
+                      {
+                         SLtt_get_screen_size ();
+                         SLsmg_reinit_smg ();
+                         redraw_display ();
+                      }
+                    .
+                    .
+                 }
+              return 0;
+            }
 
   8.4.  SLsmg Functions
 
@@ -1781,6 +1788,7 @@
   coordinate (0, 0), i.e., the top row of the screen corresponds to row
   = 0 and the first column corresponds to col = 0. The last row of the
   screen is given by row = SLtt_Screen_Rows - 1.
+
   It is possible to change the origin of the coordinate system by using
   the function SLsmg_set_screen_start with prototype:
 
@@ -1865,7 +1873,7 @@
 
      void SLsmg_write_wrapped_string(SLuchar_Type *str, int r, int c,
         unsigned int dr, unsigned int dc, int fill)
-        The purpose of this function is two write a string str to a box
+        The purpose of this function is to write a string str to a box
         defined by rows and columns satisfying r<=row<r+dc and
         c<=column<c+dc. The string will be wrapped at the column
         boundaries of the box and truncated if its size exceeds to size
@@ -1891,6 +1899,7 @@
 
      void SLsmg_erase_eol (void);
         Erase line from current position to the end of the line.
+
      void SLsmg_erase_eos (void);
         Erase from the current position to the end of the screen.
 
@@ -2095,7 +2104,7 @@
   int SLsmg_Tab_Width; Set this variable to the tab width that will be
   used when expanding tab characters. The default is 8.
 
-  int SLsmg_Display_Eight_Bit This variable determines how characters
+  int SLsmg_Display_Eight_Bit; This variable determines how characters
   with the high bit set are to be output. Specifically, a character with
   the high bit set with a value greater than or equal to this value is
   output as is; otherwise, it will be output in a 7-bit representation.
@@ -2174,8 +2183,8 @@
   The S-Lang library provides two functions for blocking and unblocking
   the above signals:
 
-      int SLsig_block_signals (void);
-      int SLsig_unblock_signals (void);
+           int SLsig_block_signals (void);
+           int SLsig_unblock_signals (void);
 
   It should be noted that for every call to SLsig_block_signals, a cor-
   responding call should be made to SLsig_unblock_signals, e.g.,
@@ -2349,11 +2358,11 @@
 
   If you currently use:
 
-        SLPreprocess_Type pt;
-        SLprep_open_prep (&pt);
-           .
-           .
-        SLprep_close_prep (&pt);
+             SLPreprocess_Type pt;
+             SLprep_open_prep (&pt);
+                .
+                .
+             SLprep_close_prep (&pt);
 
   Then change it to:
 
@@ -2495,24 +2504,24 @@
   such modifications or work under the terms of Section 1 above,
   provided that you also meet all of these conditions:
 
-      a) You must cause the modified files to carry prominent notices
-      stating that you changed the files and the date of any change.
+           a) You must cause the modified files to carry prominent notices
+           stating that you changed the files and the date of any change.
 
-      b) You must cause any work that you distribute or publish, that in
-      whole or in part contains or is derived from the Program or any
-      part thereof, to be licensed as a whole at no charge to all third
-      parties under the terms of this License.
+           b) You must cause any work that you distribute or publish, that in
+           whole or in part contains or is derived from the Program or any
+           part thereof, to be licensed as a whole at no charge to all third
+           parties under the terms of this License.
 
-      c) If the modified program normally reads commands interactively
-      when run, you must cause it, when started running for such
-      interactive use in the most ordinary way, to print or display an
-      announcement including an appropriate copyright notice and a
-      notice that there is no warranty (or else, saying that you provide
-      a warranty) and that users may redistribute the program under
-      these conditions, and telling the user how to view a copy of this
-      License.  (Exception: if the Program itself is interactive but
-      does not normally print such an announcement, your work based on
-      the Program is not required to print an announcement.)
+           c) If the modified program normally reads commands interactively
+           when run, you must cause it, when started running for such
+           interactive use in the most ordinary way, to print or display an
+           announcement including an appropriate copyright notice and a
+           notice that there is no warranty (or else, saying that you provide
+           a warranty) and that users may redistribute the program under
+           these conditions, and telling the user how to view a copy of this
+           License.  (Exception: if the Program itself is interactive but
+           does not normally print such an announcement, your work based on
+           the Program is not required to print an announcement.)
 
   These requirements apply to the modified work as a whole. If identifi-
   able sections of that work are not derived from the Program, and can
@@ -2683,6 +2692,7 @@
                             END OF TERMS AND CONDITIONS
 
   How to Apply These Terms to Your New Programs
+
   If you develop a new program, and you want it to be of the greatest
   possible use to the public, the best way to achieve this is to make it
   free software which everyone can redistribute and change under these
