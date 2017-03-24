@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -45,11 +45,11 @@ char *SLmake_string (SLFUTURE_CONST char *str)
    return SLmake_nstring(str, strlen (str));
 }
 
-char *SLmake_nstring (SLFUTURE_CONST char *str, unsigned int n)
+char *SLmake_nstring (SLFUTURE_CONST char *str, SLstrlen_Type n)
 {
    char *ptr;
 
-   if (NULL == (ptr = SLmalloc(n + 1)))
+   if (NULL == (ptr = (char *)SLmalloc(n + 1)))
      {
 	return NULL;
      }

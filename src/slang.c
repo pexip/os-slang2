@@ -1,7 +1,7 @@
 /* -*- mode: C; mode: fold; -*- */
 /* slang.c  --- guts of S-Lang interpreter */
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -97,6 +97,9 @@ typedef struct _pSLBlock_Type
 {
    _pSLang_BC_Type bc_main_type;
    unsigned char bc_sub_type;	       /* no types greater than 255 allowed here */
+   unsigned char bc_flags;
+#define BC_LITERAL_MASK 0x1	       /* if object is a literal */
+
    unsigned short linenum;
    union
      {
@@ -223,9 +226,9 @@ static SLang_Object_Type *Run_Stack;
 static SLang_Object_Type *Stack_Pointer;
 static SLang_Object_Type *Stack_Pointer_Max;
 
-/* Might want to increase this. */
-static SLang_Object_Type Local_Variable_Stack[SLANG_MAX_LOCAL_STACK];
-static SLang_Object_Type *Local_Variable_Frame = Local_Variable_Stack;
+static SLang_Object_Type *Local_Variable_Stack;
+static SLang_Object_Type *Local_Variable_Stack_Max;
+static SLang_Object_Type *Local_Variable_Frame;   /* points into Local_Variable_Stack */
 
 #define INTERRUPT_ERROR		0x01
 #define INTERRUPT_SIGNAL	0x02
@@ -877,6 +880,27 @@ int SLroll_stack (int np)
    return roll_stack (np);
 }
 
+int SLstack_exch (unsigned int a, unsigned int b)
+{
+   SLang_Object_Type *ap, *bp;
+   SLang_Object_Type tmp;
+   unsigned int stklen = (unsigned int)(Stack_Pointer - Run_Stack);
+
+   if ((a >= stklen) || (b >= stklen))
+     {
+	(void) SLang_set_error (SL_STACK_UNDERFLOW);
+	return -1;
+     }
+   ap = Stack_Pointer - (a+1);
+   bp = Stack_Pointer - (b+1);
+
+   tmp = *ap;
+   *ap = *bp;
+   *bp = tmp;
+
+   return 0;
+}
+
 int SLstack_depth (void)
 {
    return (int) (Stack_Pointer - Run_Stack);
@@ -1080,7 +1104,7 @@ int _pSLang_get_qualifiers_intrin (SLang_Struct_Type **qp)
 }
 
 /* This may be called from intrinsic functions */
-int _pSLang_qualifier_exists (SLCONST char *name)
+int SLang_qualifier_exists (SLCONST char *name)
 {
    if (Function_Qualifiers == NULL)
      return 0;
@@ -1088,62 +1112,140 @@ int _pSLang_qualifier_exists (SLCONST char *name)
    return (NULL != _pSLstruct_get_field_value (Function_Qualifiers, name));
 }
 
-int _pSLang_get_int_qualifier (SLCONST char *name, int *p, int def)
+/* returns -1 upon error, 0 if qualifier does not exist,
+ * 1 if qualifier exists and has correct type,
+ * 2 if qualifier had to be converted to requested type.
+ * If 1, then use the first object pointer but do not free it.
+ * If 2, then use the second object pointer and free it.
+ */
+static int check_qualifier (SLCONST char *name, SLtype t,
+			    SLang_Object_Type **op, SLang_Object_Type *o)
 {
    SLang_Object_Type *objp;
 
    if ((Function_Qualifiers == NULL)
-       || (NULL == (objp = _pSLstruct_get_field_value (Function_Qualifiers, name))))
+       || (NULL == (objp = _pSLstruct_get_field_value (Function_Qualifiers, name)))
+       || (objp->o_data_type == SLANG_NULL_TYPE)
+      )
      {
-	*p = def;
+	*op = NULL;
 	return 0;
      }
-   if (objp->o_data_type == SLANG_INT_TYPE)
+
+   if (objp->o_data_type == t)
+     {
+	*op = objp;
+	return 1;
+     }
+
+   if (-1 == _pSLpush_slang_obj (objp))
+     return -1;
+
+   if (-1 == pop_object_of_type (t, o, 0))
+     {
+	SLang_verror (0, "Expecting '%s' qualifier to be %s",
+		      name, SLclass_get_datatype_name (t));
+	return -1;
+     }
+   return 2;
+}
+
+int SLang_get_int_qualifier (SLCONST char *name, int *p, int def)
+{
+   SLang_Object_Type *objp;
+   SLang_Object_Type obj;
+   int status;
+
+   status = check_qualifier (name, SLANG_INT_TYPE, &objp, &obj);
+   if (status <= 0)
+     {
+	*p = def;
+	return status;
+     }
+   if (status == 1)
      {
 	*p = objp->v.int_val;
 	return 0;
      }
-   if ((-1 == _pSLpush_slang_obj (objp))
-       || (-1 == pop_int (p)))
-     {
-	SLang_verror (0, "Expecting '%s' qualifier to be an integer", name);
-	return -1;
-     }
+   *p = obj.v.int_val;
+   /* SLang_free_object (&obj); not necessary for scalars */
    return 0;
 }
 
-int _pSLang_get_string_qualifier (SLCONST char *name, char **p, SLFUTURE_CONST char *def)
+int SLang_get_long_qualifier (SLCONST char *name, long *p, long def)
 {
    SLang_Object_Type *objp;
+   SLang_Object_Type obj;
+   int status;
 
-   if ((Function_Qualifiers == NULL)
-       || (NULL == (objp = _pSLstruct_get_field_value (Function_Qualifiers, name))))
+   status = check_qualifier (name, SLANG_LONG_TYPE, &objp, &obj);
+   if (status <= 0)
      {
-	if (def == NULL)
-	  {
-	     *p = NULL;
-	     return 0;
-	  }
-
-	if (NULL == (*p = SLang_create_slstring (def)))
-	  return -1;
-
+	*p = def;
+	return status;
+     }
+   if (status == 1)
+     {
+	*p = objp->v.long_val;
 	return 0;
      }
+   *p = obj.v.long_val;
+   /* SLang_free_object (&obj); not necessary for scalars */
+   return 0;
+}
 
-   if (objp->o_data_type == SLANG_STRING_TYPE)
+#if SLANG_HAS_FLOAT
+int SLang_get_double_qualifier (SLCONST char *name, double *p, double def)
+{
+   SLang_Object_Type *objp;
+   SLang_Object_Type obj;
+   int status;
+
+   status = check_qualifier (name, SLANG_DOUBLE_TYPE, &objp, &obj);
+   if (status <= 0)
+     {
+	*p = def;
+	return status;
+     }
+   if (status == 1)
+     {
+	*p = objp->v.double_val;
+	return 0;
+     }
+   *p = obj.v.double_val;
+   /* SLang_free_object (&obj); not necessary for scalars */
+   return 0;
+}
+#endif
+
+int SLang_get_string_qualifier (SLCONST char *name, char **p, SLFUTURE_CONST char *def)
+{
+   SLang_Object_Type *objp;
+   SLang_Object_Type obj;
+   int status;
+
+   status = check_qualifier (name, SLANG_STRING_TYPE, &objp, &obj);
+   if (status <= 0)
+     {
+	if (status == 0)
+	  {
+	     if ((def != NULL)
+		 && (NULL == (def = SLang_create_slstring (def))))
+	       status = -1;
+	     else *p = (char *)def;
+	  }
+	return status;
+     }
+
+   if (status == 1)
      {
 	if (NULL == (*p = SLang_create_slstring (objp->v.s_val)))
 	  return -1;
 	return 0;
      }
 
-   if ((-1 == _pSLpush_slang_obj (objp))
-       || (-1 == SLang_pop_slstring (p)))
-     {
-	SLang_verror (0, "Expecting '%s' qualifier to be a string", name);
-	return -1;
-     }
+   *p = obj.v.s_val;
+   /* SLang_free_object (&obj); not necessary, since we own v.s_val */
    return 0;
 }
 #endif
@@ -2899,7 +3001,7 @@ static char *nt_ref_string (VOID_STAR vdata)
    SLang_NameSpace_Type *ns;
    SLang_Name_Type *nt = *(SLang_Name_Type **)vdata;
    SLCONST char *name;
-   unsigned int len;
+   SLstrlen_Type len;
    char *s;
 
    ns = _pSLns_find_object_namespace (nt);
@@ -2912,15 +3014,15 @@ static char *nt_ref_string (VOID_STAR vdata)
    if ((ns->namespace_name != NULL)
        && (0 != strcmp (ns->namespace_name, "Global")))
      {
-	unsigned int dlen = strlen (ns->namespace_name);
-	s = SLmalloc (len + dlen + 4);
+	SLstrlen_Type dlen = strlen (ns->namespace_name);
+	s = (char *)SLmalloc (len + dlen + 4);
 	if (s == NULL)
 	  return NULL;
 	(void) sprintf (s, "&%s->%s", ns->namespace_name, name);
 	return s;
      }
 
-   if (NULL == (s = SLmalloc (len + 2)))
+   if (NULL == (s = (char *)SLmalloc (len + 2)))
      return NULL;
 
    *s = '&';
@@ -3378,7 +3480,7 @@ static int execute_intrinsic_fun (SLang_Intrin_Fun_Type *objf)
 #endif
    VOID_STAR p[SLANG_MAX_INTRIN_ARGS];
    SLang_Object_Type objs[SLANG_MAX_INTRIN_ARGS];
-   long ret;
+   ptrdiff_t ret;
    SLtype ret_type;
    unsigned int argc;
    unsigned int i;
@@ -3910,7 +4012,8 @@ static void lang_do_and_orelse (int is_or, SLBlock_Type *addr, SLBlock_Type *add
 	    || (-1 == pop_ctrl_integer (&test)))
 	  return;
 
-	if (is_or == (test != 0))
+	test = (test != 0);
+	if (is_or == test)
 	  break;
 
 	/* if (((stype == SLANG_BCST_ANDELSE) && (test == 0))
@@ -4256,7 +4359,7 @@ static SLang_Name_Type *
 		    SLang_NameSpace_Type *gns,
 		    int do_error)
 {
-   return find_global_hashed_name (name, _pSLcompute_string_hash (name), pns, sns, gns, do_error);
+   return find_global_hashed_name (name, SLcompute_string_hash (name), pns, sns, gns, do_error);
 }
 
 #if SLANG_HAS_DEBUGGER_SUPPORT
@@ -4406,7 +4509,7 @@ static void execute_slang_fun (_pSLang_Function_Type *fun, unsigned int linenum)
    /* set new stack frame */
    lvf = frame = Local_Variable_Frame;
    i = n_locals;
-   if ((lvf + i) >= Local_Variable_Stack + SLANG_MAX_LOCAL_STACK)
+   if ((lvf + i) >= Local_Variable_Stack_Max)
      {
 	_pSLang_verror(SL_STACK_OVERFLOW, "%s: Local Variable Stack Overflow",
 		     fun->name);
@@ -5003,7 +5106,7 @@ int _pSLang_parse_dollar_string (SLFUTURE_CONST char *str, char ***argvp, unsign
 	     continue;
 	  }
      }
-   fmt = SLmalloc (len+1);
+   fmt = (char *)SLmalloc (len+1);
    if (fmt == NULL)
      return -1;
 
@@ -5785,6 +5888,7 @@ static int inner_interp (SLBlock_Type *addr_start)
 		       int i;
 		       if ((0 == pop_ctrl_integer (&i)) && i)
 			 {
+			    i = (i != 0);
 			    (void) push_char_object (SLANG_CHAR_TYPE, (char)i);
 			    block = NULL;
 			    break;
@@ -6744,6 +6848,10 @@ static int lang_free_branch (SLBlock_Type *p)
 	       SLfree((char *)p->b.blk);
 	     break;
 
+	   case SLANG_BC_COMBINED:
+	     if (0 == (p->bc_flags & BC_LITERAL_MASK))
+	       break;
+	     /* drop */
 	   case SLANG_BC_LITERAL:
 	   case SLANG_BC_LITERAL_STR:
 	   case SLANG_BC_LITERAL_DBL:
@@ -6875,6 +6983,7 @@ static int push_block_context (int type)
    num = 20;
    if (NULL == (b = (SLBlock_Type *) _SLcalloc (num, sizeof (SLBlock_Type))))
      return -1;
+   memset ((char *)b, 0, num*sizeof(SLBlock_Type));   /* not done by _SLcalloc */
 
    c = Block_Context_Stack + Block_Context_Stack_Len;
    c->block = This_Compile_Block;
@@ -7057,7 +7166,7 @@ static SLang_Name_Type *locate_namespace_encoded_name (SLCONST char *name, int e
    if (name == ns)
      {
 	/* Use Global Namespace */
-	return _pSLns_locate_hashed_name (Global_NameSpace, name, _pSLcompute_string_hash (name));
+	return _pSLns_locate_hashed_name (Global_NameSpace, name, SLcompute_string_hash (name));
      }
 
    ns = SLang_create_nslstring (ns, (unsigned int) ((name-2) - ns));
@@ -7072,7 +7181,7 @@ static SLang_Name_Type *locate_namespace_encoded_name (SLCONST char *name, int e
      }
    SLang_free_slstring (ns);
 
-   nt = _pSLns_locate_hashed_name (table, name, _pSLcompute_string_hash (name));
+   nt = _pSLns_locate_hashed_name (table, name, SLcompute_string_hash (name));
    if (nt == NULL)
      return NULL;
 
@@ -7136,7 +7245,7 @@ static SLang_Name_Type *locate_hashed_name (SLCONST char *name, unsigned long ha
 
 SLang_Name_Type *_pSLlocate_name (SLCONST char *name)
 {
-   return locate_hashed_name (name, _pSLcompute_string_hash (name), 0);
+   return locate_hashed_name (name, SLcompute_string_hash (name), 0);
 }
 
 SLang_Name_Type *_pSLlocate_global_name (SLCONST char *name)
@@ -7207,7 +7316,7 @@ static int add_intrinsic_function (SLang_NameSpace_Type *ns,
 	return -1;
      }
 
-   f = (SLang_Intrin_Fun_Type *) add_global_name (name, _pSLcompute_string_hash (name),
+   f = (SLang_Intrin_Fun_Type *) add_global_name (name, SLcompute_string_hash (name),
 						  SLANG_INTRINSIC, sizeof (SLang_Intrin_Fun_Type),
 						  ns);
 
@@ -7279,7 +7388,7 @@ static SLang_Name_Type *add_xxx_helper (SLang_NameSpace_Type *ns, SLCONST char *
    if (ns == NULL) ns = Global_NameSpace;
 
    return add_global_name (name,
-			   _pSLcompute_string_hash (name),
+			   SLcompute_string_hash (name),
 			   what, sizeof_what, ns);
 }
 
@@ -7454,7 +7563,7 @@ static int SLns_autoload (SLFUTURE_CONST char *name, SLFUTURE_CONST char *file, 
    if (*cnsname == 0)
      cnsname = "Global";
 
-   hash = _pSLcompute_string_hash (name);
+   hash = SLcompute_string_hash (name);
    if (NULL != (ns = _pSLns_find_namespace (cnsname)))
      {
 	f = (_pSLang_Function_Type *)_pSLns_locate_hashed_name (ns, name, hash);
@@ -7596,6 +7705,7 @@ SLang_Name_Type *SLang_get_fun_from_ref (SLang_Ref_Type *ref)
    return NULL;
 }
 
+/* This function shall never run if there is an error */
 int SLexecute_function (SLang_Name_Type *nt)
 {
    unsigned char type;
@@ -8455,7 +8565,7 @@ static int lang_begin_block (void)
 
 static int lang_check_space (void)
 {
-   unsigned int n;
+   size_t dn, n;
    SLBlock_Type *p;
 
    if (NULL == (p = This_Compile_Block))
@@ -8468,18 +8578,19 @@ static int lang_check_space (void)
    if (Compile_ByteCode_Ptr + 1 < This_Compile_Block_Max)
      return 0;
 
-   n = (unsigned int) (This_Compile_Block_Max - p);
+   n = (This_Compile_Block_Max - p);
 
-   /* enlarge the space by 2 objects */
-   n += 20;
+   /* enlarge the space by 20 objects */
+   dn = 20;
 
-   if (NULL == (p = (SLBlock_Type *) _SLrecalloc((char *)p, n, sizeof(SLBlock_Type))))
+   if (NULL == (p = (SLBlock_Type *) _SLrecalloc((char *)p, n+dn, sizeof(SLBlock_Type))))
      return -1;
+   memset ((char *)(p+n), 0, dn*sizeof(SLBlock_Type));
 
-   This_Compile_Block_Max = p + n;
-   n = (unsigned int) (Compile_ByteCode_Ptr - This_Compile_Block);
+   n = Compile_ByteCode_Ptr - This_Compile_Block;
    This_Compile_Block = p;
    Compile_ByteCode_Ptr = p + n;
+   This_Compile_Block_Max = Compile_ByteCode_Ptr + dn;
 
    return 0;
 }
@@ -8498,7 +8609,7 @@ static int add_global_variable (SLCONST char *name, char name_type, unsigned lon
     * in the variable ZZZZ being defined because of the immediate processing.
     * The current solution is to do: if (0) { eval("variable ZZZZ;"); }
     */
-   /* hash = _pSLcompute_string_hash (name); */
+   /* hash = SLcompute_string_hash (name); */
    g = _pSLns_locate_hashed_name (ns, name, hash);
 
    if (g != NULL)
@@ -8520,7 +8631,7 @@ int SLadd_global_variable (SLCONST char *name)
      return -1;
 
    return add_global_variable (name, SLANG_GVARIABLE,
-			       _pSLcompute_string_hash (name),
+			       SLcompute_string_hash (name),
 			       Global_NameSpace);
 }
 
@@ -8780,6 +8891,7 @@ static int handle_special_file (Special_NameTable_Type *nt, _pSLang_Token_Type *
    Compile_ByteCode_Ptr->b.s_blk = name;
    Compile_ByteCode_Ptr->bc_main_type = SLANG_BC_LITERAL_STR;
    Compile_ByteCode_Ptr->bc_sub_type = SLANG_STRING_TYPE;
+   Compile_ByteCode_Ptr->bc_flags |= BC_LITERAL_MASK;
    return 0;
 }
 
@@ -8794,6 +8906,7 @@ static int handle_special_line (Special_NameTable_Type *nt, _pSLang_Token_Type *
 #endif
    Compile_ByteCode_Ptr->bc_main_type = SLANG_BC_LITERAL;
    Compile_ByteCode_Ptr->bc_sub_type = SLANG_UINT_TYPE;
+   Compile_ByteCode_Ptr->bc_flags |= BC_LITERAL_MASK;
 
    return 0;
 }
@@ -8897,7 +9010,7 @@ static void compile_simple (_pSLang_BC_Type main_type)
 
 static void compile_identifier (SLCONST char *name, _pSLang_Token_Type *tok)
 {
-   compile_hashed_identifier (name, _pSLcompute_string_hash (name), tok);
+   compile_hashed_identifier (name, SLcompute_string_hash (name), tok);
 }
 
 static void compile_call_direct (int (*f) (void), _pSLang_BC_Type byte_code)
@@ -8926,6 +9039,7 @@ static void compile_integer (long i, _pSLang_BC_Type bc_main_type, SLtype bc_sub
    Compile_ByteCode_Ptr->b.l_blk = i;
    Compile_ByteCode_Ptr->bc_main_type = bc_main_type;
    Compile_ByteCode_Ptr->bc_sub_type = bc_sub_type;
+   Compile_ByteCode_Ptr->bc_flags |= BC_LITERAL_MASK;
 
    lang_try_now ();
 }
@@ -8946,6 +9060,7 @@ static void compile_llong (long long i, _pSLang_BC_Type bc_main_type, SLtype bc_
 # endif
    Compile_ByteCode_Ptr->bc_main_type = bc_main_type;
    Compile_ByteCode_Ptr->bc_sub_type = bc_sub_type;
+   Compile_ByteCode_Ptr->bc_flags |= BC_LITERAL_MASK;
 
    lang_try_now ();
 }
@@ -8975,6 +9090,7 @@ static void compile_double (_pSLang_Token_Type *t, _pSLang_BC_Type main_type, SL
 
    Compile_ByteCode_Ptr->bc_main_type = main_type;
    Compile_ByteCode_Ptr->bc_sub_type = type;
+   Compile_ByteCode_Ptr->bc_flags |= BC_LITERAL_MASK;
    lang_try_now ();
 }
 
@@ -8985,6 +9101,7 @@ static void compile_float (_pSLang_Token_Type *t)
    Compile_ByteCode_Ptr->b.float_blk = f;
    Compile_ByteCode_Ptr->bc_main_type = SLANG_BC_LITERAL;
    Compile_ByteCode_Ptr->bc_sub_type = SLANG_FLOAT_TYPE;
+   Compile_ByteCode_Ptr->bc_flags |= BC_LITERAL_MASK;
    lang_try_now ();
 }
 
@@ -8997,6 +9114,7 @@ static void compile_string (SLCONST char *s, unsigned long hash)
 
    Compile_ByteCode_Ptr->bc_main_type = SLANG_BC_LITERAL_STR;
    Compile_ByteCode_Ptr->bc_sub_type = SLANG_STRING_TYPE;
+   Compile_ByteCode_Ptr->bc_flags |= BC_LITERAL_MASK;
 
    lang_try_now ();
 }
@@ -9008,6 +9126,7 @@ static void compile_string_dollar (SLCONST char *s, unsigned long hash)
 
    Compile_ByteCode_Ptr->bc_main_type = SLANG_BC_DOLLAR_STR;
    Compile_ByteCode_Ptr->bc_sub_type = SLANG_STRING_TYPE;
+   Compile_ByteCode_Ptr->bc_flags |= BC_LITERAL_MASK;
 
    lang_try_now ();
 }
@@ -9019,6 +9138,7 @@ static void compile_bstring (SLang_BString_Type *s)
 
    Compile_ByteCode_Ptr->bc_main_type = SLANG_BC_LITERAL;
    Compile_ByteCode_Ptr->bc_sub_type = SLANG_BSTRING_TYPE;
+   Compile_ByteCode_Ptr->bc_flags |= BC_LITERAL_MASK;
 
    lang_try_now ();
 }
@@ -10279,6 +10399,7 @@ static void free_stacks (void)
 #if SLANG_HAS_QUALIFIERS
    SLfree ((char *)Function_Qualifiers_Stack); Function_Qualifiers_Stack = NULL;
 #endif
+   SLfree ((char *)Local_Variable_Stack); Local_Variable_Stack = NULL;
 }
 
 static void delete_interpreter (void)
@@ -10337,6 +10458,12 @@ static int init_interpreter (void)
      goto return_error;
    Frame_Pointer_Depth = 0;
    Frame_Pointer = Run_Stack;
+
+   Local_Variable_Stack = (SLang_Object_Type *) _SLcalloc (SLANG_MAX_LOCAL_STACK, sizeof(SLang_Object_Type));
+   if (Local_Variable_Stack == NULL)
+     goto return_error;
+   Local_Variable_Frame = Local_Variable_Stack;
+   Local_Variable_Stack_Max = Local_Variable_Stack + SLANG_MAX_LOCAL_STACK;
 
 #if SLANG_HAS_QUALIFIERS
    Function_Qualifiers_Stack = (SLang_Struct_Type **) SLcalloc (SLANG_MAX_RECURSIVE_DEPTH, sizeof (SLang_Struct_Type *));
@@ -10403,7 +10530,7 @@ static int add_generic_table (SLang_NameSpace_Type *ns,
 
 	t->name = name;
 
-	hash = _pSLcompute_string_hash (name);
+	hash = SLcompute_string_hash (name);
 	hash = hash % table_size;
 
 	/* First time.  Make sure this has not already been added */

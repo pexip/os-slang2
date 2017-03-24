@@ -80,6 +80,7 @@ memory.h \
 termios.h \
 malloc.h \
 locale.h \
+xlocale.h \
 langinfo.h \
 fcntl.h \
 sys/fcntl.h \
@@ -137,9 +138,10 @@ snprintf vsnprintf \
 getppid getegid geteuid getuid getgid setgid setuid \
 setpgid getpgid setpgrp getpgrp setsid getsid \
 mmap \
-chown popen mkfifo \
+chown lchown popen mkfifo \
 atexit on_exit umask uname \
 times gmtime mktime gettimeofday \
+getitimer setitimer \
 gmtime_r ctime_r localtime_r \
 strtod atoll strtoll \
 issetugid \
@@ -152,9 +154,11 @@ fork waitpid \
 socket socketpair \
 confstr pathconf \
 getpriority setpriority \
+getrusage \
 setvbuf \
 utime utimes \
 ttyname ttyname_r \
+newlocale strtod_l localeconv \
 )
 
 if test x"$ac_cv_func_socketpair" != x"yes"; then
@@ -175,6 +179,20 @@ then
   AC_DEFINE(HAVE_NL_LANGINFO_CODESET, 1, [Set to 1 if you have the nl_langinfo(CODESET) function])
 fi
 
+AC_MSG_CHECKING(for environ variable)
+AC_TRY_LINK([
+#include <stdlib.h>
+extern char **environ;
+],
+[exit (environ == NULL);],
+have_environ=yes, have_environ=no)
+AC_MSG_RESULT([$have_environ])
+if test $have_environ = yes
+then
+  AC_DEFINE(HAVE_ENVIRON, 1, [Set to 1 if environ exists])
+fi
+
+
 AC_CHECK_LIB(m, acosh, [AC_DEFINE(HAVE_ACOSH,1,[Set to 1 if you have the acosh function])])
 AC_CHECK_LIB(m, asinh, [AC_DEFINE(HAVE_ASINH,1,[Set to 1 if you have the asinh function])])
 AC_CHECK_LIB(m, atanh, [AC_DEFINE(HAVE_ATANH,1,[Set to 1 if you have the atanh function])])
@@ -184,6 +202,8 @@ AC_CHECK_LIB(m, frexp, [AC_DEFINE(HAVE_FREXP,1,[Set to 1 if you have the frexp f
 AC_CHECK_LIB(m, frexpf, [AC_DEFINE(HAVE_FREXPF,1,[Set to 1 if you have the frexpf function])])
 AC_CHECK_LIB(m, ldexp, [AC_DEFINE(HAVE_LDEXP,1,[Set to 1 if you have the ldexp function])])
 AC_CHECK_LIB(m, ldexpf, [AC_DEFINE(HAVE_LDEXPF,1,[Set to 1 if you have the ldexpf function])])
+AC_CHECK_LIB(m, sincos, [AC_DEFINE(HAVE_SINCOS,1,[Set to 1 if you have the sincos function])])
+AC_CHECK_LIB(m, sincosf, [AC_DEFINE(HAVE_SINCOSF,1,[Set to 1 if you have the sincosf function])])
 AC_CHECK_LIB(m, feclearexcept, [AC_DEFINE(HAVE_FECLEAREXCEPT,1,[Set to 1 if you have the feclearexcept function])])
 AC_CHECK_LIB(m, fpsetsticky, [AC_DEFINE(HAVE_FPSETSTICKY,1,[Set to 1 if you have the fpsetsticky function])])
 
@@ -200,6 +220,8 @@ AC_CHECK_SIZEOF(int, 4)
 AC_CHECK_SIZEOF(long, 4)
 AC_CHECK_SIZEOF(float, 4)
 AC_CHECK_SIZEOF(double, 8)
+
+AC_CHECK_TYPE(ptrdiff_t,long)
 
 AC_TYPE_SIZE_T
 AC_CHECK_SIZEOF(size_t)

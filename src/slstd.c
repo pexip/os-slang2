@@ -2,7 +2,7 @@
 /* Standard intrinsic functions for S-Lang.  Included here are string
    and array operations */
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -36,6 +36,10 @@ USA.
 
 #if SLANG_HAS_FLOAT
 # include <math.h>
+#endif
+
+#if defined(__APPLE__) && defined(HAVE_ENVIRON)
+# include <crt_externs.h>	       /* for _NSGetEnviron */
 #endif
 
 #include "slang.h"
@@ -378,7 +382,7 @@ static int get_doc_string (char *file, char *topic)
 {
    FILE *fp;
    char line[1024];
-   unsigned int topic_len, str_len;
+   size_t topic_len, str_len;
    char *str;
    char ch;
 
@@ -443,7 +447,7 @@ static int get_doc_string (char *file, char *topic)
 
    while (NULL != fgets (line, sizeof (line), fp))
      {
-	unsigned int len;
+	size_t len;
 	char *new_str;
 
 	ch = *line;
@@ -451,7 +455,7 @@ static int get_doc_string (char *file, char *topic)
 	if (ch == '-') break;
 
 	len = strlen (line);
-	if (NULL == (new_str = SLrealloc (str, str_len + len + 1)))
+	if (NULL == (new_str = (char *)SLrealloc (str, str_len + len + 1)))
 	  {
 	     SLfree (str);
 	     str = NULL;
@@ -500,7 +504,7 @@ static void get_doc_files_intrin (void)
 static void set_doc_files_intrin (void)
 {
    SLang_Array_Type *at;
-   unsigned int i, num;
+   size_t i, num;
    char **data;
 
    if (-1 == SLang_pop_array_of_type (&at, SLANG_STRING_TYPE))
@@ -559,8 +563,8 @@ static void get_doc_string_intrin (char *topic)
 static int push_string_array_elements (SLang_Array_Type *at)
 {
    char **strs;
-   unsigned int num;
-   unsigned int i;
+   size_t num;
+   size_t i;
 
    if (at == NULL)
      return -1;
@@ -1139,6 +1143,45 @@ static void clear_error_intrin (void)
    (void) _pSLerr_clear_error (1);
 }
 
+#ifdef HAVE_ENVIRON
+
+/* In a shared library, macos requires a call to _NSGetEnviron to get the environ. */
+# if !defined(__APPLE__)
+extern char **environ;                 /* POSIX and ??? */
+# endif
+
+static char **get_sys_environ (void)
+{
+# if defined(__APPLE__)
+   return _NSGetEnviron ();
+# else
+   return environ;
+# endif
+}
+
+static void get_environment (void)
+{
+   unsigned int num;
+   char **env, **e;
+
+   if (NULL == (env = get_sys_environ ()))
+     {
+	(void) SLang_push_null ();
+	return;
+     }
+
+   e = env;
+   num = 0;
+   while (*e != NULL)
+     {
+	num++;
+	e++;
+     }
+
+   (void) SLang_push_array (_pSLstrings_to_array (env, num), 1);   /* NULL ok */
+}
+#endif				       /* HAVE_ENVIRON */
+
 static void set_argv_intrinsic (void);
 static SLang_Intrin_Fun_Type SLang_Basic_Table [] = /*{{{*/
 {
@@ -1164,6 +1207,9 @@ static SLang_Intrin_Fun_Type SLang_Basic_Table [] = /*{{{*/
    MAKE_INTRINSIC_S("getenv",  intrin_getenv_cmd, SLANG_VOID_TYPE),
 #ifdef HAVE_PUTENV
    MAKE_INTRINSIC_0("putenv",  intrin_putenv, SLANG_VOID_TYPE),
+#endif
+#ifdef HAVE_ENVIRON
+   MAKE_INTRINSIC_0("get_environ", get_environment, SLANG_VOID_TYPE),
 #endif
    MAKE_INTRINSIC_0("evalfile",  load_file, SLANG_INT_TYPE),
    MAKE_INTRINSIC_I("char",  char_cmd, SLANG_VOID_TYPE),

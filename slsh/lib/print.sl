@@ -1,4 +1,10 @@
-private variable Pager_Rows = 22;
+% Copyright (C) 2012-2014 John E. Davis
+%
+% This file is part of the S-Lang Library and may be distributed under the
+% terms of the GNU General Public License.  See the file COPYING for
+% more information.
+%---------------------------------------------------------------------------
+private variable Pager_Rows = NULL;
 private variable Pager = getenv ("PAGER");
 if (Pager == NULL)
   Pager = "more";
@@ -137,10 +143,15 @@ private define new_ref_print (ref)
 
 private define generic_to_string (x)
 {
-   variable t = typeof (x);
-
-   if ((t == String_Type) or (t == BString_Type))
-     return make_printable_string (x);
+   switch (typeof (x))
+     {
+      case String_Type:
+	return make_printable_string (x);
+     }
+     {
+      case BString_Type:
+	return sprintf ("\"%S\"", x);
+     }
 
    return string (x);
 }
@@ -256,6 +267,21 @@ private define print_array (a, device)
      }
 }
 
+private define get_pager_rows ()
+{
+   if (Pager_Rows != NULL)
+     return Pager_Rows;
+
+   variable rows;
+#ifexists slsh_get_screen_size
+   (rows,) = slsh_get_screen_size ();
+#else
+   rows = 24;
+#endif
+   return rows - 2;		       %  leave room for the prompt
+}
+
+
 define print ()
 {
    variable usage_string
@@ -277,6 +303,7 @@ define print ()
 	if (pager_pgm == NULL)
 	  pager_pgm = Pager;
      }
+   variable noescape = qualifier_exists ("noescape");
 
    variable device = NULL;
    if (_NARGS == 2)
@@ -307,20 +334,24 @@ define print ()
 
    if (use_pager == -1)
      {
+	variable pager_rows = get_pager_rows ();
+
 	switch (t)
 	  {
 	   case Array_Type:
 	     variable dims = array_shape (x);
-	     use_pager = ((dims[0] > Pager_Rows)
-			  || (prod(dims) > 10*Pager_Rows));
+	     use_pager = ((dims[0] > pager_rows)
+			  || (prod(dims) > 10*pager_rows));
 	  }
 	  {
 	   case List_Type:
-	     use_pager = length (x) > Pager_Rows;
+	     use_pager = length (x) > pager_rows;
 	  }
 	  {
 	   case String_Type:
-	     use_pager = count_byte_occurrences (x, '\n') > Pager_Rows;
+	     use_pager = count_byte_occurrences (x, '\n') > pager_rows;
+	     if (noescape)
+	       str_x = x;
 	  }
 	  {
 	     if (is_struct_type (x))
@@ -328,7 +359,7 @@ define print ()
 	     else
 	       str_x = generic_to_string (x);
 
-	     use_pager = (count_byte_occurrences (str_x, '\n') > Pager_Rows);
+	     use_pager = (count_byte_occurrences (str_x, '\n') > pager_rows);
 	  }
      }
 
@@ -347,7 +378,10 @@ define print ()
 	  return print_list (x, device);
 
 	if ((t == String_Type) && use_pager)
-	  return device.puts (x);
+	  {
+	     () = device.puts (x);
+	     return;
+	  }
 
 	if (str_x != NULL)
 	  x = str_x;
@@ -358,7 +392,8 @@ define print ()
 
 	if (-1 != device.puts (x))
 	  {
-	     () = device.puts ("\n");
+	     if (x[-1] != '\n')
+	       () = device.puts ("\n");
 	  }
      }
    finally

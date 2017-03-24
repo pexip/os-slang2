@@ -87,7 +87,7 @@ static void destroy_iconv (SLtype type, VOID_STAR f)
    (void) type;
 
    it = (ICONV_Type *) f;
-   iconv_close(it->cd);
+   _iconv_close(it);
    free_iconv_type (it);
 }
 
@@ -127,14 +127,14 @@ static void _iconv(ICONV_Type *it, SLang_BString_Type *bstr)
    char *outstr;
    size_t inn, outn, bufn;
    size_t fail = (size_t)-1;
-   unsigned int bstrlen;
+   SLstrlen_Type bstrlen;
 
    if (NULL == (instr = (char ICONV_CONST *)SLbstring_get_pointer(bstr, &bstrlen)))
      return;
    inn = (size_t) bstrlen;
 
    bufn = outn = 2*inn + 2;
-   if (NULL == (buf = SLmalloc(bufn)))
+   if (NULL == (buf = (char *)SLmalloc(bufn)))
      return;
 
    outstr = buf;
@@ -171,12 +171,12 @@ static void _iconv(ICONV_Type *it, SLang_BString_Type *bstr)
 	   case E2BIG:
 	       {
 		  char *p;
-		  int outdelta;
+		  long outdelta;
 
 		  outdelta = outstr - buf;
 		  outn += bufn;
 		  bufn += bufn;
-		  p = SLrealloc(buf, bufn);
+		  p = (char *)SLrealloc(buf, bufn);
 		  if (p == NULL)
 		    goto error;
 		  buf = p;

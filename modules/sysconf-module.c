@@ -1,6 +1,6 @@
 /* -*- mode: C; mode: fold; -*- */
 /*
-Copyright (C) 2009-2011 John E. Davis
+Copyright (C) 2009-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -44,7 +44,7 @@ Name_Map_Type;
 
 static const Name_Map_Type *lookup_name (const Name_Map_Type *map, char *name)
 {
-   unsigned int len = strlen (name);
+   SLstrlen_Type len = strlen (name);
    while (map->namelen != 0)
      {
 	if ((map->namelen == len)
@@ -1106,7 +1106,7 @@ static void confstr_intrinsic (void)
 	return;
      }
 
-   if (NULL == (bufstr = SLmalloc (len)))
+   if (NULL == (bufstr = (char *)SLmalloc (len)))
      return;
 
    errno = 0;

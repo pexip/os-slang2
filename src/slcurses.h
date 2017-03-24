@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -286,6 +286,7 @@ extern SLtt_Char_Type SLcurses_Acs_Map [128];
 #define A_UNDERLINE	0x40000000UL	/* was 0x4000 */
 #define A_ALTCHARSET	0x80000000UL	/* was 0x8000 */
 #define A_BLINK		0x00000000UL
+#define A_ITALIC	0x00000000UL
 #define A_DIM		0x00000000UL
 #define A_PROTECT	0x00000000UL
 #define A_INVIS		0x00000000UL

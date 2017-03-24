@@ -276,7 +276,69 @@ private define test_append_join ()
 }
 test_append_join ();
 
+private define test_api_list ()
+{
+   variable list = {"string", 10,
+      PI, 3i,
+      &failed, [1:10], Struct_Type[12], Assoc_Type[]};
+
+   variable clist = api_create_list (__push_list (list));
+   if (length (clist) != length (list))
+     failed ("api_create_list length test");
+
+   variable i;
+   _for i (0, length(list)-1, 1)
+     {
+	ifnot (__is_same (clist[i], list[i]))
+	  failed ("api_create_list __is_same test: %S != %S",
+		  clist[i], list[i]);
+     }
+   api_list_insert (clist, 0, "start");
+   api_list_append (clist, -1, "end");
+   if (clist[0] != "start")
+     failed ("api_list_insert");
+   if (clist[-1] != "end")
+     failed ("api_list_append");
+}
+loop (10) test_api_list ();
+
+test_api_push_and_pop_list ();  % entirely defined in list.c
+
+private define test_api_pop_and_push_list ()
+{
+   variable l1 = { 1, PI, 2+3i, "foobar", [1,2,3,4], struct {foo, bar}, Assoc_Type[Integer_Type, 42] };
+   l1;
+   variable l2 = api_pop_and_push_list ();
+   ifnot (__is_same (l1, l2))
+     {
+	failed ("api_push_and_pop_list");
+     }
+}
+test_api_pop_and_push_list ();
+
+private define test_size_hint (n)
+{
+   variable l = list_new (n);
+   while (length(l) < 1024)
+     {
+	list_append (l, "foo");
+     }
+
+   l = {"a", "b"};
+
+   while (length(l) < 1024)
+     {
+	list_append (l, "foo");
+     }
+}
+loop (10) test_size_hint (0);
+loop (10) test_size_hint (1);
+loop (10) test_size_hint (2);
+loop (10) test_size_hint (127);
+loop (10) test_size_hint (128);
+loop (10) test_size_hint (129);
+loop (10) test_size_hint (500);
+
 print ("Ok\n");
 
 exit (0);
-

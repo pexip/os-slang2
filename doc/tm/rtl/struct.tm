@@ -151,8 +151,10 @@
 \synopsis{Get the value associated with a structure field}
 \usage{x = get_struct_field (Struct_Type s, String field_name)}
 \description
-   The \ifun{get_struct_field} function gets the value of the field
-   whose name is specified by \exmp{field_name} of the structure \exmp{s}.
+  The \ifun{get_struct_field} function gets the value of the field
+  whose name is specified by \exmp{field_name} of the structure
+  \exmp{s}. If the specified name is not a field of the structure, the
+  function will throw an \exc{InvalidParmError} exception.
 \seealso{set_struct_field, get_struct_field_names, array_info}
 \done
 
@@ -182,6 +184,17 @@
       }
 #v-
 \seealso{_push_struct_field_values, get_struct_field}
+\done
+
+\function{_is_struct_type}
+\synopsis{Determine whether or not an object is a structure}
+\usage{Integer_Type _is_struct_type (X)}
+\description
+  The \ifun{_is_struct_type} function returns 1 if the parameter
+  refers to a structure or a user-defined type, or to an array of
+  structures or user-defined types.  If the object is neither, 0 will
+  be returned.
+\seealso{typeof, _typeof, is_struct_type}
 \done
 
 \function{is_struct_type}

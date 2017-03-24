@@ -1,3 +1,9 @@
+% Copyright (C) 2012-2014 John E. Davis
+%
+% This file is part of the S-Lang Library and may be distributed under the
+% terms of the GNU General Public License.  See the file COPYING for
+% more information.
+%---------------------------------------------------------------------------
 import ("csv");
 
 private define read_fp_callback (info)
@@ -85,12 +91,48 @@ private define fixup_header_names (names)
    if (_typeof(names) != String_Type)
      return names;
 
+   variable is_scalar = (typeof (names) != Array_Type);
+   if (is_scalar)
+     names = [names];
+
    names = strlow (names);
-   %names = strtrans (names, "\\,", "_");
+   variable i = where (names == "");
+   names[i] = array_map (String_Type, &sprintf, "col%d", i+1);
+
+#iffalse
+   % This code is nolonger necessary since slang now allows arbitrary
+   % structure names.
    names = strtrans (names, "^\\w", "_");
    names = strcompress (names, "_");
+
+   _for i (0, length(names)-1, 1)
+     {
+	if ('0' <= names[i][0] <= '9')
+	  names[i] = "_" + names[i];
+     }
+#endif
+   if (is_scalar) names = names[0];
    return names;
 }
+
+private define pop_columns_as_array (n)
+{
+   if (n == 0)
+     return String_Type[0];
+
+   try
+     {
+	% allow a mixture of arrays and scalars
+	variable columns = __pop_list (n);
+	columns = [__push_list(columns)];
+	return columns;
+     }
+   catch TypeMismatchError:
+     {
+	throw TypeMismatchError, "Column arguments cannot be a mixture of ints and strings";
+     }
+}
+
 
 private define read_cols ()
 {
@@ -112,9 +154,7 @@ Qualifiers:\n\
    variable columns = NULL;
    if (_NARGS > 1)
      {
-	% allow a mixture of arrays and scalars
-	columns = __pop_list (_NARGS-1);
-	columns = [__push_list(columns)];
+	columns = pop_columns_as_array (_NARGS-1);
      }
    variable csv = ();
 
@@ -122,8 +162,8 @@ Qualifiers:\n\
    variable header = qualifier ("header");
    variable types = qualifier ("type");
    variable snan = qualifier ("snan", "");
-   variable dnan = qualifier ("fnan", _NaN);
-   variable fnan = qualifier ("dnan", typecast(_NaN,Float_Type));
+   variable dnan = qualifier ("dnan", _NaN);
+   variable fnan = qualifier ("fnan", typecast(_NaN,Float_Type));
    variable inan = qualifier ("inan", 0);
    variable lnan = qualifier ("lnan", 0L);
 
@@ -165,46 +205,6 @@ Qualifiers:\n\
      }
    variable ncols = length(column_ints);
 
-   variable convert_funcs = Ref_Type[ncols], convert_func, val;
-   variable nan_values = {}; loop(ncols) list_append(nan_values, snan);
-   if (types != NULL)
-     {
-	if (typeof(types) == List_Type)
-	  types = list_to_array (types);
-
-	if (typeof(types) == String_Type)
-	  types = bstring_to_array (types);
-
-	if ((typeof(types) == Array_Type) && (length(types) != ncols))
-	  throw InvalidParmError, "types array must be equal to the number of columns";
-
-	if (typeof (types) != Array_Type)
-	  types = types[Int_Type[ncols]];
-
-	variable i1;
-	_for i (1, ncols, 1)
-	  {
-	     i1 = i-1;
-	     types[i1] = qualifier ("type$i"$, types[i1]);
-	  }
-
-	i = where(types=='i');
-	convert_funcs[i] = &atoi; nan_values[i] = typecast(inan, Int_Type);
-	i = where(types=='l');
-	convert_funcs[i] = &atol; nan_values[i] = typecast(lnan, Long_Type);
-	i = where(types=='f');
-	convert_funcs[i] = &atofloat; nan_values[i] = typecast (fnan, Float_Type);
-	i = where(types=='d');
-	convert_funcs[i] = &atof; nan_values[i] = typecast(dnan, Double_Type);
-
-	_for i (1, ncols, 1)
-	  {
-	     i1 = i-1;
-	     val = nan_values[i1];
-	     nan_values[i1] = typecast (qualifier ("nan$i"$, val), typeof(val));
-	  }
-     }
-
    variable datastruct = NULL;
    if (fields == NULL)
      {
@@ -218,6 +218,68 @@ Qualifiers:\n\
    datastruct = @Struct_Type(fields);
 
    column_ints -= 1;		       %  make 0-based
+
+   variable convert_funcs = Ref_Type[ncols], convert_func, val;
+   variable nan_values = {}; loop(ncols) list_append(nan_values, snan);
+
+   if (types == NULL)
+     {
+	types = qualifier_exists ("auto") ? 'A' : 's';
+     }
+
+   if (typeof(types) == List_Type)
+     types = list_to_array (types);
+
+   if (typeof(types) == String_Type)
+     types = bstring_to_array (types);
+
+   if ((typeof(types) == Array_Type) && (length(types) != ncols))
+     throw InvalidParmError, "types array must be equal to the number of columns";
+
+   if (typeof (types) != Array_Type)
+     types = types[Int_Type[ncols]];   %  single (default) type specified
+
+   variable i1;
+   _for i (1, ncols, 1)
+     {
+	i1 = i-1;
+	types[i1] = qualifier ("type$i"$, types[i1]);
+     }
+
+   i = where(types=='i');
+   convert_funcs[i] = &atoi; nan_values[i] = typecast(inan, Int_Type);
+   i = where(types=='l');
+   convert_funcs[i] = &atol; nan_values[i] = typecast(lnan, Long_Type);
+   i = where(types=='f');
+   convert_funcs[i] = &atofloat; nan_values[i] = typecast (fnan, Float_Type);
+   i = where(types=='d');
+   convert_funcs[i] = &atof; nan_values[i] = typecast(dnan, Double_Type);
+
+   _for i (1, ncols, 1)
+     {
+	i1 = i-1;
+
+	if (types[i1] == 'A')
+	  {
+	     variable type = _slang_guess_type (row_data[i1]);
+	     if (type == Double_Type)
+	       {
+		  convert_funcs[i1] = &atof;
+		  nan_values[i1] = dnan;
+		  types[i1] = 'd';
+	       }
+	     else if (type == Int_Type)
+	       {
+		  convert_funcs[i1] = &atoi;
+		  nan_values[i1] = inan;
+		  types[i1] = 'i';
+	       }
+	     else types[i1] = 's';
+	  }
+
+	val = nan_values[i1];
+	nan_values[i1] = typecast (qualifier ("nan$i"$, val), typeof(val));
+     }
 
    variable list_of_arrays = {}, array;
    variable init_size = 0x8000;
@@ -257,6 +319,7 @@ Qualifiers:\n\
 	     max_allocated += dsize;
 	     resize_arrays (list_of_arrays, max_allocated);
 	  }
+
 	_for i (0, ncols-1, 1)
 	  {
 	     val = row_data[column_ints[i]];
@@ -347,7 +410,7 @@ private define writecol ()
 	usage("\
 writecol (file|fp, list_of_column_data | datastruct | col1,col2,...)\n\
 Qualifiers:\n\
-  names=array-of-column-names, noheader, quoteall, quotesome\n\
+  names=array-of-column-names, noheader, quoteall, quotesome, rdb\n\
 "
 	     );
      }
@@ -371,6 +434,7 @@ Qualifiers:\n\
    variable flags = 0;
    if (qualifier_exists ("quoteall")) flags |= CSV_QUOTE_ALL;
    if (qualifier_exists ("quotesome")) flags |= CSV_QUOTE_SOME;
+   variable rdb = qualifier_exists ("rdb");
 
    variable fp = file;
    if (typeof(file) != File_Type)
@@ -409,16 +473,28 @@ Qualifiers:\n\
    _for i (1, ncols-1, 1)
      {
 	if (nrows != length(data[i]))
-	  throw InvalidParmError, "Data columns must be the length";
+	  throw InvalidParmError, "CSV data columns must be the same length";
      }
 
    variable str, encoder = csv.encoder;
 
    if (names != NULL)
      {
+	if (typeof (names) == List_Type)
+	  names = list_to_array (names);
 	str = _csv_encode_row (encoder, names, flags);
 	if (-1 == fputs (str, fp))
 	  throw WriteError, "Write to CSV file failed";
+	if (rdb)
+	  {
+	     variable types = String_Type[ncols];
+	     _for i (0, ncols-1, 1)
+	       types[i] = __is_datatype_numeric (_typeof(data[i])) ? "N" : "S";
+
+	     str = _csv_encode_row (encoder, types, flags);
+	     if (-1 == fputs (str, fp))
+	       throw WriteError, "Write to CSV file failed";
+	  }
      }
 
    variable row_data = String_Type[ncols];
@@ -441,7 +517,9 @@ define csv_encoder_new ()
 Qualifiers:\n\
   delim=','\n\
   quote='\"'\n\
-  quotesome, quoteall"
+  quotesome, quoteall\n\
+  rdb\n\
+"
 	      );
      }
 
@@ -449,7 +527,8 @@ Qualifiers:\n\
    if (qualifier_exists ("quoteall")) flags |= CSV_QUOTE_ALL;
    if (qualifier_exists ("quotesome")) flags |= CSV_QUOTE_SOME;
    variable quotechar = qualifier ("quote", '"');
-   variable delimchar = qualifier ("delim", ',');
+   variable delimchar = qualifier ("delim",
+				   qualifier_exists ("rdb") ? '\t' : ',');
 
    variable csv = struct
      {
@@ -477,6 +556,58 @@ Qualifiers:\n\
    csv.writecol (__push_list(args);;__qualifiers);
 }
 
+private define convert_to_numeric (s, name)
+{
+   variable val = get_struct_field (s, name);
+   variable num = length (val);
+   if ((num == 0) || (_typeof (val) != String_Type))
+     return;
+
+   EXIT_BLOCK
+     {
+	set_struct_field (s, name, val);
+     }
+
+   variable types = DataType_Type[num];
+   _for (0, length (val)-1, 1)
+     {
+	variable i = ();
+	variable type = _slang_guess_type (val[i]);
+	if (type == Double_Type)
+	  {
+	     val = atof (val);
+	     return;
+	  }
+	types[i] = type;
+     }
+
+   if (all (types == Int_Type))
+     {
+	val = atoi (val);
+	return;
+     }
+
+   if (any (types == Float_Type))
+     {
+	val = atofloat (val);
+	return;
+     }
+
+   if (any (types == Long_Type))
+     {
+	val = atol (val);
+	return;
+     }
+
+   if (any (types == Int_Type))
+     {
+	val = atoi (val);
+	return;
+     }
+
+   val = atof (val);
+}
+
 define csv_readcol ()
 {
    if ((_NARGS == 0) || qualifier_exists("help"))
@@ -500,13 +631,56 @@ Qualifiers:\n\
    file = ();
 
    variable q = __qualifiers ();
+   variable rdb = qualifier_exists ("rdb");
+
+   % rdb files are tab-delimited files, # is a comment character,
+   % the first non-comment line contains the field names, the
+   % second line gives the field types.
+   if (rdb)
+     {
+	q = struct { comment = "#", delim = '\t' };
+     }
+   variable types = NULL;
    variable csv = csv_decoder_new (file ;; q);
-   if (qualifier_exists ("has_header"))
+   if (rdb || qualifier_exists ("has_header"))
      {
 	variable header = csv.readrow ();
 	q = struct { header=header, @q };
+	if (rdb)
+	  {
+	     % The type field consists of an integer, followed by a
+	     % type specifier, and a justification character.  The
+	     % integer and justification characters are for display
+	     % purposes. The type specifier is N for numberic, S for
+	     % string, M for month.  Here, M and S will be treated the
+	     % same.
+	     types = csv.readrow ();
+	     types = strtrans (types, "0-9<>", "");
+	  }
      }
 
-   return csv.readcol (__push_list(columns) ;; q);
+   variable s = csv.readcol (__push_list(columns) ;; q);
+   if (rdb)
+     {
+	ifnot (length (columns))
+	  columns = header;
+
+	header = fixup_header_names (header);
+	foreach (columns)
+	  {
+	     variable col = ();
+	     if (typeof (col) == String_Type)
+	       col = fixup_header_names (col);
+	     else
+	       col = header[col-1];
+
+	     variable i = wherefirst (col == header);
+	     if ((i == NULL) || (types[i] != "N"))
+	       continue;
+
+	     convert_to_numeric (s, col);
+	  }
+     }
+   return s;
 }
 

@@ -27,7 +27,7 @@
 #v+
       [0,1]
 #v-
-\seealso{where, any}
+\seealso{where, any, wherediff}
 \done
 
 \function{any}
@@ -53,7 +53,7 @@
 #v+
       0        0       1       0       0
 #v-
-\seealso{where, all}
+\seealso{all, where, wherediff}
 \done
 
 \function{array_info}
@@ -81,24 +81,31 @@
 
 \function{array_map}
 \synopsis{Apply a function to each element of an array}
-\usage{Array_Type array_map (type, func, arg0, ...)}
+\usage{Array_Type array_map (type, func, args...)}
+\altusage{(Array_Type, ...) array_map (type, ..., func, args...)}
 #v+
-    DataType_Type type;
+    DataType_Type type, ...;
     Ref_Type func;
 #v-
 \description
-  The \ifun{array_map} function may be used to apply a function to each
-  element of an array and returns the resulting values as an array of
-  the specified type.  The \exmp{type} parameter indicates what kind of
-  array should be returned and generally corresponds to the return
-  type of the function.  The \exmp{arg0} parameter should be an array
-  and is used to determine the dimensions of the resulting array.  If
-  any subsequent arguments correspond to an array of the same size,
-  then those array elements will be passed in parallel with the first
-  arrays arguments.
+  The \ifun{array_map} function may be used to apply a function to
+  each element of an array and returns the resulting values as an
+  array of the specified type.  The \exmp{type} parameter indicates
+  what kind of array should be returned and generally corresponds to
+  the return type of the function.  If the function returns multiple
+  values, then the type of each return value must be given.  The first
+  array-valued argument is used to determine the dimensions of the
+  resulting array(s).  If any subsequent arguments correspond to an array
+  of the same size, then those array elements will be passed in
+  parallel with the elements of the first array argument.
+
+  To use \ifun{array_map} with functions that return no value, either
+  omit the \exmp{type} argument, or explicitly indicate that it
+  returns no value using the \dtype{Void_Type} type.
+
 \example
   The first example illustrates how to apply the \ifun{strlen} function
-  to an array of strings:
+  to an array of strings.
 #v+
      S = ["", "Train", "Subway", "Car"];
      L = array_map (Integer_Type, &strlen, S);
@@ -122,6 +129,25 @@
      xfiles = array_map (String_Type, &strcat, files, exts);
      % ==> xfiles = ["slang.a", "slstring.b", "slarray.c"];
 #v-
+
+  Here is an example of its application to a function that returns 3
+  values.  Suppose \exmp{A} is an array of arrays whose types and
+  sizes are arbitrary, and we wish to find the indices of \exmp{A}
+  that contain arrays of type \exmp{String_Type}.  For this purpose, the
+  \ifun{array_info} function will be used:
+#v+
+    (dims, ndims, types)
+        = array_map (Array_Type, Int_Type, DataType_Type, &array_info, A);
+    i = where (types == String_Type);
+#v-
+
+   The \ifun{message} function prints a string and returns no value.
+   This example shows how it may be used to print an array of strings:
+#v+
+     a = ["Line 1", "Line 2", "Line 3"];
+     array_map (&message, a);              % Form 1
+     array_map (Void_Type, &message, a);   % Form 2
+#v-
 \notes
   Many mathematical functions already work transparently on arrays.
   For example, the following two statements produce identical results:
@@ -129,6 +155,10 @@
      B = sin (A);
      B = array_map (Double_Type, &sin, A);
 #v-
+\notes
+  A number of the string functions have been vectorized, including the
+  \ifun{strlen} function.  This means that there is no need to use the
+  \ifun{array_map} function with the \ifun{strlen} function.
 \seealso{array_info, strlen, strcat, sin}
 \done
 
@@ -337,8 +367,8 @@
 \usage{init_char_array (Array_Type a, String_Type s)}
 \description
   The \ifun{init_char_array} function may be used to initialize a
-  character array \exmp{a} by setting the elements of the array
-  \exmp{a} to the corresponding characters of the string \exmp{s}.
+  Char_Type array \exmp{a} by setting the elements of the array
+  \exmp{a} to the corresponding bytes of the string \exmp{s}.
 \example
   The statements
 #v+
@@ -346,10 +376,10 @@
      init_char_array (a, "HelloWorld");
 #v-
    creates an character array and initializes its elements to the
-   characters in the string \exmp{"HelloWorld"}.
+   bytes in the string \exmp{"HelloWorld"}.
 \notes
    The character array must be large enough to hold all the characters
-   of the initialization string.
+   of the initialization string.  This function uses byte-semantics.
 \seealso{bstring_to_array, strlen, strcat}
 \done
 
@@ -610,6 +640,17 @@
   are equivalent, but the latter form is preferred since it executes
   about twice as fast as the former.
 
+  The \ifun{where} function can also be used with relational operators
+  and with the boolean binary \exmp{or} and \exmp{and} operators, e.g.,
+#v+
+     a = where (array == "a string");
+     a = where (array <= 5);
+     a = where (2 <= array <= 10);
+     a = where ((array == "a string") or (array == "another string"));
+#v-
+  Using in the last example the short-circuiting \exmp{||} and
+  \exmp{&&} operators, will result in a \exc{TypeMismatchError} exception.
+
   Although this function may appear to be simple or even trivial, it
   is arguably one of the most important and powerful functions for
   manipulating arrays.
@@ -631,16 +672,34 @@
   corresponding elements of \exmp{X}.
 \notes
   Support for the optional argument was added to version 2.1.0.
-\seealso{wherefirst, wherelast, wherenot, array_info, array_shape, _isnull}
+\seealso{wherefirst, wherelast, wherenot, wherediff, array_info, array_shape, _isnull}
 \done
 
-\function{wherenot}
-\synopsis{Get indices where a numeric array is 0}
-\usage{Array_Type wherenot (Array_Type)}
+\function{wherediff}
+\synopsis{Get the indices where adjacent elements differ}
+\usage{Array_Type wherediff (Array_Type A [, Ref_Type jp])}
 \description
-  This function is equivalent to \exmp{where(not a)}.  See the
-  documentation for \ifun{where} for more information.
-\seealso{where, wherefirst, wherelast}
+  This function returns an array of the indices where adjacent
+  elements of the array \exmp{A} differ.  If the optional second
+  argument is given, it must be a reference to a variable whose value
+  will be set to the complement indices (those where adjacient
+  elements are the same).
+
+  The returned array of indices will consist of those elements
+  \exmp{i} where \exmp{A[i] != A[i-1]}.  Since no element preceeds the
+  0th element, \exmp{A[0]} differs from its non-existing
+  preceeding element; hence the index \exmp{0} will a member of the
+  returned array.
+\example
+  Suppose that \exmp{A = [1, 1, 3, 0, 0, 4, 7, 7]}.  Then,
+#v+
+     i = wherediff (A, &j);
+#v-
+  will result in \exmp{i = [0, 2, 3, 5, 6]} and \exmp{j = [1, 4, 7]}.
+\notes
+  Higher dimensional arrays are treated as a 1-d array of contiguous
+  elements.
+\seealso{where, wherenot}
 \done
 
 \function{wherefirst}
@@ -664,7 +723,33 @@
           return NULL;
      }
 #v-
-\seealso{where, wherelast}
+\seealso{where, wherelast, wherfirstmin, wherfirstmax}
+\done
+
+\function{wherefirstmax}
+\synopsis{Get the index of the first maximum array value}
+\usage{Int_Type wherefirstmax (Array_Type a)}
+\description
+This function is equivalent to
+#v+
+   index = wherefirst (a == max(a));
+#v-
+It executes about 3 times faster, and does not require the creation of
+temporary arrays.
+\seealso{wherefirst, wherefirstmax, wherelastmin, min, max}
+\done
+
+\function{wherefirstmin}
+\synopsis{Get the index of the first minimum array value}
+\usage{Int_Type wherefirstmin (Array_Type a)}
+\description
+This function is equivalent to
+#v+
+   index = wherefirst (a == min(a));
+#v-
+It executes about 3 times faster, and does not require the creation of
+temporary arrays.
+\seealso{wherefirst, wherelastmin, wherefirstmax, min, max}
 \done
 
 \function{wherelast}
@@ -679,7 +764,7 @@
 \notes
   The single parameter version of this function is equivalent to
 #v+
-     define wherefirst (a)
+     define wherelast (a)
      {
         variable i = where (a);
         if (length(i))
@@ -688,6 +773,41 @@
           return NULL;
      }
 #v-
-\seealso{where, wherefirst}
+\seealso{where, wherefirst, wherelastmin, wherelastmax}
+\done
+
+\function{wherelastmax}
+\synopsis{Get the index of the last maximum array value}
+\usage{Int_Type wherelastmax (Array_Type a)}
+\description
+This function is equivalent to
+#v+
+   index = wherelast (a == max(a));
+#v-
+It executes about 3 times faster, and does not require the creation of
+temporary arrays.
+\seealso{wherelast, wherefirstmin, wherelastmin, min, max}
+\done
+
+\function{wherelastmin}
+\synopsis{Get the index of the last minimum array value}
+\usage{Int_Type wherelastmin (Array_Type a)}
+\description
+This function is equivalent to
+#v+
+   index = wherelast (a == min(a));
+#v-
+It executes about 3 times faster, and does not require the creation of
+temporary arrays.
+\seealso{wherelast, wherefirstmin, wherelastmax, min, max}
+\done
+
+\function{wherenot}
+\synopsis{Get indices where a numeric array is 0}
+\usage{Array_Type wherenot (Array_Type a)}
+\description
+  This function is equivalent to \exmp{where(not a)}.  See the
+  documentation for \ifun{where} for more information.
+\seealso{where, wherediff, wherefirst, wherelast}
 \done
 

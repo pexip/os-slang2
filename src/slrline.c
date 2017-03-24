@@ -1,6 +1,6 @@
 /* SLang_read_line interface --- uses SLang tty stuff */
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -21,6 +21,7 @@ USA.
 */
 
 #include "slinclud.h"
+#include <errno.h>
 
 #include "slang.h"
 #include "_slang.h"
@@ -48,7 +49,7 @@ struct _pSLrline_Type
    unsigned int len;			       /* current line size */
 
    /* display variables */
-   unsigned int edit_width;		       /* length of display field */
+   unsigned int edit_width;		       /* #cols of display field */
    int curs_pos;			       /* current column */
    int start_column;		       /* column offset of display */
    unsigned int hscroll;		       /* amount to use for horiz scroll */
@@ -325,13 +326,13 @@ static int rl_quote_insert (SLrline_Type *This_RLI)
    int err = _pSLang_Error;
    _pSLang_Error = 0;
    SLang_Last_Key_Char = (*This_RLI->getkey)();
-   rl_self_insert (This_RLI);
    if (_pSLang_Error == SL_USER_BREAK)
      {
 	SLKeyBoard_Quit = 0;
-	_pSLang_Error = 0;
+	SLang_Last_Key_Char = SLang_Abort_Char;
      }
-   else _pSLang_Error = err;
+   SLang_set_error (err);
+   rl_self_insert (This_RLI);
    return 0;
 }
 
@@ -1170,10 +1171,19 @@ char *SLrline_read_line (SLrline_Type *rli, SLFUTURE_CONST char *prompt, unsigne
      {
 	SLrline_Type *save_rli = Active_Rline_Info;
 
+	errno = 0;
 	key = SLang_do_key (RL_Keymap, (int (*)(void)) rli->getkey);
 
 	if ((key == NULL) || (key->f.f == NULL))
 	  {
+	     if ((key == NULL)
+		 && (SLANG_GETKEY_ERROR == (unsigned int)SLang_Last_Key_Char)
+#ifdef EINTR
+		 && (errno != EINTR)
+#endif
+		)
+	       return NULL;
+
 	     rl_beep ();
 	     continue;
 	  }
@@ -1250,6 +1260,7 @@ char *SLrline_read_line (SLrline_Type *rli, SLFUTURE_CONST char *prompt, unsigne
 
 static int rl_abort (SLrline_Type *This_RLI)
 {
+   SLang_set_error (SL_USER_BREAK);
    This_RLI->quit = RLINE_QUIT_ABORT;
    return 0;
 }
@@ -1528,7 +1539,7 @@ static int check_window_size_and_redraw (SLrline_Type *rli, RLine_SMG_Update_Typ
        || (s->num_screen_rows != SLtt_Screen_Rows))
      {
 	SLsmg_reinit_smg ();
-	s->num_screen_cols = SLtt_Screen_Cols;
+	rli->edit_width = s->num_screen_cols = SLtt_Screen_Cols;
 	s->num_screen_rows = SLtt_Screen_Rows;
 	SLrline_redraw (rli);
 	return 1;
@@ -1636,7 +1647,7 @@ static int try_smg_multiline_mode (SLrline_Type *rli)
    rli->update_postread_hook = rline_smg_postread;
    rli->update_display_width_changed_hook = rline_smg_display_width_changed;
 
-   cd->num_screen_cols = SLtt_Screen_Cols;
+   rli->edit_width = cd->num_screen_cols = SLtt_Screen_Cols;
    cd->num_screen_rows = SLtt_Screen_Rows;
 
    if (-1 == _pSLsmg_init_smg_cmdline ())
@@ -1795,6 +1806,50 @@ int SLrline_set_update_hook (SLrline_Type *rli,
    rli->update_client_data = client_data;
    return 0;
 }
+
+int SLrline_get_update_client_data (SLrline_Type *rli, VOID_STAR *cdp)
+{
+   if (rli == NULL)
+     return -1;
+   *cdp = rli->update_client_data;
+   return 0;
+}
+
+void SLrline_set_free_update_cb (SLrline_Type *rli,
+				 void (*fun)(SLrline_Type *, VOID_STAR))
+{
+   if (rli != NULL)
+     rli->update_free_update_data_hook = fun;
+}
+
+void SLrline_set_update_clear_cb (SLrline_Type *rli,
+				   void (*fun)(SLrline_Type *, VOID_STAR))
+{
+   if (rli != NULL)
+     rli->update_clear_hook = fun;
+}
+
+void SLrline_set_update_preread_cb (SLrline_Type *rli,
+				   void (*fun)(SLrline_Type *, VOID_STAR))
+{
+   if (rli != NULL)
+     rli->update_preread_hook = fun;
+}
+
+void SLrline_set_update_postread_cb (SLrline_Type *rli,
+				     void (*fun)(SLrline_Type *, VOID_STAR))
+{
+   if (rli != NULL)
+     rli->update_postread_hook = fun;
+}
+
+void SLrline_set_update_width_cb (SLrline_Type *rli,
+				  void (*fun)(SLrline_Type *, int, VOID_STAR))
+{
+   if (rli != NULL)
+     rli->update_display_width_changed_hook = fun;
+}
+
 
 char *SLrline_get_line (SLrline_Type *rli)
 {

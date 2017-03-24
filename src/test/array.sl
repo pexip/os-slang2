@@ -1,4 +1,4 @@
-_debug_info = 1; () = evalfile ("./inc.sl");
+() = evalfile ("./inc.sl");
 
 testing_feature ("array functions");
 
@@ -153,6 +153,89 @@ if (neqs (SS, array_map (String_Type, &strcat, S, S))) failed ("array_map 2");
 SS = S + "--end";
 if (neqs (SS, array_map (String_Type, &strcat, S, "--end"))) failed ("array_map 3");
 
+private define array_map2_func ()
+{
+   variable args = __pop_list (_NARGS-1);
+   variable f = ();
+   variable r1, r2;
+   (r1, r2) = (@f)(__push_list(args));
+   return {r1, r2};
+}
+
+private define array_map2 ()
+{
+   variable args = __pop_list (_NARGS-3);
+   variable ret1, ret2, f;
+   (ret1, ret2, f) = ();
+   variable rlist = array_map (List_Type, &array_map2_func, f, __push_list(args));
+   %rlist is an array of lists
+   variable n = length (rlist);
+   variable t0 = typeof (rlist[0][0]), t1 = typeof (rlist[0][1]);
+   variable a0 = t0[n], a1 = t1[n];
+   _for (0, n-1, 1)
+     {
+	variable i = ();
+	a0[i] = rlist[i][0];
+	a1[i] = rlist[i][1];
+     }
+   return a0, a1;
+}
+
+private define sum_and_diff (x, y)
+{
+   return x+y, x-y;
+}
+
+private define count_func (x, ref)
+{
+   @ref++;
+}
+
+private define test_array_mapN ()
+{
+   variable s, d, s1, d1, x, y;
+   x = [1:10], y = [1:10];
+   (s,d) = array_map (Double_Type, Double_Type, &sum_and_diff, x, y);
+   (s1, d1) = array_map2 (Double_Type, Double_Type, &sum_and_diff, x, y);
+   if (neqs (s1,s) || neqs (d1, d))
+     failed ("array_map with 2 returns test 1");
+
+   x = [1:10], y = 1.0;
+   (s,d) = array_map (Double_Type, Double_Type, &sum_and_diff, x, y);
+   (s1, d1) = array_map2 (Double_Type, Double_Type, &sum_and_diff, x, y);
+   if (neqs (s1,s) || neqs (d1, d))
+     failed ("array_map with 2 returns test 2");
+
+   y = [1:10], x = 1.0;
+   (s,d) = array_map (Double_Type, Double_Type, &sum_and_diff, x, y);
+   (s1, d1) = array_map2 (Double_Type, Double_Type, &sum_and_diff, x, y);
+   if (neqs (s1,s) || neqs (d1, d))
+     failed ("array_map with 2 returns test 3");
+
+   x = [1:10];
+   s = array_map (Double_Type, &sin, x);
+   s1 = array_map (Void_Type, Double_Type, &sin, x);
+   if (neqs (s1,s))
+     failed ("array_map with 1 void return test 1");
+   s1 = array_map (Double_Type, Void_Type, &sin, x);
+   if (neqs (s1,s))
+     failed ("array_map with 1 void return test 2");
+
+   x = [1:10];
+   y = 0;
+   array_map (&count_func, x, &y);
+   if (y != length(x))
+     failed ("array_map with implicit void");
+
+   x = [1:10];
+   y = 0;
+   array_map (Void_Type, &count_func, x, &y);
+   if (y != length(x))
+     failed ("array_map with explicit void");
+}
+
+test_array_mapN ();
+
 #ifexists Double_Type
 S = [1:20:0.1];
 if (neqs (sin(S), array_map (Double_Type, &sin, S))) failed ("array_map 4");
@@ -182,6 +265,11 @@ try
    failed ("array_map ([Hello], String_Type[0] did not generate an exception");
 }
 catch TypeMismatchError;
+
+private define function_returning_NULL_or_string (x) { x == 0 ? NULL : "!0"; }
+$1 = array_map (String_Type, &function_returning_NULL_or_string, [-1:1]);
+if (neqs ($1, ["!0", NULL, "!0"]))
+  failed ("array_map putting NULL into String_Type array");
 
 % Indexing of 7d array
 if (31 != _reshape ([31], [1,1,1,1,1,1,1])[0,0,0,0,0,0,0])
@@ -465,6 +553,12 @@ if ((length(where(_isnull(A))) != 2)
      or (where (_isnull(A))[1] != 5))
   failed ("_isnull: %S", where(_isnull(A))[1] != 5);
 
+A = NULL; if (_isnull(A) == 0) failed ("_isnull(NULL)");
+A = Null_Type[10];
+ifnot (all(_isnull (A))) failed ("_isnull(Null_Type[10])");
+if (length (_isnull(A)) != length(A)) failed ("length _isnull(Null_Type[10])");
+
+A = String_Type[10];
 A[*] = "a";
 if ("aaaaaaaaaa" != strjoin (A, ""))
   failed ("A[5]=a");
@@ -478,6 +572,8 @@ A[*] = "a";
 A[1] = NULL;
 if (length (where (A != String_Type[10])) != 9)
   failed ("A != String_Type[10]");
+
+
 
 private define test_indexing_with_1_index ()
 {
@@ -1554,6 +1650,104 @@ private define test_linear_combination ()
 
 }
 test_linear_combination ();
+
+private define test_range_multiplier ()
+{
+   variable x0 = 1.7, x1 = 2.05, dx = 0.02;
+   variable a = [x0:x1:dx];
+   if (a[0] != x0)
+     failed ("range multiplier: first element is incorrect (%S vs %S", a[0], x0);
+   x0 = -1.7;
+   a = [x0:x1:dx];
+   if (a[0] != x0)
+     failed ("range multiplier: first element is incorrect (%S vs %S", a[0], x0);
+}
+test_range_multiplier ();
+
+private define test_wherefirstlast_minmax (a)
+{
+   foreach ([
+#ifexists Double_Type
+	     Double_Type, Float_Type,
+#endif
+#ifexists LLong_Type
+	     LLong_Type, ULLong_Type,
+#endif
+	     Long_Type, ULong_Type, Int_Type, UInt_Type,
+	     Short_Type, UShort_Type, Char_Type, UChar_Type,
+	    ])
+     {
+	variable type = ();
+	variable b = typecast (a, type);
+
+	variable i;
+	i = wherefirst (b == min(b));
+	if (i != wherefirstmin (b))
+	  failed ("wherefirstmin on %S", type, b);
+
+	i = wherefirst (b == max(b));
+	if (i != wherefirstmax (b))
+	  failed ("wherefirstmax on %S", type, b);
+
+	i = wherelast (b == min(b));
+	if (i != wherelastmin (b))
+	  failed ("wherelastmin on %S", type, b);
+
+	i = wherelast (b == max(b));
+	if (i != wherelastmax (b))
+	  failed ("wherelastmax on %S", type, b);
+     }
+}
+
+test_wherefirstlast_minmax (1);
+test_wherefirstlast_minmax ([1]);
+test_wherefirstlast_minmax ([-1,1]);
+test_wherefirstlast_minmax ([-1,1,-1]);
+test_wherefirstlast_minmax ([-1,1,-1,1]);
+test_wherefirstlast_minmax ([-1,1,-1,1,0]);
+test_wherefirstlast_minmax ([-1,1,-1,1,0,1,2,3]);
+test_wherefirstlast_minmax ([-1,1,-1,1,0,1,2,3,0]);
+
+private define test_prod (a)
+{
+   variable p = prod (a);
+   variable p1 = 1.0;
+   foreach (a)
+     {
+	variable aa = ();
+	p1 *= aa;
+     }
+   if (p1 == p)
+     return;
+#ifexists Complex_Type
+   if (_typeof (a) == Complex_Type)
+     {
+	if (feqs (Real(p), Real(p1)) && feqs (Imag(p), Imag(p1)))
+	  return;
+     }
+   else
+#endif
+     {
+	if (feqs (p, p1))
+	  return;
+     }
+
+   failed ("prod(%S) produced %S, expected %S", a, p, p1);
+}
+test_prod ([1]);
+test_prod ([1:5]);
+test_prod ([1.0]);
+test_prod ([1.0f]);
+test_prod ([1:5]*1.0);
+test_prod ([1:5]*1.0f);
+test_prod ([1h, 2h]);
+#ifexists LLong_Type
+test_prod ([1LL]);
+test_prod ([1:5]*1LL);
+#ifexists Complex_Type
+test_prod ([1+0i]);
+test_prod ([1:5] + 1i*[2:6]);
+#endif
 
 print ("Ok\n");
 exit (0);

@@ -1,6 +1,6 @@
 /* sin, cos, etc, for S-Lang */
 /*
-Copyright (C) 2004-2011 John E. Davis
+Copyright (C) 2004-2014 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -20,8 +20,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
 */
 
+#ifndef _GNU_SOURCE
+# define _GNU_SOURCE		       /* sincos */
+#endif
 #include "slinclud.h"
-
 #include <float.h>
 #include <math.h>
 
@@ -760,8 +762,8 @@ static int complex_math_op (int op,
 			    VOID_STAR bp)
 {
    double *a, *b;
-   unsigned int i;
-   unsigned int na2 = na * 2;
+   SLuindex_Type i;
+   SLuindex_Type na2 = na * 2;
    double *(*fun) (double *, double *);
    char *c;
 
@@ -844,7 +846,7 @@ static int complex_math_op (int op,
 	c = (char *) bp;
 	for (i = 0; i < na; i++)
 	  {
-	     unsigned int j = 2*i;
+	     SLuindex_Type j = 2*i;
 	     c[i] = (char) (ISINF_FUN(a[j]) || ISINF_FUN(a[j+1]));
 	  }
 	return 1;
@@ -852,7 +854,7 @@ static int complex_math_op (int op,
 	c = (char *) bp;
 	for (i = 0; i < na; i++)
 	  {
-	     unsigned int j = 2*i;
+	     SLuindex_Type j = 2*i;
 	     c[i] = (char) (ISNAN_FUN(a[j]) || ISNAN_FUN(a[j+1]));
 	  }
 	return 1;
@@ -894,28 +896,38 @@ static void free_array_or_scalar (Array_Or_Scalar_Type *ast)
 static int pop_array_or_scalar (Array_Or_Scalar_Type *ast)
 {
    SLang_Array_Type *at;
+   SLtype dtype;
 
    ast->at = NULL;
    ast->inc = 0;
    ast->num = 1;
-   switch (SLang_peek_at_stack1 ())
+   switch (_pSLang_peek_at_stack2 (&dtype))
      {
       case -1:
 	return -1;
 
-      case SLANG_FLOAT_TYPE:
-	ast->is_float = 1;
-	if (SLang_peek_at_stack () == SLANG_ARRAY_TYPE)
+      case SLANG_ARRAY_TYPE:
+	if (dtype == SLANG_FLOAT_TYPE)
 	  {
 	     if (-1 == SLang_pop_array_of_type (&at, SLANG_FLOAT_TYPE))
 	       return -1;
+	     ast->is_float = 1;
 	     ast->fptr = (float *) at->data;
-	     ast->inc = 1;
-	     ast->num = at->num_elements;
-	     ast->at = at;
-	     return 0;
 	  }
+	else
+	  {
+	     if (-1 == SLang_pop_array_of_type (&at, SLANG_DOUBLE_TYPE))
+	       return -1;
+	     ast->is_float = 0;
+	     ast->dptr = (double *) at->data;
+	  }
+	ast->inc = 1;
+	ast->num = at->num_elements;
+	ast->at = at;
+	return 0;
 
+      case SLANG_FLOAT_TYPE:
+	ast->is_float = 1;
 	ast->fptr = &ast->f;
 	if (-1 == SLang_pop_float (ast->fptr))
 	  return -1;
@@ -923,17 +935,6 @@ static int pop_array_or_scalar (Array_Or_Scalar_Type *ast)
 
       default:
 	ast->is_float = 0;
-	if (SLang_peek_at_stack () == SLANG_ARRAY_TYPE)
-	  {
-	     if (-1 == SLang_pop_array_of_type (&at, SLANG_DOUBLE_TYPE))
-	       return -1;
-	     ast->dptr = (double *) at->data;
-	     ast->inc = 1;
-	     ast->num = at->num_elements;
-	     ast->at = at;
-	     return 0;
-	  }
-
 	ast->dptr = &ast->d;
 	if (-1 == SLang_pop_double (ast->dptr))
 	  return -1;
@@ -998,7 +999,7 @@ static int do_dd_fun (double (*f)(double, double),
    double *c = c_ast->dptr;
    unsigned int a_inc = a_ast->inc;
    unsigned int b_inc = b_ast->inc;
-   unsigned int i, n = c_ast->num;
+   SLuindex_Type i, n = c_ast->num;
 
    for (i = 0; i < n; i++)
      {
@@ -1019,7 +1020,7 @@ static int do_ff_fun (double (*f)(double, double),
    float *c = c_ast->fptr;
    unsigned int a_inc = a_ast->inc;
    unsigned int b_inc = b_ast->inc;
-   unsigned int i, n = c_ast->num;
+   SLuindex_Type i, n = c_ast->num;
 
    for (i = 0; i < n; i++)
      {
@@ -1040,7 +1041,7 @@ static int do_fd_fun (double (*f)(double, double),
    double *c = c_ast->dptr;
    unsigned int a_inc = a_ast->inc;
    unsigned int b_inc = b_ast->inc;
-   unsigned int i, n = c_ast->num;
+   SLuindex_Type i, n = c_ast->num;
 
    for (i = 0; i < n; i++)
      {
@@ -1061,7 +1062,7 @@ static int do_df_fun (double (*f)(double, double),
    double *c = c_ast->dptr;
    unsigned int a_inc = a_ast->inc;
    unsigned int b_inc = b_ast->inc;
-   unsigned int i, n = c_ast->num;
+   SLuindex_Type i, n = c_ast->num;
 
    for (i = 0; i < n; i++)
      {
@@ -1156,7 +1157,7 @@ static int do_binary_function_on_nargs (double (*f)(double, double), int num)
 static void hypot_fun (void)
 {
    Array_Or_Scalar_Type ast;
-   unsigned int num;
+   SLuindex_Type num;
 
    if (SLang_Num_Function_Args >= 2)
      {
@@ -1178,7 +1179,7 @@ static void hypot_fun (void)
      {
 	float *f = ast.fptr;
 	double sum, esum, max;
-	unsigned int i, imax;
+	SLuindex_Type i, imax;
 
 	max = fabs((double)*f);
 	imax = 0;
@@ -1463,7 +1464,7 @@ static int do_c_dd_fun (int (*f)(double, double, VOID_STAR),
    char *c = c_ast->cptr;
    unsigned int a_inc = a_ast->inc;
    unsigned int b_inc = b_ast->inc;
-   unsigned int i, n = c_ast->num;
+   SLuindex_Type i, n = c_ast->num;
 
    for (i = 0; i < n; i++)
      {
@@ -1485,7 +1486,7 @@ static int do_c_ff_fun (int (*f)(double, double, VOID_STAR),
    char *c = c_ast->cptr;
    unsigned int a_inc = a_ast->inc;
    unsigned int b_inc = b_ast->inc;
-   unsigned int i, n = c_ast->num;
+   SLuindex_Type i, n = c_ast->num;
 
    for (i = 0; i < n; i++)
      {
@@ -1507,7 +1508,7 @@ static int do_c_fd_fun (int (*f)(double, double, VOID_STAR),
    char *c = c_ast->cptr;
    unsigned int a_inc = a_ast->inc;
    unsigned int b_inc = b_ast->inc;
-   unsigned int i, n = c_ast->num;
+   SLuindex_Type i, n = c_ast->num;
 
    for (i = 0; i < n; i++)
      {
@@ -1529,7 +1530,7 @@ static int do_c_df_fun (int (*f)(double, double, VOID_STAR),
    char *c = c_ast->cptr;
    unsigned int a_inc = a_ast->inc;
    unsigned int b_inc = b_ast->inc;
-   unsigned int i, n = c_ast->num;
+   SLuindex_Type i, n = c_ast->num;
 
    for (i = 0; i < n; i++)
      {
@@ -1700,7 +1701,7 @@ static int do_nint (double x)
 
 static int float_to_nint (SLang_Array_Type *at, SLang_Array_Type *bt)
 {
-   unsigned int n, i;
+   SLuindex_Type n, i;
    int *ip;
    float *fp;
 
@@ -1716,7 +1717,7 @@ static int float_to_nint (SLang_Array_Type *at, SLang_Array_Type *bt)
 
 static int double_to_nint (SLang_Array_Type *at, SLang_Array_Type *bt)
 {
-   unsigned int n, i;
+   SLuindex_Type n, i;
    int *ip;
    double *dp;
 
@@ -1735,19 +1736,17 @@ static void nint_intrin (void)
    double x;
    SLang_Array_Type *at, *bt;
    int (*at_to_int_fun)(SLang_Array_Type *, SLang_Array_Type *);
+   SLtype dtype;
 
-   if (SLang_peek_at_stack () != SLANG_ARRAY_TYPE)
+   if (SLANG_ARRAY_TYPE != _pSLang_peek_at_stack2 (&dtype))
      {
 	if (-1 == SLang_pop_double (&x))
 	  return;
 	(void) SLang_push_int (do_nint (x));
 	return;
      }
-   switch (SLang_peek_at_stack1 ())
+   switch (dtype)
      {
-      case -1:
-	return;
-
       case SLANG_INT_TYPE:
 	return;
 
@@ -1792,10 +1791,24 @@ static void frexp_intrin (void)
    int e, *ep;
    SLuindex_Type i, imax;
    SLang_Array_Type *at, *bt, *et;
+   SLtype dtype;
 
-   switch (SLang_peek_at_stack ())
+   switch (_pSLang_peek_at_stack2 (&dtype))
      {
       case SLANG_ARRAY_TYPE:
+	switch (dtype)
+	  {
+	   case SLANG_FLOAT_TYPE:
+	     if (-1 == SLang_pop_array_of_type (&at, SLANG_FLOAT_TYPE))
+	       return;
+	     break;
+
+	   default:
+	   case SLANG_DOUBLE_TYPE:
+	     if (-1 == SLang_pop_array_of_type (&at, SLANG_DOUBLE_TYPE))
+	       return;
+	     break;
+	  }
 	break;
 
       case SLANG_FLOAT_TYPE:
@@ -1814,20 +1827,6 @@ static void frexp_intrin (void)
 	(void) SLang_push_double (d);
 	(void) SLang_push_int (e);
 	return;
-     }
-
-   switch (SLang_peek_at_stack1 ())
-     {
-      case SLANG_FLOAT_TYPE:
-	if (-1 == SLang_pop_array_of_type (&at, SLANG_FLOAT_TYPE))
-	  return;
-	break;
-
-      default:
-      case SLANG_DOUBLE_TYPE:
-	if (-1 == SLang_pop_array_of_type (&at, SLANG_DOUBLE_TYPE))
-	  return;
-	break;
      }
 
    if (NULL == (bt = SLang_create_array1 (at->data_type, 0, NULL, at->dims, at->num_dims, 1)))
@@ -2003,6 +2002,94 @@ free_and_return:
 }
 #endif				       /* HAVE_LDEXPF */
 
+
+#ifdef HAVE_SINCOSF
+# define SINCOSF(x, sp, cp) sincosf (x, sp, cp)
+#else
+# define SINCOSF(x, sp, cp) \
+   *(sp) = (float)sin(x); *(cp) = (float)cos(x)
+#endif
+#ifdef HAVE_SINCOS
+# define SINCOS(x, sp, cp) sincos (x, sp, cp)
+#else
+# define SINCOS(x, sp, cp) \
+   *(sp) = sin(x); *(cp) = cos(x)
+#endif
+
+static void sincos_intrin (void)
+{
+   Array_Or_Scalar_Type ast;
+   SLtype type;
+   SLang_Array_Type *s_at, *c_at;
+   SLuindex_Type num;
+
+   if (-1 == pop_array_or_scalar (&ast))
+     return;
+
+   if (ast.inc == 0)
+     {
+	if (ast.is_float)
+	  {
+	     float s, c;
+	     SINCOSF(ast.f, &s, &c);
+	     (void) SLang_push_float (s);
+	     (void) SLang_push_float (c);
+	  }
+	else
+	  {
+	     double s, c;
+	     SINCOS(ast.d, &s, &c);
+	     (void) SLang_push_double (s);
+	     (void) SLang_push_double (c);
+	  }
+	free_array_or_scalar (&ast);
+	return;
+     }
+
+   c_at = s_at = NULL;
+   num = ast.num;
+   type = ast.is_float ? SLANG_FLOAT_TYPE : SLANG_DOUBLE_TYPE;
+
+   s_at = SLang_create_array1(type, 0, NULL, ast.at->dims, ast.at->num_dims, 1);
+   if (s_at == NULL)
+     goto free_and_return;
+   c_at = SLang_create_array1(type, 0, NULL, ast.at->dims, ast.at->num_dims, 1);
+   if (c_at == NULL)
+     goto free_and_return;
+
+   if (ast.is_float)
+     {
+	SLuindex_Type i;
+	float *x = ast.fptr;
+	float *s = (float*) s_at->data;
+	float *c = (float*) c_at->data;
+	for (i=0; i<num; i++)
+	  {
+	     SINCOSF(x[i], s+i, c+i);
+	  }
+     }
+   else
+     {
+	SLuindex_Type i;
+	double *x = ast.dptr;
+	double *s = (double*) s_at->data;
+	double *c = (double*) c_at->data;
+	for (i=0; i<num; i++)
+	  {
+	     SINCOS (x[i], s+i, c+i);
+	  }
+     }
+
+   if (0 == SLang_push_array (s_at, 0))
+     (void) SLang_push_array (c_at, 0);
+
+   /* drop */
+free_and_return:
+   if (c_at != NULL) SLang_free_array (c_at);
+   if (s_at != NULL) SLang_free_array (s_at);
+   free_array_or_scalar (&ast);
+}
+
 static void fpu_clear_except_bits (void)
 {
    SLfpu_clear_except_bits ();
@@ -2075,6 +2162,7 @@ static SLang_Intrin_Fun_Type SLang_Math_Table [] =
 #ifdef HAVE_LDEXP
    MAKE_INTRINSIC_0("ldexp", ldexp_intrin, SLANG_VOID_TYPE),
 #endif
+   MAKE_INTRINSIC_0("sincos", sincos_intrin, SLANG_VOID_TYPE),
    SLANG_END_INTRIN_FUN_TABLE
 };
 

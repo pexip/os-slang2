@@ -61,7 +61,7 @@
   file.
 
   Some systems do not support this function.
-\seealso{chmod, stat_file}
+\seealso{lchown, chmod, stat_file}
 \done
 
 \function{getcwd}
@@ -90,6 +90,18 @@
 \notes
   Not all systems support the concept of a hard-link.
 \seealso{symlink}
+\done
+
+\function{lchown}
+\synopsis{Change the owner of a file}
+\usage{Int_Type lchown (String_Type file, Int_Type uid, Int_Type gid)}
+\description
+  The \ifun{lchown} function is like \ifun{chown}, except that it does
+  not dereference a symbolic link.  Hence, it may be used to change
+  the ownership of a symbolic link itself, and not to what it
+  references.  See the documentation for the \ifun{chown} function for
+  more details.
+\seealso{chown, chmod, stat_file}
 \done
 
 \function{listdir}
@@ -296,7 +308,7 @@
 
 \function{symlink}
 \synopsis{Create a symbolic link}
-\usage{status = symlink (String_Type oldpath, String_Type new_path)}
+\usage{Int_Type symlink (String_Type oldpath, String_Type new_path)}
 \description
   The \ifun{symlink} function may be used to create a symbolic link
   named \exmp{new_path} for  \exmp{oldpath}.  If successful, the function
@@ -322,3 +334,4 @@
  the \cfun{utime} function.
 \seealso{stat_file}
 \done
+
