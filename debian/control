@@ -17,7 +17,7 @@ Standards-Version: 3.9.6
 Homepage: http://www.jedsoft.org/slang/
 VCS-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/slang2.git
 VCS-Git: git://anonscm.debian.org/collab-maint/slang2.git
-XS-Pexip-Upstream: http://ftp.debian.org/debian/ jessie
+XS-Pexip-Upstream: http://ftp.debian.org/debian/ stretch
 
 Package: libslang2-dev
 Section: libdevel
