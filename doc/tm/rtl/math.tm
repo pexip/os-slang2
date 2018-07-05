@@ -234,6 +234,27 @@
 \seealso{feqs, fgteqs, flteqs}
 \done
 
+
+\function{frexp}
+\synopsis{Obtain the integral and fractional parts of a floating point number}
+\usage{(b,e) = frexp(x)}
+\description
+  This function breaks a floating point number \exmp{x} into two values
+  \exmp{b} and \exmp{e} such that \exmp{x=b*2^x}, where
+#v+
+    0.5 <= abs(b) < 1  for x != 0,
+    b = 0, e = 0       for x = 0
+    b = _NaN           for x = _NaN
+    b = +/-_Inf        for x = +/-Inf
+#v-
+  For the latter two cases, the value is \exmp{e} is implementation
+  dependent.
+
+  If \exmp{x} is an array, the \ifun{frexp} function will be applied
+  to each element and corresponding arrays will be returned.
+\seealso{ldexp, pow, log}
+\done
+
 \function{get_float_format}
 \synopsis{Get the format for printing floating point values.}
 \usage{String_Type get_float_format ()}
@@ -261,7 +282,7 @@
 \example
   A vector in Euclidean 3 dimensional space may be represented by an
   array of three values representing the components of the vector in
-  some orthogonal cartesian coordinate system.  Then the length of the
+  some orthogonal Cartesian coordinate system.  Then the length of the
   vector may be computed using the \ifun{hypot} function, e.g.,
 #v+
       A = [2,3,4];
@@ -352,6 +373,18 @@
 \seealso{_isneg, _isnonneg}
 \done
 
+\function{ldexp}
+\synopsis{Multiply a number by a power of 2}
+\usage{x = ldexp(b, e)}
+\description
+  This function computes the value of \exmp{b*2^e} and returns the
+  result.  If either \exmp{b} or \exmp{e} is an array, a corresponding
+  array of values will be returned.
+\notes
+  This function is the inverse of \exmp{frexp}.
+\seealso{frexp}
+\done
+
 \function{log}
 \synopsis{Compute the logarithm of a number}
 \usage{y = log (x)}
@@ -393,7 +426,7 @@
 \usage{z = _max (x1,...,xN)}
 \description
   The \ifun{_max} function returns a floating point number equal to
-  the maximum value of its arguments.  If any of the argiments are
+  the maximum value of its arguments.  If any of the arguments are
   arrays (of equal length), an array of the corresponding values will
   be returned.
 \notes
@@ -407,7 +440,7 @@
 \usage{z = _min (x1,...,xN)}
 \description
   The \ifun{_min} function returns a floating point number equal to
-  the minimum value of its arguments.  If any of the argiments are
+  the minimum value of its arguments.  If any of the arguments are
   arrays (of equal length), an array of the corresponding values will
   be returned.
 \notes

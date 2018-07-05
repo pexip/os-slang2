@@ -39,11 +39,38 @@ test_pack ("S4", "1234", "123456");
 test_pack ("s10", "1234\0\0\0\0\0\0", "1234");
 test_pack ("S10", "1234      ", "1234");
 
-define test_unpack1 (fmt, str, x, type)
+private define test_pack_unpack (x, type, fmt, size)
+{
+   x = typecast (x, type);
+   variable p = pack (fmt, x);
+   variable y = unpack (fmt, p);
+   ifnot (__is_same (x, y))
+     {
+	failed ("packunpack format=%S, input %S --> %S", fmt, x, y);
+     }
+   if (size == 0)
+     return;
+
+   if (sizeof_pack (fmt) != size)
+     failed ("sizeof_pack: expected %S for %S, got %S",
+	     size, type, sizeof_pack(fmt));
+
+   if (size + 1 != sizeof_pack(pad_pack_format(fmt + "c")))
+     failed ("Unexpected size for pad_pack_format(%S)", fmt+"c");
+}
+
+#ifexists Double_Type
+test_pack_unpack (3.14, Double_Type, "d", 0);
+test_pack_unpack (3.14, Float_Type, "f", 0);
+test_pack_unpack (3.14, Float32_Type, "F", 4);
+test_pack_unpack (3.14, Float64_Type, "D", 8);
+#endif
+
+define test_unpack1 (fmt, str, y, type)
 {
    variable xx;
 
-   x = typecast (x, type);
+   variable x = typecast (y, type);
 
    xx = unpack (fmt, str);
 
@@ -51,15 +78,21 @@ define test_unpack1 (fmt, str, x, type)
      failed ("unpack returned wrong result for " + fmt + ":" + string (xx));
 }
 
-#ifexists Double_Type
-X = 3.14; if (X != unpack ("d", pack ("d", X))) failed ("pack->unpack for d");
-X = 3.14f; if (X != unpack ("f", pack ("f", X))) failed ("pack->unpack for f");
-#endif
-
 test_unpack1 (">j", "\xAB\xCD"B, 0xABCD, Int16_Type);
 test_unpack1 (">k", "\xAB\xCD\xEF\x12"B, 0xABCDEF12L, Int32_Type);
 test_unpack1 ("<j", "\xCD\xAB"B, 0xABCD, Int16_Type);
 test_unpack1 ("<k", "\x12\xEF\xCD\xAB"B, 0xABCDEF12L, Int32_Type);
+test_unpack1 (">J", "\xAB\xCD"B, 0xABCDU, UInt16_Type);
+test_unpack1 (">K", "\xAB\xCD\xEF\x12"B, 0xABCDEF12UL, UInt32_Type);
+test_unpack1 ("<J", "\xCD\xAB"B, 0xABCDU, UInt16_Type);
+test_unpack1 ("<K", "\x12\xEF\xCD\xAB"B, 0xABCDEF12UL, UInt32_Type);
+
+#ifexists Int64_Type
+test_unpack1 (">Q", "\x12\x34\x56\x78\x9A\xBC\xDE\xF0"B,
+	      0x123456789ABCDEF0LL, UInt64_Type);
+test_unpack1 (">q", "\x12\x34\x56\x78\x9A\xBC\xDE\xF0"B,
+	      0x123456789ABCDEF0ULL, Int64_Type);
+#endif
 
 define test_unpack2 (fmt, a, type)
 {
@@ -110,6 +143,27 @@ test_unpack3 ("x x d0d0d0d0 S20 x x20 d x", "FF", 41.7);
 test_unpack3 ("x x0 S20 x x20 d x", "FF", 41.7);
 test_unpack3 ("x x0 s5 x x20 d x", "FF\0\0\0", 41.7);
 test_unpack3 ("x x0 z5 x x20 f x", "FF", 41.7f);
+#endif
+
+#iffalse
+% The alignment is implementation-defined.  A better way of testing
+% this will me needed.
+private define test_pack_format (fmt, ans, n)
+{
+   variable n1, ans1;
+   ans1 = pad_pack_format (fmt);
+   if (ans != ans1)
+     failed ("pad_pack_format(%s) --> %s, expected %s",
+	     fmt, ans1, ans);
+   n1 = sizeof_pack (ans);
+   if (n != n1)
+     failed ("sizeof_pack(%s) --> %S, expected %S",
+	     fmt, n1, n);
+}
+test_pack_format ("cjDCkcqc",
+		  %0123456701234567012345670123456701234567
+		  %cxj-xxxxD-------cxxxk---cxxxxxxxq-------c
+		  "cx1jx4DCx3kcx7qc", 41);
 #endif
 
 print ("Ok\n");

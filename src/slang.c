@@ -1,7 +1,7 @@
 /* -*- mode: C; mode: fold; -*- */
 /* slang.c  --- guts of S-Lang interpreter */
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -690,8 +690,10 @@ static int _typecast_object_to_type (SLang_Object_Type *y, SLang_Object_Type *ob
    if ((allow_arrays == 0)
        || (y->o_data_type != SLANG_ARRAY_TYPE)
        || (y->v.array_val->data_type != type))
-     if (-1 == SLclass_typecast (type, 1, 0))
-       return -1;
+     {
+	if (-1 == SLclass_typecast (type, 1, 0))
+	  return -1;
+     }
 
    /* Here, *y has been replaced by the object of the specified type */
    *obj = *y;
@@ -716,7 +718,7 @@ _INLINE_
      }
    if (-1 == _typecast_object_to_type (y, &obj, SLANG_INT_TYPE, 0))
      {
-	Stack_Pointer = y;
+	/* Stack_Pointer = y; */
 	return -1;
      }
    *i = obj.v.int_val;
@@ -746,7 +748,7 @@ int SLang_pop_array_index (SLindex_Type *i)
      }
    if (-1 == _typecast_object_to_type (y, &obj, SLANG_ARRAY_INDEX_TYPE, 0))
      {
-	Stack_Pointer = y;
+	/* Stack_Pointer = y; */
 	return -1;
      }
    *i = obj.v.index_val;
@@ -776,7 +778,7 @@ _INLINE_ static int pop_object_of_type (SLtype type, SLang_Object_Type *obj,
      }
    if (-1 == _typecast_object_to_type (y, obj, type, allow_arrays))
      {
-	Stack_Pointer = y;
+	/* Stack_Pointer = y; */
 	return -1;
      }
    Stack_Pointer = y;
@@ -1345,9 +1347,9 @@ static int do_bc_call_direct_nargs (int (*f)(void))
 
 static int do_name_type_error (SLang_Name_Type *nt)
 {
-   char buf[256];
    if (nt != NULL)
      {
+	char buf[256];
 	(void) _pSLsnprintf (buf, sizeof (buf), "(Error occurred processing %s)", nt->name);
 	do_traceback (buf);
      }
@@ -3375,6 +3377,9 @@ static int do_struct_method (SLFUTURE_CONST char *name, int linenum)
    return deref_call_object (&obj, linenum);    /* frees obj */
 }
 
+#if defined(__GNUC__)
+# pragma GCC diagnostic ignored "-Wformat-nonliteral"
+#endif
 static void trace_dump (SLFUTURE_CONST char *format, char *name, SLang_Object_Type *objs, int n, int dir)
 {
    unsigned int len;
@@ -3399,6 +3404,9 @@ static void trace_dump (SLFUTURE_CONST char *format, char *name, SLang_Object_Ty
 	_pSLerr_dump_msg (prefix, objs, n, dir);
      }
 }
+#if defined(__GNUC__)
+# pragma GCC diagnostic warning "-Wformat-nonliteral"
+#endif
 
 /*  Pop a data item from the stack and return a pointer to it.
  *  Strings are not freed from stack so use another routine to do it.
@@ -4308,11 +4316,11 @@ int _pSLang_trace_fun (SLFUTURE_CONST char *f)
 
 int _pSLdump_objects (char *prefix, SLang_Object_Type *x, unsigned int n, int dir)
 {
-   char *s;
-   SLang_Class_Type *cl;
-
    while (n)
      {
+	SLang_Class_Type *cl;
+	char *s;
+
 	GET_CLASS(cl,x->o_data_type);
 
 	s = _pSLstringize_object (x);
@@ -4450,7 +4458,6 @@ int _pSLang_set_frame_variable (int depth, char *name)
 
 int _pSLang_get_frame_variable (int depth, char *name)
 {
-   SLang_Class_Type *cl;
    Function_Stack_Type s;
    SLang_Name_Type *nt;
    int i;
@@ -4460,6 +4467,7 @@ int _pSLang_get_frame_variable (int depth, char *name)
 
    if (-1 != (i = find_local_variable_index (s.header, name)))
      {
+	SLang_Class_Type *cl;
 	SLang_Object_Type *obj = s.local_variable_frame - i;
 	GET_CLASS(cl,obj->o_data_type);
 	return (*cl->cl_push) (obj->o_data_type, (VOID_STAR) &obj->v);
@@ -4644,10 +4652,8 @@ static void do_traceback (SLCONST char *message)
 static void do_function_traceback (Function_Header_Type *header, unsigned int linenum)
 {
    unsigned int nlocals;
-   char *s;
    unsigned int i;
    SLang_Object_Type *objp;
-   SLtype stype;
 
    if (SLang_Traceback == SL_TB_NONE)
      return;
@@ -4667,6 +4673,8 @@ static void do_function_traceback (Function_Header_Type *header, unsigned int li
      {
 	SLang_Class_Type *cl;
 	char *class_name;
+	char *s;
+	SLtype stype;
 
 	objp = Local_Variable_Frame - i;
 	stype = objp->o_data_type;
@@ -7552,7 +7560,6 @@ add_slang_function (SLFUTURE_CONST char *name, unsigned char type, unsigned long
 
 static int SLns_autoload (SLFUTURE_CONST char *name, SLFUTURE_CONST char *file, SLFUTURE_CONST char *nsname)
 {
-   _pSLang_Function_Type *f;
    unsigned long hash;
    SLang_NameSpace_Type *ns;
    SLFUTURE_CONST char *cnsname = nsname;
@@ -7566,6 +7573,8 @@ static int SLns_autoload (SLFUTURE_CONST char *name, SLFUTURE_CONST char *file, 
    hash = SLcompute_string_hash (name);
    if (NULL != (ns = _pSLns_find_namespace (cnsname)))
      {
+	_pSLang_Function_Type *f;
+
 	f = (_pSLang_Function_Type *)_pSLns_locate_hashed_name (ns, name, hash);
 
 	if ((f != NULL)
@@ -8458,8 +8467,13 @@ static int lang_define_function (SLFUTURE_CONST char *name, unsigned char type, 
    h = allocate_function_header (Function_Args_Number,
 				 Local_Variable_Number,
 				 This_Compile_Filename);
-   if ((h == NULL)
-       || (-1 == add_slang_function (name, type, hash, h, NULL, ns)))
+   if (h == NULL)
+     {
+	end_define_function ();
+	return -1;
+     }
+
+   if (-1 == add_slang_function (name, type, hash, h, NULL, ns))
      {
 	free_function_header (h);
 	end_define_function ();
@@ -8713,21 +8727,32 @@ static void reset_active_interpreter (void)
    Lang_Break = Lang_Return = 0;
 }
 
-#if SLANG_HAS_QUALIFIERS
-static void clear_qualifier_stack (void)
+static void free_local_variables (void)
 {
-   unsigned int i;
-
-   for (i = 0; i < Recursion_Depth; i++)
+   while (Local_Variable_Frame > Local_Variable_Stack)
      {
-	if (Function_Qualifiers_Stack[i] != NULL)
-	  {
-	     SLang_free_struct (Function_Qualifiers_Stack[i]);
-	     Function_Qualifiers_Stack[i] = NULL;
-	  }
+	SLang_free_object (Local_Variable_Frame);
+	Local_Variable_Frame--;
      }
 }
-#endif
+
+static void clear_switch_objects (void)
+{
+   SLang_Object_Type *p;
+
+   p = Switch_Objects;
+   while (p < Switch_Obj_Max)
+     {
+	if (p->o_data_type != 0)
+	  {
+	     SLang_free_object (p);
+	     p->o_data_type = 0;
+	  }
+	p++;
+     }
+   Switch_Obj_Ptr = Switch_Objects;
+}
+
 void SLang_restart (int localv)
 {
    reset_active_interpreter ();
@@ -8746,29 +8771,12 @@ void SLang_restart (int localv)
 
    if (localv)
      {
-	Next_Function_Num_Args = SLang_Num_Function_Args = 0;
-	Local_Variable_Frame = Local_Variable_Stack;
-#if SLANG_HAS_QUALIFIERS
-	clear_qualifier_stack ();
-#endif
-	Recursion_Depth = 0;
-	Frame_Pointer = Stack_Pointer;
-	Frame_Pointer_Depth = 0;
-	Function_Stack_Ptr = Function_Stack;
-	Switch_Obj_Ptr = Switch_Objects;
-	while (Switch_Obj_Ptr < Switch_Obj_Max)
-	  {
-	     if (Switch_Obj_Ptr->o_data_type != 0)
-	       {
-		  SLang_free_object (Switch_Obj_Ptr);
-		  Switch_Obj_Ptr->o_data_type = 0;
-	       }
-	     Switch_Obj_Ptr++;
-	  }
-	Switch_Obj_Ptr = Switch_Objects;
+	free_local_variables ();
+	clear_switch_objects ();
+	while (0 == pop_compile_context ())
+	  ;
      }
    _pSLerr_print_message_queue ();
-
    _pSLerr_clear_error (0);
 }
 
@@ -10008,7 +10016,7 @@ static void compile_basic_token_mode (_pSLang_Token_Type *t)
 	break;
 
       case BREAK_N_TOKEN:
-	compile_break (SLANG_BC_BREAK_N, 1, 0, "break", abs(t->v.long_val));
+	compile_break (SLANG_BC_BREAK_N, 1, 0, "break", abs((int)t->v.long_val));
 	break;
 
       case RETURN_TOKEN:
@@ -10019,7 +10027,7 @@ static void compile_basic_token_mode (_pSLang_Token_Type *t)
 	compile_break (SLANG_BC_CONTINUE, 1, 0, "continue", 1);
 	break;
       case CONT_N_TOKEN:
-	compile_break (SLANG_BC_CONTINUE_N, 1, 0, "continue", abs(t->v.long_val));
+	compile_break (SLANG_BC_CONTINUE_N, 1, 0, "continue", abs((int)t->v.long_val));
 	break;
       case EXCH_TOKEN:
 	compile_break (SLANG_BC_EXCH, 0, 0, "", 0);   /* FIXME: Priority=low */
@@ -10202,7 +10210,7 @@ static Compile_Context_Type *Compile_Context_Stack;
 /* The only way the push/pop_context functions can get called is via
  * an eval type function.  That can only happen when executed from a
  * top level block.  This means that Compile_ByteCode_Ptr can always be
- * rest back to the beginning of a block.
+ * reset back to the beginning of a block.
  */
 
 static int pop_compile_context (void)
@@ -10846,6 +10854,9 @@ static int implements_ns (SLFUTURE_CONST char *namespace_name)
 {
    SLang_NameSpace_Type *ns;
    SLFUTURE_CONST char *name;
+
+   if (-1 == _pSLns_check_name (namespace_name))
+     return -1;
 
    if ((This_Private_NameSpace == NULL) || (This_Static_NameSpace == NULL))
      {

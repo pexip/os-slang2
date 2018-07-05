@@ -1,6 +1,6 @@
 /* -*- mode: C; mode: fold -*- */
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -54,7 +54,7 @@ static int Current_Color;
 static int IsColor = 1;
 static int Blink_Killed = 1;	/* high intensity background enabled */
 
-/* FIXME: sldisply.c allows up to 512 colors */
+/* FIXME: sldisply.c allows up to SLTT_MAX_COLORS colors */
 #define JMAX_COLORS	256
 #define JNORMAL_COLOR	0
 #define JNO_COLOR	-1

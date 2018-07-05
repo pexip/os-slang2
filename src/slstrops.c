@@ -1,7 +1,7 @@
 /* -*- mode: C; mode: fold; -*- */
 /* string manipulation functions for S-Lang. */
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -900,7 +900,7 @@ static void strbskipchar_intrin (void)
    if (_pSLinterp_UTF8_Mode == 0)
      {
 	(void) SLang_push_strlen_type (pos-1);
-	(void) SLang_push_uchar (*str0);
+	(void) SLang_push_uchar (*(str0-1));
 	goto free_and_return;
      }
    str1 = SLutf8_bskip_chars (str, str0, 1, NULL, skip_combining);
@@ -1381,6 +1381,9 @@ static int strtrim_internal (int do_beg, int do_end)
      }
    else cd.lut = make_whitespace_lut ();
 
+   if (cd.lut == NULL)
+     return -1;
+
    status = arraymap_str_func_str (func_strtrim, &cd);
    if (free_lut) SLwchar_free_lut (cd.lut);
    return status;
@@ -1852,7 +1855,8 @@ static void strcompress_vintrin (char *white) /*{{{*/
    memcpy ((char *)cd.pref_char_buf, white, cd.pref_len);
    cd.pref_char_buf[cd.pref_len] = 0;
 
-   if (NULL == (cd.lut = SLwchar_strtolut ((SLuchar_Type *)white, 1, 0)))
+   /* No ranges and no character classes in white */
+   if (NULL == (cd.lut = SLwchar_strtolut ((SLuchar_Type *)white, 0, 0)))
      return;
 
    (void) arraymap_str_func_str (&func_strcompress, (void *)&cd);
@@ -1862,9 +1866,12 @@ static void strcompress_vintrin (char *white) /*{{{*/
 
 /*}}}*/
 
+#if defined(__GNUC__)
+# pragma GCC diagnostic ignored "-Wformat-nonliteral"
+#endif
 static char *SLdo_sprintf (char *fmt) /*{{{*/
 {
-   register char *p = fmt, ch;
+   register char *p = fmt;
    char *out = NULL, *outp = NULL;
    char dfmt[1024];	       /* used to hold part of format */
    char *f, *f1;
@@ -1888,6 +1895,8 @@ static char *SLdo_sprintf (char *fmt) /*{{{*/
 
    while (1)
      {
+	char ch;
+
 	while ((ch = *p) != 0)
 	  {
 	     if (ch == '%')
@@ -1901,7 +1910,7 @@ static char *SLdo_sprintf (char *fmt) /*{{{*/
 
 	if (len + dlen >= malloc_len)
 	  {
-	     malloc_len = len + dlen;
+	     malloc_len = len + dlen + 512;
 	     if (out == NULL) outp = (char *)SLmalloc(malloc_len + 1);
 	     else outp = (char *)SLrealloc(out, malloc_len + 1);
 	     if (NULL == outp)
@@ -1970,7 +1979,7 @@ static char *SLdo_sprintf (char *fmt) /*{{{*/
 
 	if (want_width)
 	  {
-	     sprintf(f, "%d", width);
+	     sprintf(f, "%u", width);
 	     f += strlen (f);
 	  }
 	precis = 0;
@@ -1994,7 +2003,7 @@ static char *SLdo_sprintf (char *fmt) /*{{{*/
 	       }
 	     if (want_width)
 	       {
-		  sprintf(f, "%d", precis);
+		  sprintf(f, "%u", precis);
 		  f += strlen (f);
 	       }
 	     else precis = 0;
@@ -2103,21 +2112,25 @@ static char *SLdo_sprintf (char *fmt) /*{{{*/
 	   case 'u':
 	   case 'X':
 	   case 'x':
-	     if (use_long)
-	       {
 #ifdef HAVE_LONG_LONG
-		  if (use_long > 1)
-		    {
-		       if (-1 == SLang_pop_long_long (&llong_var))
-			 return out;
-		       *f++ = 'l';
-		    }
-		  else
-#endif
+	     if (use_long > 1)
+	       {
+		  if (-1 == SLang_pop_long_long (&llong_var))
+		    return out;
+# ifdef __WIN32__
+		  *f++ = 'I'; *f++ = '6'; *f++ = '4';
+# else
+		  *f++ = 'l'; *f++ = 'l';
+# endif
+	       }
+	     else
+#endif				       /* HAVE_LONG_LONG */
+	       if (use_long)
+		 {
 		    if (-1 == SLang_pop_long (&long_var))
 		      return out;
-		  *f++ = 'l';
-	       }
+		    *f++ = 'l';
+		 }
 	     else if (-1 == SLang_pop_int (&int_var))
 	       return out;
 	     break;
@@ -2167,6 +2180,7 @@ static char *SLdo_sprintf (char *fmt) /*{{{*/
 
 	if (len + guess_size > malloc_len)
 	  {
+	     guess_size += 512;
 	     outp = (char *) SLrealloc(out, len + guess_size + 1);
 	     if (outp == NULL)
 	       {
@@ -2210,6 +2224,9 @@ static char *SLdo_sprintf (char *fmt) /*{{{*/
 
    return (out);
 }
+#if defined(__GNUC__)
+# pragma GCC diagnostic warning "-Wformat-nonliteral"
+#endif
 
 /*}}}*/
 
@@ -2906,6 +2923,137 @@ free_and_return:
    SLang_free_slstring (chars);
 }
 
+static int copy_strlen_type_to_index_type (SLstrlen_Type a, SLindex_Type *bp)
+{
+   *bp = (SLindex_Type) a;
+   if ((SLstrlen_Type)*bp != a)
+     {
+	SLang_verror (SL_TypeMismatch_Error, "%s", "SLstrlen_Type value to large for conversion to SLindex_Type");
+	return -1;
+     }
+   return 0;
+}
+
+static void string_to_wchars (unsigned char *str)
+{
+   SLstrlen_Type i, len;
+   SLang_Array_Type *at;
+   _pSLint32_Type *data;
+   unsigned char *strmax;
+   SLindex_Type dims[1];
+
+   len = SLutf8_strlen (str, 0);
+   if (-1 == copy_strlen_type_to_index_type (len, dims))
+     return;
+
+   if (NULL == (at = SLang_create_array (_pSLANG_INT32_TYPE, 0, NULL, dims, 1)))
+     return;
+
+   i = 0;
+   strmax = str + _pSLstring_bytelen ((const char *)str);
+   data = (_pSLint32_Type *)at->data;
+   while (str < strmax)
+     {
+	unsigned char *s;
+	SLwchar_Type wch;
+
+	if (*str < 0x80)
+	  {
+	     data[i++] = *str++;
+	     continue;
+	  }
+
+	s = SLutf8_decode (str, strmax, &wch, NULL);
+	if (s == NULL)
+	  {
+	     data[i++] = -(int)(*str);
+	     str++;
+	     continue;
+	  }
+	data[i++] = (_pSLint32_Type)wch;
+	str = s;
+     }
+
+   (void) SLang_push_array (at, 1);
+}
+
+static void wchars_to_string (void)
+{
+   SLindex_Type i, n;
+   SLang_Array_Type *at;
+   _pSLint32_Type *data;
+   unsigned char *buf, *b, *bmax;
+   SLstrlen_Type buflen;
+
+   if (-1 == SLang_pop_array_of_type (&at, _pSLANG_INT32_TYPE))
+     return;
+
+   buflen = n = at->num_elements;
+   buf = (unsigned char *)SLmalloc(buflen+1);
+   if (buf == NULL)
+     {
+	SLang_free_array (at);
+	return;
+     }
+
+   data = (_pSLint32_Type *) at->data;
+   b = buf;
+   bmax = b + buflen;
+
+   i = 0;
+   for (i = 0; i < n; i++)
+     {
+	SLstrlen_Type dlen;
+	_pSLint32_Type wch;
+
+	wch = data[i];
+	if ((wch < 0x80) && (b < bmax))
+	  {
+	     if (wch < 0) wch = -wch;
+	     *b++ = (unsigned char)(wch);
+	     continue;
+	  }
+
+	dlen = SLUTF8_MAX_MBLEN;
+	if (b + dlen >= bmax)
+	  {
+	     unsigned char *newbuf;
+
+	     dlen = 6;
+	     if (NULL == (newbuf = (unsigned char *)SLrealloc ((char *)buf, buflen+dlen+1)))
+	       {
+		  SLfree ((char *)buf);
+		  SLang_free_array (at);
+		  return;
+	       }
+	     b = newbuf + (b-buf);
+	     buf = newbuf;
+	     buflen += dlen;
+	     bmax = b + buflen;
+	  }
+	b = SLutf8_encode (wch, b, SLUTF8_MAX_MBLEN);
+     }
+
+   if (buf + buflen != b)
+     {
+	unsigned char *newbuf;
+	buflen = b - buf;
+	newbuf = (unsigned char *)SLrealloc((char *)buf, buflen+1);
+	if (newbuf == NULL)
+	  {
+	     SLfree ((char *)buf);
+	     SLang_free_array (at);
+	     return;
+	  }
+	b = newbuf + (b - buf);
+	buf = newbuf;
+     }
+   *b = 0;
+
+   (void) SLang_push_malloced_string ((char *)buf);   /* frees it, even upon error */
+   SLang_free_array (at);
+}
+
 static SLang_Intrin_Fun_Type Strops_Table [] = /*{{{*/
 {
    MAKE_INTRINSIC_I("create_delimited_string",  create_delimited_string_cmd, SLANG_VOID_TYPE),
@@ -2969,6 +3117,8 @@ static SLang_Intrin_Fun_Type Strops_Table [] = /*{{{*/
    MAKE_INTRINSIC_0("isascii", isascii_intrin, SLANG_CHAR_TYPE),
    MAKE_INTRINSIC_0("strskipchar", strskipchar_intrin, SLANG_VOID_TYPE),
    MAKE_INTRINSIC_0("strbskipchar", strbskipchar_intrin, SLANG_VOID_TYPE),
+   MAKE_INTRINSIC_S("string_to_wchars", string_to_wchars, SLANG_VOID_TYPE),
+   MAKE_INTRINSIC_0("wchars_to_string", wchars_to_string, SLANG_VOID_TYPE),
    SLANG_END_INTRIN_FUN_TABLE
 };
 

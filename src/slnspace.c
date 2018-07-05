@@ -1,7 +1,7 @@
 /* -*- mode: C; mode: fold; -*- */
 /* slnspace.c  --- Name Space implementation */
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -348,8 +348,19 @@ SLang_NameSpace_Type *_pSLns_create_namespace2 (SLFUTURE_CONST char *name, SLFUT
    return ns;
 }
 
+int _pSLns_check_name (SLFUTURE_CONST char *namespace_name)
+{
+   if ((namespace_name == NULL) || (*namespace_name == 0))
+     return 0;
+
+   return _pSLcheck_identifier_syntax (namespace_name);
+}
+
 SLang_NameSpace_Type *SLns_create_namespace (SLFUTURE_CONST char *namespace_name)
 {
+   if (-1 == _pSLns_check_name (namespace_name))
+     return NULL;
+
    return _pSLns_create_namespace2 (NULL, namespace_name);
 }
 

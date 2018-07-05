@@ -1,6 +1,6 @@
 /* error handling common to all routines. */
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -776,12 +776,12 @@ void SLang_vmessage (SLFUTURE_CONST char *fmt, ...)
 /* This routine does not queue messages.  It is used for tracing, etc. */
 void _pSLerr_dump_msg (SLFUTURE_CONST char *fmt, ...)
 {
-   char buf[1024];
    va_list ap;
 
    va_start (ap, fmt);
    if (SLang_Dump_Routine != NULL)
      {
+	char buf[1024];
 	(void) SLvsnprintf (buf, sizeof (buf), fmt, ap);
 	(*SLang_Dump_Routine) (buf);
      }
@@ -805,8 +805,52 @@ int _pSLerr_set_error_queue (_pSLerr_Error_Queue_Type *q)
    return 0;
 }
 
+#if defined(__WIN32__)
+#include <crtdbg.h>  /* For _CrtSetReportMode */
+/* See <https://msdn.microsoft.com/en-us/library/ksazx244%28v=vs.140%29.aspx>
+ * for an explanation of the invalid_parm_handler.  The default
+ * handler will cause the program to terminate on code such as:
+ *
+ *  FILE *fp = fdopen (fd);
+ *  close (fd);
+ *  fclose (fp);  <--- underlying descriptor has been closed.
+ *
+ * On POSIX systems, fclose will fail with errno == EBADF.
+ */
+static void invalid_parm_handler (const wchar_t* expression,
+				  const wchar_t* function,
+				  const wchar_t* file,
+				  unsigned int line,
+				  uintptr_t pReserved)
+{
+   (void) expression;
+   (void) function;
+   (void) file;
+   (void) line;
+   (void) pReserved;
+}
+#endif
+
+void _pSLerr_deinit (void)
+{
+   deinit_exceptions ();
+   _pSLerr_delete_error_queue (Default_Error_Queue);
+   Suspend_Error_Messages = 0;
+   Default_Error_Queue = NULL;
+   Active_Error_Queue = NULL;
+   Static_Error_Message = NULL;
+}
+
 int _pSLerr_init (void)
 {
+   static int inited = 0;
+
+#ifdef __WIN32__
+   (void) _set_invalid_parameter_handler (invalid_parm_handler);
+   /* Disable the message box for assertions. */
+   _CrtSetReportMode(_CRT_ASSERT, 0);
+#endif
+
    if (Default_Error_Queue == NULL)
      {
 	Suspend_Error_Messages = 0;
@@ -817,16 +861,11 @@ int _pSLerr_init (void)
    if (-1 == init_exceptions ())
      return -1;
 
+   if (inited == 0)
+     {
+	inited = 1;
+	(void) SLang_add_cleanup_function (_pSLerr_deinit);
+     }
    return 0;
-}
-
-void _pSLerr_deinit (void)
-{
-   deinit_exceptions ();
-   _pSLerr_delete_error_queue (Default_Error_Queue);
-   Suspend_Error_Messages = 0;
-   Default_Error_Queue = NULL;
-   Active_Error_Queue = NULL;
-   Static_Error_Message = NULL;
 }
 

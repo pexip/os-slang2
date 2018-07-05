@@ -81,7 +81,7 @@ static define test_str_delete_chars (str, del_set, ans)
 {
    variable s1 = str_delete_chars (str, del_set);
    if (ans != s1)
-     failed ("str_delete_chars(%s, %s) --> %s", str, del_set, s1);
+     failed ("str_delete_chars(\"%s\", \"%s\") --> \"%s\"", str, del_set, s1);
 
    variable a, b, b1, i = [1,3,4];
    a = String_Type[5]; b = @a;
@@ -89,7 +89,7 @@ static define test_str_delete_chars (str, del_set, ans)
    b[i] = ans;
    b1 = str_delete_chars (a, del_set);
    if (any(b1 != b))
-     failed ("str_delete_chars(%S, %S) --> %S", a, del_set, b1);
+     failed ("str_delete_chars(\"%S\", \"%S\") --> \"%S\"", a, del_set, b1);
 }
 
 test_str_delete_chars ("abcdefg", "bdf", "aceg");
@@ -101,9 +101,32 @@ test_str_delete_chars ("abcdefg", "a-z", "");
 test_str_delete_chars ("abcdefgABCDEF", "\l"R, "ABCDEF");
 test_str_delete_chars ("abcdefgABCDEF", "^\l"R, "abcdefg");
 
+test_str_delete_chars (",1,", `\,`, "1");
+test_str_delete_chars (",", `\,`, "");
+test_str_delete_chars ("1,", `\,`, "1");
+test_str_delete_chars ("1,,,1", `\,`, "11");
+test_str_delete_chars ("\\", "\\", "");
+test_str_delete_chars ("\\n", "\\", "n");
+test_str_delete_chars ("12,a,3,b", "\\a", "12,,3,");
+test_str_delete_chars ("12\t,a\n, 3,b", "\\g", "\t\n ");
+test_str_delete_chars ("12\t,a\ng, 3,b", "\\x", "\t,\ng, ,");
+
 static define test_strtrans (s, from, to, ans)
 {
-   variable s1 = strtrans (s, from, to);
+   variable s1;
+
+   try
+     {
+	s1 = strtrans (s, from, to);
+	if (ans == NULL)
+	  failed ("Expected strtrans('%s', '%s', '%s') to fail", s, from, to);
+     }
+   catch AnyError:
+     {
+	if (ans == NULL)
+	  return;
+	throw;
+     }
    if (ans != s1)
      failed ("strtrans(%s, %s, %s) --> %s", s, from, to, s1);
 
@@ -114,6 +137,19 @@ static define test_strtrans (s, from, to, ans)
    b1 = strtrans (a, from, to);
    if (any(b1 != b))
      failed ("strtrans(%S, %S, %S) --> %S", a, from, to, b1);
+
+   if ((to == "X") && (from[0] != '^'))
+     {
+	% we can double the from and get the same result
+	from = from + from;
+	s1 = strtrans (s, from, to);
+	if (ans != s1)
+	  failed ("strtrans(%s, \"%s\", \"%s\") --> \"%s\"", s, from, to, s1);
+	to = "XX";
+	s1 = strtrans (s, from, to);
+	if (ans != s1)
+	  failed ("strtrans(%s, \"%s\", \"%s\") --> \"%s\"", s, from, to, s1);
+     }
 }
 
 test_strtrans ("hello world", "^a-zA-Z", "X", "helloXworld");
@@ -143,6 +179,81 @@ test_strtrans ("HeLLo", "^A-Z", "", "HLL");
 test_strtrans ("HeLLo", "\\l\\u", "aA", "AaAAa");
 test_strtrans ("He11o", "\l\u\d"R, "aAx", "Aaxxa");
 
+test_strtrans (",1,", `\,`, "X", "X1X");
+test_strtrans (",", `\,`, "X", "X");
+test_strtrans ("1,", `\,`, "X", "1X");
+test_strtrans ("1,,,1", `\,`, "X", "1XXX1");
+test_strtrans ("\\", "\\", "X", "X");
+test_strtrans ("\\n", "\\", "X", "Xn");
+test_strtrans ("12,a,X3,b", "\\a", "X", "12,X,X3,X");
+test_strtrans ("12\t,a\n, 3,b", "\\g", "X", "XX\tXX\nX XXX");
+test_strtrans ("12\t,a\n, 3,b", "\\c", "X", "12X,aX, 3,b");
+test_strtrans ("12\t,a\n, 3,b", "\\p", "X", "XX\tXX\nXXXXX");
+test_strtrans ("12\t,a\n, 3,b", "\\b", "X", "12X,a\n,X3,b");
+test_strtrans ("12\t,A\ng, 3,b", "\\x", "X", "XX\t,X\ng, X,X");
+test_strtrans ("12\t,A\ng, 3,b", "\\w", "X", "XX\t,X\nX, X,X");
+
+test_strtrans (",1,", "[:punct:]", "X", "X1X");
+test_strtrans (",", "[:punct:]", "X", "X");
+test_strtrans ("1,", "[:punct:]", "X", "1X");
+test_strtrans ("1,,,1", "[:punct:]", "X", "1XXX1");
+test_strtrans ("12,a,X3,b", "[:alpha:]", "X", "12,X,X3,X");
+test_strtrans ("12\t,a\n, 3,b", "[:print:]", "X", "XX\tXX\nXXXXX");
+test_strtrans ("12\t,a\n, 3,b", "[:blank:]", "X", "12X,a\n,X3,b");
+test_strtrans ("12\t,a\n, 3,b", "[:graph:]", "X", "XX\tXX\nX XXX");
+test_strtrans ("12\t,A\ng, 3,b", "[:xdigit:]", "X", "XX\t,X\ng, X,X");
+
+#ifeval _slang_utf8_ok
+test_strtrans ("|\u{EF}\u{100}\u{80}|", "^\\7", "X", "|XXX|");
+test_strtrans ("|\u{EF}\u{100}\u{80}|", "\\7", "X", "X\u{EF}\u{100}\u{80}X");
+test_strtrans ("|\u{100}|", "^\\7", "X", "|X|");
+test_strtrans ("|\u{FF}|", "\\7", "\u{1234}", "\u{1234}\u{FF}\u{1234}");
+test_strtrans ("|\u{FF}|", "^\\7", "X", "|X|");
+
+test_strtrans ("|\u{FF}\u{100}\u{101}|", "\u{100}", "X", "|\u{FF}X\u{101}|");
+test_strtrans ("|\u{FF}\u{100}\u{101}|", "^\u{100}\\7", "X", "|X\u{100}X|");
+test_strtrans ("|\u{FF}\u{100}\u{101}|", "^\u{100}\\7", "\u{1000}", "|\u{1000}\u{100}\u{1000}|");
+test_strtrans ("|\u{FF}\u{100}\u{101}|", "\u{100}-\u{101}", "X", "|\u{FF}XX|");
+test_strtrans ("|\u{FF}\u{100}\u{101}|", "\u{FF}-\u{100}", "X", "|XX\u{101}|");
+test_strtrans ("|\u{FF}\u{100}\u{101}|", "\u{100}-\u{101}", "\u{FF}-\u{100}", "|\u{FF}\u{FF}\u{100}|");
+
+test_strtrans ("|\u{FF}\u{100}\u{101}|", "\u{100}-\u{101}", "\\u", "|\u{FF}\u{100}\u{100}|");
+test_strtrans ("|\u{FF}\u{100}\u{101}|", "\u{100}-\u{101}", "\\l", "|\u{FF}\u{101}\u{101}|");
+test_strtrans ("|\u{FF}\u{100}\u{101}|", "^\\7", "\\u", "|\u{178}\u{100}\u{100}|");
+
+test_strtrans ("|\u{1000}|", "^\\7", "\\l", "|\u{1000}|");
+test_strtrans ("|\u{1000}|", "^\\7", "\\u", "|\u{1000}|");
+test_strtrans ("|\u{1000}|", "\u{999}-\u{1000}", "\\u", "|\u{1000}|");
+test_strtrans ("|\u{1000}|", "\u{999}-\u{1000}\u{2000}-\u{3000}", "\\u", "|\u{1000}|");
+test_strtrans ("|\u{1000}|", "\u{7f}-\u{1500}\u{2000}", "", "||");
+test_strtrans ("|\u{1000}x", "^\u{999}-\u{1000}", "\\u", "|\u{1000}X");
+
+test_strtrans ("|\u{FF}\u{100}\u{101}|", "\u{100}-\u{101}", "\u{FF}-\u{100}", "|\u{FF}\u{FF}\u{100}|");
+test_strtrans ("|\u{FF}\u{100}\u{101}|", "\\c", "X", "|\u{FF}\u{100}\u{101}|");
+
+% Bad cases
+test_strtrans ("|\u{FF}\u{100}\u{101}|", "^\u{100}-\u{101}", "\u{FF}-\u{100}", NULL);
+test_strtrans ("|\u{FF}\u{100}\u{101}|", "\u{100}-\u{101}", "^\u{FF}-\u{100}", NULL);
+test_strtrans ("|\u{FF}\u{100}\u{101}|", "\u{100}-\u{101}", "\\7", NULL);
+
+private define test_long_range ()
+{
+   variable r1 = "";
+   variable r2 = "";
+   _for (1000, 1067, 1)
+     {
+	variable i = ();
+	r1 = strcat (r1, char(i));
+	r2 = strcat (r2, char(i+1));
+     }
+   test_strtrans (r1, r1, r2, r2);
+   test_strtrans (r1, r2, "", substr(r1,1,1));
+}
+test_long_range();
+
+#endif
+test_strtrans (",1,", "[:Xpunct:]", "X", NULL);
+
 private define test_strcompress (str, white, ans)
 {
    variable ans1 = strcompress (str, white);
@@ -157,6 +268,7 @@ private define test_strcompress (str, white, ans)
    if (any(b1 != b))
      failed ("strcompress(%S, %S) --> %S", a, white, b1);
 }
+test_strcompress ("3)x", "_ #&<>\t()-", "3_x");
 test_strcompress (" \t  \tA\n\ntest\t", " \t\n", "A test");
 test_strcompress ("../afoo/bfoo/cbard/ooohbhar/", "/", "../afoo/bfoo/cbard/ooohbhar");
 
@@ -413,7 +525,7 @@ test_strcmp ("ignore_all", "ign", 1);
 test_strcmp ("ign", "ignore_all", -1);
 test_strcmp ("silly", "silly", 0);
 
-static define test_strchop (s, d, len, nth, nth_val)
+private define test_strchop (s, d, len, nth, nth_val)
 {
    variable a = strchop (s, d, 0);
    if (length (a) != len)
@@ -421,6 +533,10 @@ static define test_strchop (s, d, len, nth, nth_val)
 
    if (a[nth] != nth_val)
      failed ("strchop (%S,%S,0)[%d] ==> %S, not %S", s,d,nth,a[nth],nth_val);
+
+   variable b = strchopr (s, d, 0);
+   ifnot (_eqs (b[[-1::-1]], a))
+     failed ("strchopr (%S,%S,0)", s,d);
 }
 test_strchop ("{{{\r}}}\r\rX", '\r', 4, 0, "{{{");
 test_strchop ("{{{\r}}}\r\rX", '\r', 4, 1, "}}}");
@@ -514,7 +630,7 @@ test_char (-0x78, "\x78");
 test_char (-0xAB, "\xAB");
 
 #ifexists Double_Type
-_for $1 (0, 4000, 10)
+foreach $1 ([0,1,2,5,10,20,50,100,200,500,1000,2000,5000])
 {
    () = sprintf ("%f", 10^$1);
    () = sprintf ("%f", -10^$1);
@@ -676,6 +792,193 @@ test_strtrim (&strtrim, $1, "hello world", NULL);
 test_strtrim (&strtrim_beg, $1, "hello world\n\t", NULL);
 test_strtrim (&strtrim_end, $1, " \t hello world", NULL);
 test_strtrim (&strtrim, $1, "hello wor", " \t\nld");
+
+#ifeval _slang_utf8_ok
+test_strtrim (&strtrim, "\u{FF}X\u{FF}Y\u{100}", "X\u{FF}Y", "\u{FF}\u{100}");
+test_strtrim (&strtrim, "\u{FF}X\u{FF}Y\u{100}", "X\u{FF}Y", "\u{FF}-\u{100}");
+test_strtrim (&strtrim, "\u{FF}X\u{FF}Y\u{100}", "\u{FF}X\u{FF}Y", "\u{100}-\u{101}");
+test_strtrim (&strtrim, "\u{FF}X\u{FF}Y\u{100}\u{101}", "X\u{FF}Y\u{100}\u{101}", "\u{FF}-\u{100}");
+test_strtrim (&strtrim, "\u{FF}X\u{FF}Y\u{100}\u{101}", "\u{FF}X\u{FF}Y\u{100}", "^\u{FF}-\u{100}");
+test_strtrim (&strtrim, "\u{FF}X\u{FF}Y\u{100}", "X\u{FF}Y", "^\\7");
+#endif
+
+private define test_strtrim_bad ()
+{
+   try
+     {
+	() = strtrim ("asasasc", "\\n"); % --> \ + n is invalid character class
+	failed ("%s", "Expected strtrim to choke on invalid char class");
+     }
+   catch InvalidParmError;
+}
+test_strtrim_bad ();
+
+private define test_string_to_wchars (str, ans)
+{
+   ifnot (_eqs (ans, string_to_wchars (str)))
+     {
+	failed ("string_to_wchars (%S)", str);
+     }
+
+   ifnot (_eqs (str, wchars_to_string (ans)))
+     {
+	failed ("wchars_to_string: expected to produce %S", str);
+     }
+
+   ans = [random_integer(1024), random_integer(1024)-255, random_integer(1024),
+	  random_integer(1024), random_integer(1024), random_integer(1024)-255];
+   ans[where(-127 <= ans <= 0)] += 512;
+   str = wchars_to_string (ans);
+   variable ans1 = string_to_wchars(str);
+   if (_eqs (ans, ans1))
+     return;
+
+   variable msg = "";
+   if (length(ans) == length(ans1))
+     {
+	msg = "\n";
+	_for (0, length(ans)-1, 1)
+	  {
+	     variable i = ();
+	     msg = sprintf ("%s%d: in=%d, out=%d\n", msg, i, ans[i], ans1[i]);
+	  }
+     }
+   failed ("string_to_wchars <-> wchars_to_string: %S -> %S -> %S%S", ans, str, ans1, msg);
+}
+
+
+test_string_to_wchars ("", Int_Type[0]);
+test_string_to_wchars ("a", ['a']);
+test_string_to_wchars ("\xEE", [-0xEE]);
+test_string_to_wchars ("\u{1234}", [0x1234]);
+test_string_to_wchars ("a\xEE", ['a', -0xEE]);
+test_string_to_wchars ("\xEEa", [-0xEE, 'a']);
+test_string_to_wchars ("\xEE\u{1234}", [-0xEE, 0x1234]);
+test_string_to_wchars ("\u{1234}\xEE", [0x1234, -0xEE]);
+test_string_to_wchars ("\u{1234}\xEEa", [0x1234, -0xEE, 'a']);
+test_string_to_wchars ("b\u{1234}\xEEa", ['b', 0x1234, -0xEE, 'a']);
+test_string_to_wchars ("b\u{1234}\u{EE}\xEEa", ['b', 0x1234, 0xEE, -0xEE, 'a']);
+
+private define _string_to_array (str)
+{
+   variable n = strcharlen (str);
+   variable a = ULong_Type[n];
+   variable p = 0;
+   _for (0, n-1, 1)
+     {
+	variable i = ();
+	variable wch;
+	(p, a[i]) = strskipchar (str, p, 0);
+     }
+   return a;
+}
+
+private define string_to_array_b (str)
+{
+   variable n = strcharlen (str);
+   variable a = ULong_Type[n];
+   variable p = strbytelen (str);
+   _for (n-1, 0, -1)
+     {
+	variable i = ();
+	variable wch;
+	(p, a[i]) = strbskipchar (str, p, 0);
+     }
+   return a;
+}
+
+private define test_wchar_funcs ()
+{
+   variable str = "123";%ABCdef";
+   variable i;
+   _for i (225, 260, -1)
+     str = strcat (str, char(i), char(10*i));
+
+   variable astr = string_to_array_b (str);
+   variable lstr = _string_to_array (strlow (str));
+   variable ustr = _string_to_array (strup (str));
+   _for i (0, strcharlen(str)-1, 1)
+     {
+	variable wch = astr[i];
+	if ((isupper (wch))
+	    && (wch != ustr[i]))
+	  failed ("isupper");
+
+	if (islower (wch)
+	    && (wch != lstr[i]))
+	  failed ("islower");
+	if (tolower (wch) != lstr[i])
+	  failed ("tolower");
+	if (toupper (wch) != ustr[i])
+	  failed ("toupper");
+     }
+   variable s = char (32), d = '1', p = ',';
+
+   if ((0 == isspace(s)) || isspace (d)) failed ("ispace");
+   if ((0 == isblank(s)) || isblank (d)) failed ("isblank");
+   if ((0 == ispunct (p)) || ispunct (d)) failed ("ispunct");
+   if ((0 == iscntrl (1)) || iscntrl (' '))  failed ("iscntrl");
+   if ((0 == isxdigit (d)) || isxdigit ('g')) failed ("isxdigit");
+   if ((0 == isgraph ("x")) || isgraph (' ')) failed ("isgraph");
+   if ((0 == isprint (' ')) || isprint (1)) failed ("isprint");
+   if ((0 == isascii (' ')) || isascii (255)) failed ("isascii");
+   if ((0 == isalpha ('a')) || isalpha ('6')) failed ("isalpha");
+   if ((0 == isalnum ('6')) || isalnum ('/')) failed ("isalnum");
+}
+test_wchar_funcs ();
+
+if (any (typecast (["foo", "", NULL, "bar"], Int_Type) != ['f',0,0,'b']))
+  failed ("typecast of string[] to integer");
+
+private define test_string_sort ()
+{
+   variable a = ["1", "2", "3", "33", "22", "11"];
+   variable i = array_sort (a);
+   if (any (i != [0,5,1,4,2,3]))
+     failed ("string sort");
+}
+test_string_sort ();
+
+#ifexists Double_Type
+private define test_get_set_float_format (fmt, x)
+{
+   variable dfmt = get_float_format ();
+
+   set_float_format (fmt);
+   if (string (x) != sprintf (fmt, x))
+     failed ("set_float_format %S", fmt);
+   set_float_format (dfmt);
+}
+test_get_set_float_format ("%e", PI);
+test_get_set_float_format ("%f", PI);
+test_get_set_float_format ("%g", PI);
+test_get_set_float_format ("%+ f", PI);
+test_get_set_float_format ("%+f", PI);
+test_get_set_float_format ("%+.5f", PI);
+test_get_set_float_format ("%+3.5f", PI);
+test_get_set_float_format ("% 3.5f", PI);
+
+#endif
+
+private define test_sprintf (fmt, x, ans)
+{
+   foreach ([Char_Type, UChar_Type, Short_Type, UShort_Type,
+	     Int_Type, UInt_Type, Long_Type, ULong_Type,
+#ifexists LLong_Type
+	     LLong_Type, ULLong_Type
+#endif
+	     ])
+     {
+	variable t = ();
+	if (ans != sprintf (fmt, typecast (x, t)))
+	  failed ("%S != sprintf (%S, (%S)%x)", ans, fmt, t);
+     }
+}
+test_sprintf ("%B", 7, "111");
+test_sprintf ("%5B", 7, "  111");
+test_sprintf ("%5.5B", 7, "00111");
+test_sprintf ("%.7B", 7, "0000111");
+test_sprintf ("%8.7B", 7, " 0000111");
 
 print ("Ok\n");
 exit (0);

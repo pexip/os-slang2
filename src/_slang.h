@@ -3,7 +3,7 @@
 /* header file for S-Lang internal structures that users do not (should not)
    need.  Use slang.h for that purpose. */
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -484,25 +484,53 @@ typedef unsigned int _pSLuint64_Type;
 # if SIZEOF_SHORT == 8
 #  define _pSLANG_INT64_TYPE	SLANG_SHORT_TYPE
 #  define _pSLANG_UINT64_TYPE	SLANG_USHORT_TYPE
-typedef int _pSLInt64_Type;
+typedef int _pSLint64_Type;
 typedef unsigned int _pSLuint64_Type;
 # else
 #  if SIZEOF_LONG == 8
 #   define _pSLANG_INT64_TYPE	SLANG_LONG_TYPE
 #   define _pSLANG_UINT64_TYPE	SLANG_ULONG_TYPE
-typedef long _pSLInt64_Type;
+typedef long _pSLint64_Type;
 typedef unsigned long _pSLuint64_Type;
 #  else
 #   if SIZEOF_LONG_LONG == 8
 #    define _pSLANG_INT64_TYPE	SLANG_LLONG_TYPE
 #    define _pSLANG_UINT64_TYPE	SLANG_ULLONG_TYPE
-typedef long long _pSLInt64_Type;
+typedef long long _pSLint64_Type;
 typedef unsigned long long _pSLuint64_Type;
 #   else
 #    define _pSLANG_INT64_TYPE	0
 #    define _pSLANG_UINT64_TYPE	0
 #   endif
 #  endif
+# endif
+#endif
+
+/* The following are commented out because they are not used by the library */
+/* extern int _pSLang_pop_int16 (_pSLint16_Type *); */
+/* extern int _pSLang_pop_uint16 (_pSLuint16_Type *); */
+/* extern int _pSLang_pop_int32 (_pSLint32_Type *); */
+/* extern int _pSLang_pop_uint32 (_pSLuint32_Type *); */
+#if _pSLANG_INT64_TYPE
+extern int _pSLang_pop_int64(_pSLint64_Type *);
+extern int _pSLang_pop_uint64 (_pSLuint64_Type *);
+#endif
+/* extern int _pSLang_push_int16 (_pSLint16_Type); */
+/* extern int _pSLang_push_uint16 (_pSLuint16_Type); */
+/* extern int _pSLang_push_int32 (_pSLint32_Type); */
+/* extern int _pSLang_push_uint32 (_pSLuint32_Type); */
+#if _pSLANG_INT64_TYPE
+/* extern int _pSLang_push_int64(_pSLint64_Type); */
+/* extern int _pSLang_push_uint64 (_pSLuint64_Type); */
+#endif
+
+#ifdef HAVE_LONG_LONG
+# ifdef __WIN32__
+#  define SLFMT_LLD  "%I64d"
+#  define SLFMT_LLU  "%I64u"
+# else
+#  define SLFMT_LLD  "%lld"
+#  define SLFMT_LLU  "%llu"
 # endif
 #endif
 
@@ -531,6 +559,14 @@ typedef union
    char char_val;
    unsigned char uchar_val;
    SLindex_Type index_val;
+   _pSLint16_Type int16_val;
+   _pSLuint16_Type uint16_val;
+   _pSLint32_Type int32_val;
+   _pSLuint32_Type uint32_val;
+#if _pSLANG_INT64_TYPE
+   _pSLint64_Type int64_val;
+   _pSLuint64_Type uint64_val;
+#endif
 }
 _pSL_Object_Union_Type;
 
@@ -698,6 +734,8 @@ struct _pSLang_NameSpace_Type
    unsigned int table_size;
    SLang_Name_Type **table;
 };
+
+extern int _pSLns_check_name (SLFUTURE_CONST char *);
 extern SLang_NameSpace_Type *_pSLns_new_namespace (SLFUTURE_CONST char *, unsigned int);
 extern SLang_NameSpace_Type *_pSLns_allocate_namespace (SLFUTURE_CONST char *, unsigned int);
 extern void _pSLns_deallocate_namespace (SLang_NameSpace_Type *);
@@ -1606,8 +1644,15 @@ extern int _pSLang_check_signals_hook (VOID_STAR);
 #endif
 
 #undef _INLINE_
-#if defined(__GNUC__) && SLANG_USE_INLINE_CODE
-# define _INLINE_ __inline__
+/* clang defines GNUC on the mac, but used c99 sematics for extern inline.  This implementation
+ * assume GNU semantics.
+ */
+#if defined (SLANG_USE_INLINE_CODE) && defined(__GNUC__) && !defined(__clang__)
+# if !defined __GNUC_STDC_INLINE__ && !defined __GNUC_GNU_INLINE__
+#  define _INLINE_ __inline__    /* older compilers */
+# else
+#  define _INLINE_ __inline__ __attribute__((gnu_inline))    /* newer ones */
+# endif
 #else
 # define _INLINE_
 #endif

@@ -1,6 +1,6 @@
 /* slutty.c --- Unix Low level terminal (tty) functions for S-Lang */
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -476,9 +476,7 @@ void SLang_reset_tty (void)
 
    if (TTY_Open)
      {
-	while ((-1 == close (SLang_TT_Read_FD))
-	       && (errno == EINTR))
-	  ;
+	(void) close (SLang_TT_Read_FD);
 
 	TTY_Open = 0;
 	SLang_TT_Read_FD = -1;

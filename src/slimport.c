@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -153,13 +153,16 @@ static int check_api_version (char *file, int api_version)
    return -1;
 }
 
-static FVOID_STAR do_dlsym (VOID_STAR handle, SLFUTURE_CONST char *file, int check_error, SLFUTURE_CONST char *fmt, char *module)
+#if defined(__GNUC__)
+# pragma GCC diagnostic ignored "-Wformat-nonliteral"
+#endif
+static VOID_STAR do_dlsym (VOID_STAR handle, SLFUTURE_CONST char *file, int check_error, SLFUTURE_CONST char *fmt, char *module)
 {
    char symbol[MAX_MODULE_NAME_SIZE + 32];
-   FVOID_STAR s;
+   VOID_STAR s;
 
    SLsnprintf (symbol, sizeof(symbol), fmt, module);
-   if (NULL != (s = (FVOID_STAR) dlsym (handle, symbol)))
+   if (NULL != (s = (VOID_STAR) dlsym (handle, symbol)))
      return s;
 
    if (check_error)
@@ -175,6 +178,9 @@ static FVOID_STAR do_dlsym (VOID_STAR handle, SLFUTURE_CONST char *file, int che
      }
    return NULL;
 }
+#if defined(__GNUC__)
+# pragma GCC diagnostic warning "-Wformat-nonliteral"
+#endif
 
 static Handle_Type *dynamic_link_module (SLFUTURE_CONST char *module)
 {

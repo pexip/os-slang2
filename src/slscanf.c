@@ -1,6 +1,6 @@
 /* sscanf function for S-Lang */
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -243,7 +243,7 @@ static int parse_double (SLFUTURE_CONST char **sp, SLFUTURE_CONST char *smax, do
 			    while (s < smax)
 			      {
 				 ch = *s++;
-				 if (isdigit(ch)
+				 if (isdigit ((unsigned char)ch)
 				     || ((ch >= 'a') && (ch <= 'z'))
 				     || ((ch >= 'A') && (ch <= 'Z'))
 				     || (ch == '_'))
@@ -409,7 +409,7 @@ static int parse_string (SLFUTURE_CONST char **sp, SLFUTURE_CONST char *smax, ch
    s0 = s = *sp;
    while (s < smax)
      {
-	if (isspace (*s))
+	if (isspace ((unsigned char)*s))
 	  break;
 	s++;
      }
@@ -539,6 +539,7 @@ int _pSLang_sscanf (void)
 	int no_assign;
 	int is_short;
 	int is_long;
+	int force_signed;
 	int status;
 	char chf;
 	unsigned int width;
@@ -557,11 +558,14 @@ int _pSLang_sscanf (void)
 #endif
 	  }
 
-	if (isspace (chf))
+	if (isspace ((unsigned char)chf))
 	  {
 	     char *s1 = _pSLskip_whitespace (s);
-	     if (s1 == s)
-	       break;
+
+	     /* Next line commented out since the sscanf man page allows
+	      * whitespace to match 0 or more whitespace chars.
+	      */
+	     /* if (s1 == s) break; */
 	     s = s1;
 	     continue;
 	  }
@@ -589,7 +593,7 @@ int _pSLang_sscanf (void)
 	  }
 
 	/* Width */
-	has_width = isdigit (chf);
+	has_width = isdigit ((unsigned char)chf);
 	if (has_width)
 	  {
 	     f--;
@@ -632,8 +636,8 @@ int _pSLang_sscanf (void)
 
 	map = map10;
 	base = 10;
-
-	try_again:		       /* used by i, x, and o, conversions */
+	force_signed = 0;
+try_again:		       /* used by i, x, and o, conversions */
 	switch (chf)
 	  {
 	   case 0:
@@ -674,16 +678,17 @@ int _pSLang_sscanf (void)
 	       }
 	     else
 	       {
-		  obj.o_data_type = SLANG_INT_TYPE;
+		  obj.o_data_type = SLANG_UINT_TYPE;
 		  status = parse_uint (&s, smax, &obj.v.uint_val, base, map);
 	       }
 	     break;
 
 	   case 'I':
 	     is_long = 1;
+	     /* drop */
 	   case 'i':
 	     if ((s + 1 >= smax)
-		 || (*s != 0))
+		 || (*s != '0'))
 	       chf = 'd';
 	     else if (((s[1] == 'x') || (s[1] == 'X'))
 		      && (s + 2 < smax))
@@ -692,27 +697,37 @@ int _pSLang_sscanf (void)
 		  chf = 'x';
 	       }
 	     else chf = 'o';
+	     force_signed = 1;
 	     goto try_again;
 
 	   case 'O':
 	     is_long = 1;
+	     /* drop */
 	   case 'o':
 	     map = map8;
 	     base = 8;
-	     chf = 'd';
+	     if (force_signed)
+	       chf = 'd';
+	     else
+	       chf = 'u';
 	     goto try_again;
 
 	   case 'X':
 	     is_long = 1;
+	     /* drop */
 	   case 'x':
 	     base = 16;
 	     map = map16;
-	     chf = 'd';
+	     if (force_signed)
+	       chf = 'd';
+	     else
+	       chf = 'u';
 	     goto try_again;
 
 	   case 'E':
 	   case 'F':
 	     is_long = 1;
+	     /* drop */
 	   case 'e':
 	   case 'f':
 	   case 'g':

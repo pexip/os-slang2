@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -217,12 +217,12 @@ static SLCONST char *map_token_to_string (_pSLang_Token_Type *tok)
 
 #ifdef HAVE_LONG_LONG
       case LLONG_TOKEN:
-	sprintf (numbuf, "%lld", tok->v.llong_val);
+	sprintf (numbuf, SLFMT_LLD, tok->v.llong_val);
 	s = numbuf;
 	break;
 
       case ULLONG_TOKEN:
-	sprintf (numbuf, "%llu", tok->v.ullong_val);
+	sprintf (numbuf, SLFMT_LLU, tok->v.ullong_val);
 	s = numbuf;
 	break;
 #endif
@@ -485,7 +485,7 @@ int _pSLcheck_identifier_syntax (SLCONST char *name)
      }
 
    _pSLang_verror (SL_SYNTAX_ERROR,
-		 "Identifier or structure field name '%s' contains an illegal character", name);
+		 "Identifier, namespace or structure field name '%s' contains an illegal character", name);
    return -1;
 }
 
@@ -2028,23 +2028,32 @@ void _pSLcompile_byte_compiled (void)
 	   case BREAK_N_TOKEN:
 	   case LINE_NUM_TOKEN:
 	   case CHAR_TOKEN:
-	   case UCHAR_TOKEN:
 	   case SHORT_TOKEN:
-	   case USHORT_TOKEN:
 	   case INT_TOKEN:
-	   case UINT_TOKEN:
 	   case LONG_TOKEN:
+	     if (NULL == check_byte_compiled_token (buf))
+	       return;
+	     tok.v.long_val = SLatol ((unsigned char *)buf);
+	     break;
+
+	   case UCHAR_TOKEN:
+	   case USHORT_TOKEN:
+	   case UINT_TOKEN:
 	   case ULONG_TOKEN:
 	     if (NULL == check_byte_compiled_token (buf))
 	       return;
-	     tok.v.long_val = atol (buf);
+	     tok.v.ulong_val = SLatoul ((unsigned char *)buf);
 	     break;
 #ifdef HAVE_LONG_LONG
 	   case LLONG_TOKEN:
-	   case ULLONG_TOKEN:
 	     if (NULL == check_byte_compiled_token (buf))
 	       return;
 	     tok.v.llong_val = SLatoll ((unsigned char *)buf);
+	     break;
+	   case ULLONG_TOKEN:
+	     if (NULL == check_byte_compiled_token (buf))
+	       return;
+	     tok.v.ullong_val = SLatoull ((unsigned char *)buf);
 	     break;
 #endif
 	   case COMPLEX_TOKEN:
@@ -2345,11 +2354,11 @@ static void byte_compile_token (_pSLang_Token_Type *tok)
 
 #ifdef HAVE_LONG_LONG
       case LLONG_TOKEN:
-	sprintf (b3, "%lld", tok->v.llong_val);
+	sprintf (b3, SLFMT_LLD, tok->v.llong_val);
 	break;
 
       case ULLONG_TOKEN:
-	sprintf (b3, "%llu", tok->v.ullong_val);
+	sprintf (b3, SLFMT_LLU, tok->v.ullong_val);
 	break;
 #endif
       case _BSTRING_TOKEN:

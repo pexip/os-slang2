@@ -1,6 +1,6 @@
 /* slwclut.c: wide character lookup tables */
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -532,7 +532,8 @@ static SLuchar_Type *get_lexical_element (SLuchar_Type *u, SLuchar_Type *umax,
 	return u;
      }
 
-   if ((*u != '-') || (allow_range == 0))
+   if ((*u != '-') || (allow_range == 0)
+       || (u+1 == umax))/* Allow '-' to occur at the end without being interpreted as a range */
      {
 	lex->lexical_type = LEXICAL_CHAR_TYPE;
 	lex->e.wch = r0;
@@ -540,14 +541,6 @@ static SLuchar_Type *get_lexical_element (SLuchar_Type *u, SLuchar_Type *umax,
      }
 
    u++;
-   if (u == umax)
-     {
-	lex->lexical_type = LEXICAL_CHAR_TYPE;
-	lex->e.wch = '-';
-	return u;
-	/* _pSLang_verror (SL_INVALID_PARM, "Unfinished range specification"); */
-	/* return NULL; */
-     }
 
    if (-1 == get_lex_char (&u, umax, allow_charclass, &r1, &char_class))
      return NULL;
@@ -1014,12 +1007,12 @@ static int check_char_mapping (SLwchar_Map_Type *map, Char_Map_Type *list, int f
 		  if ((*is_func)(chmin))
 		    chmap[chmin] = (invert ? chmin : (*to_func)(chmin));
 	       }
+	     list->map_function = map_class_to_class_method;
 	     break;
 
 	   default:
 	     return -1;
 	  }
-	list->map_function = map_class_to_class_method;
 	break;
      }
    return 0;
@@ -1160,8 +1153,12 @@ static int apply_lexical_map (SLwchar_Map_Type *map, SLwchar_Type wc_in, SLwchar
 	if (list->map_function != NULL)
 	  {
 	     int status = (*list->map_function)(&list->from, &list->to, invert, wc_in, wc_out);
-	     if (invert ^ status)
-	       return status;
+	     if (status == 0)
+	       {
+		  if (invert)
+		    return status;
+	       }
+	     else return status;
 	  }
 	list = list->next;
      }
