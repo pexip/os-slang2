@@ -1,6 +1,6 @@
 /* Structure type implementation */
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -57,10 +57,26 @@ static void free_struct (_pSLang_Struct_Type *s)
 
    if (s->destroy_method != NULL)
      {
-	if ((0 == SLang_start_arg_list ())
-	    && (0 == SLang_push_struct (s))
-	    && (0 == SLang_end_arg_list ()))
-	  (void) SLexecute_function (s->destroy_method);
+	int err, status;
+
+	if ((0 != (err = _pSLang_Error))
+	    && (-1 == _pSLang_push_error_context ()))
+	  {
+	     SLang_free_function (s->destroy_method);
+	     free_fields (s->fields, s->nfields);
+	     SLfree ((char *) s);
+	     return;
+	  }
+
+	status = 0;
+	if ((-1 == SLang_start_arg_list ())
+	    || (-1 == SLang_push_struct (s))
+	    || (-1 == SLang_end_arg_list ())
+	    || (-1 == SLexecute_function (s->destroy_method)))
+	  status = -1;
+
+	if (err)
+	  _pSLang_pop_error_context (status != 0);
 
 	if (s->num_refs > 1)
 	  {
@@ -70,7 +86,6 @@ static void free_struct (_pSLang_Struct_Type *s)
 
 	SLang_free_function (s->destroy_method);
      }
-
    free_fields (s->fields, s->nfields);
    SLfree ((char *) s);
 }
@@ -136,7 +151,6 @@ int SLang_push_struct (_pSLang_Struct_Type *s)
 int SLang_pop_struct (_pSLang_Struct_Type **sp)
 {
    SLang_Object_Type obj;
-   SLang_Class_Type *cl;
    SLtype type;
 
    if (0 != SLang_pop (&obj))
@@ -145,6 +159,7 @@ int SLang_pop_struct (_pSLang_Struct_Type **sp)
    type = obj.o_data_type;
    if (type != SLANG_STRUCT_TYPE)
      {
+	SLang_Class_Type *cl;
 	cl = _pSLclass_get_class (type);
 	if (cl->is_struct == 0)
 	  {
@@ -200,13 +215,15 @@ static _pSLstruct_Field_Type *find_field_strcmp (_pSLang_Struct_Type *s, SLCONST
 {
    _pSLstruct_Field_Type *f, *fmax;
 
+   if (NULL != (f = find_field_in_fields (s->fields, s->nfields, name)))
+     return f;
+
    f = s->fields;
    fmax = f + s->nfields;
 
    while (f < fmax)
      {
-	if ((name == f->name)
-	    || (0 == strcmp (name, f->name)))
+	if (0 == strcmp (name, f->name))
 	  return f;
 
 	f++;
@@ -1795,7 +1812,6 @@ int _pSLstruct_define_typedef (void)
    SLang_free_slstring (type_name);
 
    cl->cl_struct_def = s1;
-   cl->cl_init_array_object = struct_init_array_object;
    cl->cl_datatype_deref = typedefed_struct_datatype_deref;
    cl->cl_destroy = struct_destroy;
    cl->cl_push = struct_push;
@@ -1804,6 +1820,7 @@ int _pSLstruct_define_typedef (void)
    cl->cl_foreach_close = struct_foreach_close;
    cl->cl_foreach = struct_foreach;
 
+   (void) SLclass_set_aelem_init_function (cl, struct_init_array_object);
    (void) SLclass_set_string_function (cl, string_method);
    (void) SLclass_set_eqs_function (cl, struct_eqs_method);
    (void) SLclass_set_acopy_function (cl, struct_acopy);
@@ -1916,15 +1933,57 @@ static void get_struct_field_names (_pSLang_Struct_Type *s)
    SLang_push_array (a, 1);
 }
 
-static int push_struct_fields (_pSLang_Struct_Type *s)
+static void push_struct_fields_intrin (void)
 {
+   _pSLang_Struct_Type *s;
    _pSLstruct_Field_Type *f, *fmax;
+   SLang_Array_Type *at = NULL;
    int num;
+
+   switch (SLang_Num_Function_Args)
+     {
+      default:
+	SLang_verror (SL_Usage_Error, "Usage: Incorrect number of arguments passed, expecting one or two arguments");
+	return;
+      case 2:
+	if (-1 == SLang_pop_array_of_type (&at, SLANG_STRING_TYPE))
+	  return;
+	/* drop */
+      case 1:
+	if (-1 == SLang_pop_struct (&s))
+	  {
+	     SLang_free_array (at);    /* NULL ok */
+	     return;
+	  }
+	break;
+     }
+
+   if (at != NULL)
+     {
+	char **namep, **namep_max;
+	int ret = 0;
+
+	namep = (char **)at->data;
+	namep_max = namep + at->num_elements;
+	while ((ret == 0) && (namep < namep_max))
+	  {
+	     /* Use strcmp method since there is no guarantee that the array is one of slstrings */
+	     if (NULL == (f = find_field_strcmp (s, *namep)))
+	       ret = SLang_push_null ();
+	     else
+	       ret = _pSLpush_slang_obj (&f->obj);
+
+	     namep++;
+	  }
+	SLang_free_array (at);
+	free_struct (s);
+	return;
+     }
 
    f = s->fields;
    fmax = f + s->nfields;
-
    num = 0;
+
    while (fmax > f)
      {
 	fmax--;
@@ -1933,8 +1992,8 @@ static int push_struct_fields (_pSLang_Struct_Type *s)
 
 	num++;
      }
-
-   return num;
+   SLang_free_struct (s);
+   (void) SLang_push_int (num);
 }
 
 /* Syntax: set_struct_field (s, name, value); */
@@ -2068,7 +2127,7 @@ static SLang_Intrin_Fun_Type Struct_Table [] =
 {
    MAKE_INTRINSIC_1("get_struct_field_names", get_struct_field_names, SLANG_VOID_TYPE, SLANG_STRUCT_TYPE),
    MAKE_INTRINSIC_1("get_struct_field", get_struct_field, SLANG_VOID_TYPE, SLANG_STRING_TYPE),
-   MAKE_INTRINSIC_1("_push_struct_field_values", push_struct_fields, SLANG_INT_TYPE, SLANG_STRUCT_TYPE),
+   MAKE_INTRINSIC_0("_push_struct_field_values", push_struct_fields_intrin, SLANG_VOID_TYPE),
    MAKE_INTRINSIC_0("set_struct_field", struct_set_field, SLANG_VOID_TYPE),
    MAKE_INTRINSIC_0("set_struct_fields", set_struct_fields, SLANG_VOID_TYPE),
    MAKE_INTRINSIC_0("is_struct_type", is_struct_type, SLANG_INT_TYPE),
@@ -2412,6 +2471,7 @@ int _pSLstruct_push_field_ref (SLFUTURE_CONST char *name)
      {
 	SLang_free_struct (s);
 	SLang_free_slstring ((char *) name);
+	return -1;
      }
    frt = (Struct_Field_Ref_Type *) ref->data;
    frt->s = s;

@@ -375,8 +375,8 @@ array_sort
   A stable sorting algorithm is one that preserves the order of equal
   elements. Merge-sort is an inherently stable algorithm, whereas
   quick-sort is not. Nevertheless, the slang library ensures the
-  stability of the results because it uses the indices themeselves as
-  tie-breakers.  As a result, the following two statments may not
+  stability of the results because it uses the indices themselves as
+  tie-breakers.  As a result, the following two statements may not
   produce the same results:
 
      i = array_sort (a; dir=-1);
@@ -653,6 +653,30 @@ minabs
 
  SEE ALSO
   min, max, maxabs
+
+--------------------------------------------------------------
+
+prod
+
+ SYNOPSIS
+  Compute the product of the elements of an array
+
+ USAGE
+  result = prod (Array_Type a [, Int_Type dim])
+
+ DESCRIPTION
+  The `prod' function computes the product of the elements of a
+  numeric array and returns the result.  If a second argument is
+  given, then it specifies the dimension of the array over which the
+  product is to be taken.  In this case, an array of dimension one
+  less than that of the input array will be returned.
+
+  If the input array is an integer type, then the resulting value will
+  be a Double_Type.  If the input array is a
+  Complex_Type, then the result will be a Complex_Type.
+
+ SEE ALSO
+  sum, sumsq
 
 --------------------------------------------------------------
 
@@ -956,9 +980,65 @@ wherefirst
 
 
  SEE ALSO
-  where, wherelast, wherfirstmin, wherfirstmax
+  where, wherelast, wherfirstmin, wherfirstmax, wherefirst_eq
 
 --------------------------------------------------------------
+
+wherefirst_eq, wherefirst_ne, wherefirst_ge, wherefirst_gt, wherefirst_le, wherefirst_lt, wherelast_eq, wherelast_ne, wherelast_ge, wherelast_gt, wherelast_le, wherelast_lt
+
+ SYNOPSIS
+  Get the first or last matching element of an array
+
+ USAGE
+  Int_Type wherefirst_eq (A, b [,istart])
+  Int_Type wherefirst_ne (A, b [,istart])
+  Int_Type wherefirst_ge (A, b [,istart])
+  Int_Type wherefirst_gt (A, b [,istart])
+  Int_Type wherefirst_le (A, b [,istart])
+  Int_Type wherefirst_lt (A, b [,istart])
+  Int_Type wherelast_eq (A, b [,istart])
+  Int_Type wherelast_ne (A, b [,istart])
+  Int_Type wherelast_ge (A, b [,istart])
+  Int_Type wherelast_gt (A, b [,istart])
+  Int_Type wherelast_le (A, b [,istart])
+  Int_Type wherelast_lt (A, b [,istart])
+
+ DESCRIPTION
+  These functions perform the indicated binary operation between the
+  elements of numeric array `A' and a number `b'.  The
+  `wherefirst_*' functions return the index of the first element for which the
+  comparison is true.  The `wherelast_*' functions return the last
+  index where the binary operation is true.  If no matching elements are
+  found, the functions return NULL.
+
+  If the optional third parameter, `istart', is given, then it
+  indicates the index into the array where the search is to start.
+
+  These functions have the following equivalent forms:
+
+   wherefirst_eq (A, b, istart) <==> wherefirst (A == b, istart)
+   wherefirst_ne (A, b, istart) <==> wherefirst (A != b, istart)
+   wherefirst_ge (A, b, istart) <==> wherefirst (A >= b, istart)
+   wherefirst_gt (A, b, istart) <==> wherefirst (A > b, istart)
+   wherefirst_le (A, b, istart) <==> wherefirst (A <= b, istart)
+   wherefirst_lt (A, b, istart) <==> wherefirst (A < b, istart)
+
+   wherelast_eq (A, b, istart) <==> wherelast (A == b, istart)
+   wherelast_ne (A, b, istart) <==> wherelast (A != b, istart)
+   wherelast_ge (A, b, istart) <==> wherelast (A >= b, istart)
+   wherelast_gt (A, b, istart) <==> wherelast (A > b, istart)
+   wherelast_le (A, b, istart) <==> wherelast (A <= b, istart)
+   wherelast_lt (A, b, istart) <==> wherelast (A < b, istart)
+
+  However, the `wherefirst_*' and `wherelast_*' function can
+  execute several orders of magnitude faster, depending upon the context.
+
+ NOTES
+  The current implementation of these functions is limited to numeric
+  types.
+
+ SEE ALSO
+  wherefirst, wherelast
 
 wherefirstmax
 
@@ -969,12 +1049,12 @@ wherefirstmax
   Int_Type wherefirstmax (Array_Type a)
 
  DESCRIPTION
-This function is equivalent to
+ This function is equivalent to
 
    index = wherefirst (a == max(a));
 
-It executes about 3 times faster, and does not require the creation of
-temporary arrays.
+ It executes about 3 times faster, and does not require the creation of
+ temporary arrays.
 
  SEE ALSO
   wherefirst, wherefirstmax, wherelastmin, min, max
@@ -990,12 +1070,12 @@ wherefirstmin
   Int_Type wherefirstmin (Array_Type a)
 
  DESCRIPTION
-This function is equivalent to
+ This function is equivalent to
 
    index = wherefirst (a == min(a));
 
-It executes about 3 times faster, and does not require the creation of
-temporary arrays.
+ It executes about 3 times faster, and does not require the creation of
+ temporary arrays.
 
  SEE ALSO
   wherefirst, wherelastmin, wherefirstmax, min, max
@@ -1031,7 +1111,7 @@ wherelast
 
 
  SEE ALSO
-  where, wherefirst, wherelastmin, wherelastmax
+  where, wherefirst, wherelastmin, wherelastmax, wherefirst_eq
 
 --------------------------------------------------------------
 
@@ -1044,12 +1124,12 @@ wherelastmax
   Int_Type wherelastmax (Array_Type a)
 
  DESCRIPTION
-This function is equivalent to
+  This function is equivalent to
 
    index = wherelast (a == max(a));
 
-It executes about 3 times faster, and does not require the creation of
-temporary arrays.
+  It executes about 3 times faster, and does not require the creation of
+  temporary arrays.
 
  SEE ALSO
   wherelast, wherefirstmin, wherelastmin, min, max
@@ -1065,12 +1145,12 @@ wherelastmin
   Int_Type wherelastmin (Array_Type a)
 
  DESCRIPTION
-This function is equivalent to
+  This function is equivalent to
 
    index = wherelast (a == min(a));
 
-It executes about 3 times faster, and does not require the creation of
-temporary arrays.
+  It executes about 3 times faster, and does not require the creation of
+  temporary arrays.
 
  SEE ALSO
   wherelast, wherefirstmin, wherelastmax, min, max
@@ -1136,7 +1216,7 @@ assoc_get_values
   Return all the values of an Associative Array
 
  USAGE
-  Array_Type assoc_get_keys (Assoc_Type a)
+  Array_Type assoc_get_values (Assoc_Type a)
 
  DESCRIPTION
   This function returns all the values in the associative array
@@ -2004,16 +2084,16 @@ _set_bof_handler
  execution of the body S-Lang function but after its arguments have
  been evaluated, provided that function was defined
  with `_bofeof_info' set appropriately.  The callback function
- must be defined to take a single parameter representing the name of
- the function and must return nothing.
+ must be defined to take two parameters, the function name and the
+ filename and must return nothing.
 
  EXAMPLE
 
-    private define bof_handler (fun)
+    private define bof_handler (fun, file)
     {
-      () = fputs ("About to execute $fun"$, stdout);
+      () = fputs ("About to execute function $fun from file $file"$, stdout);
     }
-    _set_bos_handler (&bof_handler);
+    _set_bof_handler (&bof_handler);
 
 
  SEE ALSO
@@ -2226,7 +2306,7 @@ access
  permissions to the file, otherwise it will return -1 and set
  `errno' accordingly.
 
- Access to a file depend not only upon the file itself, but also upon
+ Access to a file depends not only upon the file itself, but also upon
  the permissions of each of the directories in the pathname.  The
  checks are done using the real user and group ids of the process, and
  not using the effective ids.
@@ -2690,7 +2770,7 @@ utime
  DESCRIPTION
  This function may be used to change the last access (actime) and last
  modification (modtime) times associated with the specified file.  If
- sucessful, the function returns 0; otherwise it returns -1 and sets
+ successful, the function returns 0; otherwise it returns -1 and sets
  `errno' accordingly.
 
  NOTES
@@ -3981,6 +4061,34 @@ fneqs
 
 --------------------------------------------------------------
 
+frexp
+
+ SYNOPSIS
+  Obtain the integral and fractional parts of a floating point number
+
+ USAGE
+  (b,e) = frexp(x)
+
+ DESCRIPTION
+  This function breaks a floating point number `x' into two values
+  `b' and `e' such that `x=b*2^x', where
+
+    0.5 <= abs(b) < 1  for x != 0,
+    b = 0, e = 0       for x = 0
+    b = _NaN           for x = _NaN
+    b = +/-_Inf        for x = +/-Inf
+
+  For the latter two cases, the value is `e' is implementation
+  dependent.
+
+  If `x' is an array, the `frexp' function will be applied
+  to each element and corresponding arrays will be returned.
+
+ SEE ALSO
+  ldexp, pow, log
+
+--------------------------------------------------------------
+
 get_float_format
 
  SYNOPSIS
@@ -4022,7 +4130,7 @@ hypot
  EXAMPLE
   A vector in Euclidean 3 dimensional space may be represented by an
   array of three values representing the components of the vector in
-  some orthogonal cartesian coordinate system.  Then the length of the
+  some orthogonal Cartesian coordinate system.  Then the length of the
   vector may be computed using the `hypot' function, e.g.,
 
       A = [2,3,4];
@@ -4164,6 +4272,27 @@ _ispos
 
 --------------------------------------------------------------
 
+ldexp
+
+ SYNOPSIS
+  Multiply a number by a power of 2
+
+ USAGE
+  x = ldexp(b, e)
+
+ DESCRIPTION
+  This function computes the value of `b*2^e' and returns the
+  result.  If either `b' or `e' is an array, a corresponding
+  array of values will be returned.
+
+ NOTES
+  This function is the inverse of `frexp'.
+
+ SEE ALSO
+  frexp
+
+--------------------------------------------------------------
+
 log
 
  SYNOPSIS
@@ -4234,7 +4363,7 @@ _max
 
  DESCRIPTION
   The `_max' function returns a floating point number equal to
-  the maximum value of its arguments.  If any of the argiments are
+  the maximum value of its arguments.  If any of the arguments are
   arrays (of equal length), an array of the corresponding values will
   be returned.
 
@@ -4257,7 +4386,7 @@ _min
 
  DESCRIPTION
   The `_min' function returns a floating point number equal to
-  the minimum value of its arguments.  If any of the argiments are
+  the minimum value of its arguments.  If any of the arguments are
   arrays (of equal length), an array of the corresponding values will
   be returned.
 
@@ -5090,7 +5219,7 @@ get_environ
 
  DESCRIPTION
    The `get_environ' function returns an array of strings
-   representing the environmen variables defined for the current
+   representing the environment variables defined for the current
    process.  Each element of the array will be of the form
    `NAME=VALUE'.
 
@@ -5332,7 +5461,7 @@ putenv
 
  DESCRIPTION
     This functions adds string `s' to the environment.  Typically,
-    `s' should of the form `"name=value"'.  The function
+    `s' should have the form `"name=value"'.  The function
     throws an `OSError' upon failure.
 
  NOTES
@@ -5615,7 +5744,7 @@ path_is_absolute
   Int_Type path_is_absolute (String_Type filename)
 
  DESCRIPTION
-   The `path_is_absolute' function will return non-zero is
+   The `path_is_absolute' function will return non-zero if
    `filename' refers to an absolute filename, otherwise it returns zero.
 
  SEE ALSO
@@ -5771,7 +5900,7 @@ isatty
   object.
 
  SEE ALSO
-  fopen, fclose, fileno
+  fopen, fclose, fileno, ttyname
 
 --------------------------------------------------------------
 
@@ -5898,6 +6027,27 @@ read
 
  SEE ALSO
   fread, open, close, write
+
+--------------------------------------------------------------
+
+ttyname
+
+ SYNOPSIS
+  Get the pathname of the terminal
+
+ USAGE
+  String_Type ttyname (FD_Type fd)
+
+ DESCRIPTION
+  This function returns the pathname of the terminal associated with
+  the file descriptor `fd' or NULL if `fd' does not refer
+  to a terminal.
+
+ NOTES
+  This function is not available in all systems.
+
+ SEE ALSO
+  isatty
 
 --------------------------------------------------------------
 
@@ -6096,7 +6246,7 @@ getrusage
   Get process resource usage
 
  USAGE
-  Struct_Type getrusage ([Int_Type who]
+  Struct_Type getrusage ([Int_Type who])
 
  DESCRIPTION
   This function returns a structure whose fields contain information
@@ -6433,6 +6583,54 @@ sleep
 
 --------------------------------------------------------------
 
+statvfs
+
+ SYNOPSIS
+  Get file system statistics
+
+ USAGE
+  Struct_Type statvfs (fsobj)
+
+ DESCRIPTION
+  This function is a wrapper around the corresponding POSIX function.
+  It returns a structure whose fields provide information about the
+  filesystem object `fsobj'.  This object can be either a path
+  name within the file system, or an open file descriptor represented
+  by an integer, File_Type, or FD_Type object.
+
+  The fields of the structure are defined as follows:
+
+    f_bsize  :  file system block size
+    f_frsize :  fragment size
+    f_blocks :  size of fs in f_frsize units
+    f_bfree  :  number of free blocks
+    f_bavail :  number of free blocks for unprivileged users
+    f_files  :  number of inodes
+    f_ffree  :  number of free inodes
+    f_favail :  number of free inodes for unprivileged users
+    f_fsid   :  file system ID
+    f_flag   :  mount flags
+    f_namemax:  maximum filename length
+
+  The value of the `f_flag' field is a bitmapped integer composed
+  of the following bits:
+
+    ST_RDONLY : Read-only file system.
+    ST_NOSUID : Set-user-ID/set-group-ID bits are ignored by the exec
+                functions.
+
+
+  Upon error, the function returns NULL and sets `errno'
+  accordingly.
+
+ NOTES
+  This function is not supported by all systems.
+
+ SEE ALSO
+  stat_file
+
+--------------------------------------------------------------
+
 system
 
  SYNOPSIS
@@ -6542,7 +6740,7 @@ qualifier
 
  DESCRIPTION
  This function may be used to get the value of a qualifier.  If the
- specified qualifier does not exist, `NULL' will be returned,
+ specified qualifier does not exist, NULL will be returned,
  unless a default value has been provided.
 
  EXAMPLE
@@ -6557,9 +6755,9 @@ qualifier
 
 
  NOTES
- Since `NULL' is a valid value for a qualifier, this function is
+ Since NULL is a valid value for a qualifier, this function is
  unable to distinguish between a non-existent qualifier and one whose
- value is `NULL'.  If such a distinction is important, the
+ value is NULL.  If such a distinction is important, the
  `qualifier_exists' function can be used.  For example,
 
     define echo (text)
@@ -6572,7 +6770,7 @@ qualifier
     echo ("hello"; use_stderr);  % writes hello to stderr
 
  In this case, no value was provided for the `use_stderr'
- qualifier: it exists but has a value of `NULL'.
+ qualifier: it exists but has a value of NULL.
 
  SEE ALSO
   qualifier_exists, __qualifiers
@@ -6591,7 +6789,7 @@ __qualifiers
  This function returns the set of qualifiers associated with the
  current execution context.  If qualifiers are active, then the result
  is a structure representing the names of the qualifiers and their
- corresponding values.  Otherwise `NULL' will be returned.
+ corresponding values.  Otherwise NULL will be returned.
 
  One of the main uses of this function is to pass the current set of
  qualifiers to another another function.  For example, consider a
@@ -8651,7 +8849,7 @@ sprintf
     -         Use left-justification
     #         Use alternate form for formatting.
     0         Use 0 padding
-    +         Preceed a number by a plus or minus sign.
+    +         Precede a number by a plus or minus sign.
     (space)   Use a blank instead of a plus sign.
 
 
@@ -8788,8 +8986,10 @@ sscanf
        i     Matches either a hexadecimal integer, decimal integer, or
              octal integer.
        I     Equivalent to `li'.
-       x     Matches a hexadecimal integer.
-       X     Matches a long hexadecimal integer (same as `lx').
+       o     Matches an unsigned octal integer.
+       O     Matches an unsigned long octal integer.
+       x     Matches an unsigned hexadecimal integer.
+       X     Matches a long unsigned hexadecimal integer (same as `lx').
        e,f,g Matches a decimal floating point number (Float_Type).
        E,F,G Matches a double precision floating point number, same as `lf'.
        s     Matches a string of non-whitespace characters (String_Type).
@@ -9410,7 +9610,7 @@ strskipbytes
   This function skips over a range of bytes in a string `str'.
   The byte range to be skipped is specified by the `range'
   parameter.  Optional start (`n0') and stop (`nmax')
-  (0-based) parameters may be used to specifiy the part of the input
+  (0-based) parameters may be used to specify the part of the input
   string to be processed.  The function returns a 0-based offset from
   the beginning of the string where processing stopped.
 
@@ -9867,7 +10067,7 @@ str_replace
   returned as well as the new string resulting from the replacement.
 
  NOTES
-  This function has been superceded by `strreplace'.  It should no
+  This function has been superseded by `strreplace'.  It should no
   longer be used.
 
  SEE ALSO
@@ -9968,6 +10168,45 @@ substrbytes
 
  SEE ALSO
   substr, strbytelen
+
+--------------------------------------------------------------
+
+wchars_to_string,string_to_wchars
+
+ SYNOPSIS
+  Convert a UTF-8 encoded string to and from character codes
+
+ USAGE
+  Int_Type[] string_to_wchars(String_Type str)
+  String_Type wchars_to_string(Int_Type[] array)
+
+ DESCRIPTION
+The `string_to_wchars' function decodes a UTF-8 encoded string
+and returns the Unicode characters as an array of integer values. The
+`wchars_to_string' performs the opposite conversion to produce a
+UTF-8 encoded string from an array of Unicode characters.
+
+ NOTES
+A malformed UTF-8 encoded string will result in negative byte-values in the
+output array at the positions corresponding to the malformed sequence.
+For example, the following function will substitute a '?' character
+for each byte in the malformed sequence to produce a valid string:
+
+  define handle_malformed_bytes (str)
+  {
+     variable codes = string_to_wchars (str);
+     variable is_bad = (codes < 0);
+     if (any(is_bad))
+       {
+          codes[where(is_bad)] = '?';
+          str = wchars_to_string (codes);
+       }
+     return str;
+  }
+
+
+ SEE ALSO
+  char, substr, array_to_bstring, bstring_to_array
 
 --------------------------------------------------------------
 
@@ -10255,12 +10494,39 @@ _push_struct_field_values
 
  USAGE
   Integer_Type num = _push_struct_field_values (Struct_Type s)
+  % or
+  (v1,v2,...,vN) = _push_struct_field_values (Struct_Type s, Array_Type names)
 
  DESCRIPTION
-  The `_push_struct_field_values' function pushes the values of
-  all the fields of a structure onto the stack, returning the
-  number of items pushed.  The fields are pushed such that the last
-  field of the structure is pushed first.
+ The `_push_struct_field_values' function may be used to obtain
+ the values of one of more fields of a structure.  This function has
+ two usage forms.
+
+ The first form pushes the values of all the fields of a structure
+ onto the stack, returning the number of items pushed.  The fields are
+ pushed such that the last field of the structure is pushed first.
+
+ The second form has an additional array argument that specifies the
+ names of the fields to process.  It returns the values in the order
+ specified by the array.  Unlike the first form, it does not return
+ the number of items pushed.
+
+ EXAMPLE
+
+   s = struct {foo=1, bar="seven", z = "zz"};
+
+   % Form 1
+   n = _push_struct_field_values (s);  % ==> n = 3
+   list = __pop_list (n); % ==> list = {"zz", "seven", 1};
+
+   % Form 2
+   list = {_push_struct_field_values (s, ["foo", "bar", "z"])};
+   % ==> list = {1, "seven", "zz"};
+
+   % Form 2
+   list = {_push_struct_field_values (s, ["z", "foo"])};
+   % ==> list = {"zz", 1};
+
 
  SEE ALSO
   get_struct_field_names, get_struct_field
@@ -10539,8 +10805,32 @@ _time
   `gmtime', `localtime', etc.) are able to convert such a
   value to other representations.
 
+ NOTES
+  This function is a wrapper around the C library `time'
+  function, and as such, probably does not account for leap seconds.
+
  SEE ALSO
-  ctime, time, localtime, gmtime
+  _ftime, ctime, time, localtime, gmtime
+
+--------------------------------------------------------------
+
+_ftime
+
+ SYNOPSIS
+  Get the current calendar time in seconds
+
+ USAGE
+  Double_Type _ftime ( [Double_Type opt_epoch] )
+
+ DESCRIPTION
+  The `_ftime' function returns the number seconds since the Unix
+  epoch, 00:00:00 UTC, January 1, 1970 as a double precision number.
+  If the optional argument `opt_epoch' is passed, the function
+  will return a value relative to that epoch, which is defined as the
+  number of seconds since the Unix epoch.
+
+ SEE ALSO
+  _time, ctime, time, localtime, gmtime
 
 --------------------------------------------------------------
 

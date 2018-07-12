@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -746,6 +746,33 @@ int SLang_pop_uint (unsigned int *i)
    return integer_pop (SLANG_UINT_TYPE, (VOID_STAR) i);
 }
 
+/* int _pSLang_pop_int16 (_pSLint16_Type *i) {return integer_pop (_pSLANG_INT16_TYPE, i);} */
+/* int _pSLang_pop_uint16 (_pSLuint16_Type *i) {return integer_pop (_pSLANG_UINT16_TYPE, i);} */
+/* int _pSLang_pop_int32 (_pSLint32_Type *i) {return integer_pop (_pSLANG_INT32_TYPE, i);} */
+/* int _pSLang_pop_uint32 (_pSLuint32_Type *i) {return integer_pop (_pSLANG_UINT32_TYPE, i);} */
+#if _pSLANG_INT64_TYPE
+int _pSLang_pop_int64(_pSLint64_Type *i) {return integer_pop (_pSLANG_INT64_TYPE, i);}
+int _pSLang_pop_uint64 (_pSLuint64_Type *i) {return integer_pop (_pSLANG_UINT64_TYPE, i);}
+#endif
+
+#define MK_PUSH_INTXX(fname_, ctype_, stype_, field_) \
+   int fname_ (ctype_ i) \
+   { \
+      SLang_Object_Type obj; \
+      obj.o_data_type = stype_; \
+      obj.v.field_ = i; \
+      return SLang_push (&obj); \
+   }
+
+/* MK_PUSH_INTXX(_pSLang_push_int16, _pSLint16_Type, _pSLANG_INT16_TYPE, int16_val) */
+/* MK_PUSH_INTXX(_pSLang_push_uint16, _pSLuint16_Type, _pSLANG_UINT16_TYPE, uint16_val) */
+/* MK_PUSH_INTXX(_pSLang_push_int32, _pSLint32_Type, _pSLANG_INT32_TYPE, int32_val) */
+/* MK_PUSH_INTXX(_pSLang_push_uint32, _pSLuint32_Type, _pSLANG_UINT32_TYPE, uint32_val) */
+#if _pSLANG_INT64_TYPE
+/* MK_PUSH_INTXX(_pSLang_push_int64, _pSLint64_Type, _pSLANG_INT64_TYPE, int64_val) */
+/* MK_PUSH_INTXX(_pSLang_push_uint64, _pSLuint64_Type, _pSLANG_UINT64_TYPE, uint64_val) */
+#endif
+
 int SLang_push_int (int i)
 {
    return SLclass_push_int_obj (SLANG_INT_TYPE, i);
@@ -957,14 +984,14 @@ void _pSLset_double_format (SLCONST char *fmt)
      s++;
 
    /* field width */
-   while (isdigit (*s)) s++;
+   while (isdigit ((unsigned char)*s)) s++;
 
    /* precision */
    if (*s == '.')
      {
 	s++;
 	precision = 0;
-	while (isdigit (*s))
+	while (isdigit ((unsigned char)*s))
 	  {
 	     precision = precision * 10 + (*s - '0');
 	     s++;
@@ -1014,7 +1041,6 @@ SLCONST char *_pSLget_double_format (void)
 static void check_decimal (char *buf, unsigned int buflen, double x)
 {
    char *b, *bstart = buf, *bufmax = buf + buflen;
-   char ch;
    unsigned int count = 0, expon;
    int has_point = 0;
    unsigned int expon_threshold = Double_Format_Expon_Threshold;
@@ -1025,8 +1051,8 @@ static void check_decimal (char *buf, unsigned int buflen, double x)
    b = bstart;
    while (1)
      {
-	ch = *b;
-	if (isdigit (ch))
+	char ch = *b;
+	if (isdigit ((unsigned char)ch))
 	  {
 	     count++;
 	     b++;
@@ -1116,7 +1142,7 @@ static int massage_decimal_buffer (char *inbuf, char *buf,
 	s--;
      }
 
-   if ((count < 4) || (0 == isdigit (*s)))
+   if ((count < 4) || (0 == isdigit ((unsigned char)*s)))
      return 0;
 
    if (c == '9')
@@ -1196,6 +1222,9 @@ static void default_format_float (float x, char *buf, unsigned int buflen)
 }
 #endif
 
+#if defined(__GNUC__)
+# pragma GCC diagnostic ignored "-Wformat-nonliteral"
+#endif
 static char *arith_string (SLtype type, VOID_STAR v)
 {
    char buf [1024];
@@ -1235,10 +1264,10 @@ static char *arith_string (SLtype type, VOID_STAR v)
 	break;
 #ifdef HAVE_LONG_LONG
       case SLANG_LLONG_TYPE:
-	sprintf (s, "%lld", *(long long *) v);
+	sprintf (s, SLFMT_LLD, *(long long *) v);
 	break;
       case SLANG_ULLONG_TYPE:
-	sprintf (s, "%llu", *(unsigned long long *) v);
+	sprintf (s, SLFMT_LLU, *(unsigned long long *) v);
 	break;
 #endif
 #if SLANG_HAS_FLOAT
@@ -1259,6 +1288,9 @@ static char *arith_string (SLtype type, VOID_STAR v)
 
    return SLmake_string (s);
 }
+#if defined(__GNUC__)
+# pragma GCC diagnostic warning "-Wformat-nonliteral"
+#endif
 
 static int integer_to_bool (SLtype type, int *t)
 {

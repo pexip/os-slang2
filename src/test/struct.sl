@@ -188,6 +188,43 @@ private define test_foreach_using_with_null (s)
 }
 test_foreach_using_with_null (NULL);
 
+private define test_foreach ()
+{
+   variable s = struct
+     {
+	val = 1,
+	next = struct
+	  {
+	     val = 2,
+	     next = struct
+	       {
+		  val = 3,
+		  next = NULL
+	       }
+	  }
+     };
+   variable c = 0;
+   variable ss;
+   foreach ss (s)
+     c += ss.val;
+   foreach ss (s) using ("next")
+     c += 2*ss.val;
+
+   if (c != 18)
+     {
+	failed ("foreach using implicit next");
+     }
+   try
+     {
+	foreach (s) using ("foo", "bar")
+	  ss = ();
+     }
+   catch AnyError: return;
+
+   failed ("Expected foreach with bad using clause to fail");
+}
+test_foreach ();
+
 define return_struct_fun (c)
 {
    variable s = struct
@@ -244,9 +281,16 @@ private define vector_chs (v)
    return v;
 }
 
+private variable Num_Destroyed = 0;
+private define destroy_vector (v)
+{
+   Num_Destroyed++;
+}
+
 __add_unary ("-", Vector_Type, &vector_chs, Vector_Type);
 __add_unary ("abs", Double_Type, &vector_abs, Vector_Type);
 __add_unary ("sqr", Double_Type, &vector_sqr, Vector_Type);
+__add_destroy (Vector_Type, &destroy_vector);
 
 private define vector_plus (v1, v2)
 {
@@ -305,6 +349,69 @@ private define vector_string (a)
    sprintf ("[%S,%S,%S]", a.x, a.y, a.z);
 }
 __add_string (Vector_Type, &vector_string);
+
+private define vector_aget (i, v)
+{
+   return vector (v.x[i], v.y[i], v.z[i]);
+}
+__add_aget (Vector_Type, &vector_aget);
+
+private define vector_aput (i, v)
+{
+   variable u = ();
+   v.x[i] = u.x;
+   v.y[i] = u.y;
+   v.z[i] = u.z;
+}
+__add_aput (Vector_Type, &vector_aput);
+
+private define test_aget_aput ()
+{
+   variable v = vector ([0:10], [1:11], [2:12]);
+   variable u = v[3];
+   if ((u.x != 3) || (u.y != 4) || (u.z != 5))
+     failed ("vector aget");
+
+   v[4] = u + vector(1,1,1);
+   u = v[4];
+   if ((u.x != 4) || (u.y != 5) || (u.z != 6))
+     failed ("vector aput");
+}
+test_aget_aput ();
+
+private define test_destroy ()
+{
+   Num_Destroyed = 0;
+   variable v1 = vector(1,2,3), v2 = vector (3, 4, 5);
+   try
+     {
+	() = @Vector_Type + "foo";
+     }
+   catch AnyError;
+   if (Num_Destroyed != 1)
+     failed ("Expected Num_Destroyed = 1, found %S", Num_Destroyed);
+   Num_Destroyed = 0;
+
+   variable v3 = v1 + v2;
+   if (Num_Destroyed)
+     failed ("unexpected destroy method called");
+   v3 = 0;
+   v2 = v1;
+   if (Num_Destroyed != 2)
+     failed ("expected destroy method to be called 2 times");
+   v2 = 0;
+   if (Num_Destroyed != 2)
+     failed ("expected destroy method to be called 2 times");
+   v1 = 0;
+   if (Num_Destroyed != 3)
+     failed ("expected destroy method to be called 3 times");
+
+   __add_destroy (Vector_Type, &destroy_vector);
+   __add_destroy (Vector_Type, &destroy_vector);
+   __add_destroy (Vector_Type, &destroy_vector);
+   __add_destroy (Vector_Type, &destroy_vector);
+}
+test_destroy ();
 
 private variable X = vector (1,2,3);
 
@@ -521,20 +628,22 @@ private define test_internal_struct_type ()
 {
    variable t;
 
-   loop (100)
+   loop (5)
      {
 	t = new_test_type ();
 	t.field1 = 7;
 	t.field2 = 3;
-	t.field1 += 3;
+	t.field1 += 4;
 	t.field1 -= t.field2;
+	if (t.field1 != 8)
+	  failed ("new_test_type");
      }
 }
 test_internal_struct_type ();
 
 private define test_it (p)
 {
-   loop (10)
+   loop (5)
      {
 	variable userdata = struct{items};
 
@@ -569,6 +678,65 @@ define test_struct_merge ()
      failed ("struct merge: vector+vector");
 }
 test_struct_merge ();
+
+private define test_push_struct_fields ()
+{
+   variable field, fields = ["foo", "bar", "baz"];
+   variable v0 = {"20", "30", "40"}, v1, v2;
+
+   variable s = @Struct_Type(fields);
+   set_struct_fields (s, __push_list (v0));
+
+   variable i, n;
+
+   % usage form 1
+   n = _push_struct_field_values(s);
+   if (n != length (fields))
+     failed ("Expected _push_struct_field_values to return %d, got %d", length(fields), n);
+
+   _for i (0, n-1, 1)
+     {
+	v1 = ();
+	v2 = get_struct_field (s, fields[i]);
+	if (v1 != v2)
+	  failed ("Expecting _push_struct_field_values to push %S at i=%d, found %S", v2, i, v1);
+     }
+
+   % usage form 2
+   v1 = {_push_struct_field_values (s, fields)};
+   ifnot (_eqs (v1, v0))
+     failed ("_push_struct_field_values usage form 2 produced incorrect result");
+
+   v2 = { _push_struct_field_values (s, String_Type[0]) };
+   if (length (v2) != 0)
+     failed ("Expected _push_struct_field_values to return nothing for an empty array");
+
+   if (NULL != _push_struct_field_values (s, "b i z a r r e"))
+     failed ("_push_struct_field_values failed to return NULL for non-existent field");
+}
+
+test_push_struct_fields ();
+
+% Intrinsic structure
+private define test_intrinsic_structure ()
+{
+   variable s = Intrinsic_Struct;
+   if (s.name != "My_Struct")
+     failed ("Intrinsic_Struct name: %S", s.name);
+
+   try
+     {
+	s.name = "foo";
+	failed ("Intrinsic_Struct.name should be read-only");
+     }
+   catch ReadOnlyError;
+   s.i = 37;
+   s.s = "foobar";
+   s.d = PI;
+   if ((s.i != 37) || (s.s != "foobar") || (s.d != PI))
+     failed ("Intrinsic_Struct field read/write error");
+}
+test_intrinsic_structure();
 
 print ("Ok\n");
 exit (0);

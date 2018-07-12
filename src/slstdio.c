@@ -1,6 +1,6 @@
 /* file stdio intrinsics for S-Lang */
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -28,9 +28,10 @@ USA.
 
 #ifdef HAVE_FCNTL_H
 # include <fcntl.h>
-#endif
-#ifdef HAVE_SYS_FCNTL_H
-# include <sys/fcntl.h>
+#else
+# ifdef HAVE_SYS_FCNTL_H
+#  include <sys/fcntl.h>
+# endif
 #endif
 
 #ifdef __unix__
@@ -292,13 +293,13 @@ static FILE *fopen_fun (char *f, char *m)
    return fp;
 }
 
+/* This function is used only the open_file_type function */
 static int fclose_fun (FILE *fp)
 {
-   errno = 0;
-   while (EOF == fclose (fp))
+   if (EOF == fclose (fp))
      {
-	if (0 == handle_errno (errno))
-	  return EOF;
+	(void) handle_errno (errno);
+	return -1;
      }
    return 0;
 }
@@ -419,27 +420,27 @@ static int close_file_type (SL_File_Table_Type *t)
 
    fp = t->fp;
 
+   /* fclose should not be restarted upon EINTR.  So, flush the stream
+    * and then close it.  Assume the same for pclose.
+    */
    if (NULL == fp) ret = -1;
+#if HAVE_POPEN
+   else if (t->flags & SL_PIPE)
+     ret = pclose (fp);
+#endif
    else
      {
-	while (1)
+	if (t->flags & SL_WRITE)
 	  {
-	     if (0 == (t->flags & SL_PIPE))
-	       {
-		  if (EOF == (ret = fclose (fp)))
-		    ret = -1;
-	       }
-#ifdef HAVE_POPEN
-	     else
-	       {
-		  ret = pclose (fp);
-	       }
-#endif
-	     if ((ret != -1)
-		 || (0 == handle_errno (errno)))
-	       break;
+	     errno = 0;
+	     while ((-1 == fflush (fp))
+		    && (1 == handle_errno (errno)))
+	       errno = 0;
 	  }
+	if (EOF == fclose (fp))
+	  ret = -1;
      }
+
    if (t->buf != NULL) SLfree (t->buf);
    if (t->file != NULL) SLang_free_slstring (t->file);
    memset ((char *) t, 0, sizeof (SL_File_Table_Type));
@@ -457,7 +458,10 @@ static int stdio_fclose (void)
 
    t = (SL_File_Table_Type *) SLang_object_from_mmt (mmt);
    if (NULL == check_fp (t, 0xFFFF))
-     return -1;
+     {
+	SLang_free_mmt (mmt);
+	return -1;
+     }
 
    if (t->flags & SL_FDOPEN)
      _pSLfclose_fdopen_fp (mmt);
@@ -522,7 +526,7 @@ static int read_one_line (FILE *fp, char **strp, SLstrlen_Type *lenp, int trim_t
 	while (len1)
 	  {
 	     len1--;
-	     if (0 == isspace(str[len1]))
+	     if (0 == isspace ((unsigned char)str[len1]))
 	       {
 		  len1++;
 		  break;
@@ -640,11 +644,11 @@ static void stdio_fgetslines_internal (FILE *fp, unsigned int n)
      SLang_push_null ();
    return;
 
-   return_error:
+return_error:
    while (num_lines > 0)
      {
 	num_lines--;
-	SLfree (list[num_lines]);
+	SLang_free_slstring (list[num_lines]);
      }
    SLfree ((char *)list);
    SLang_push_null ();
@@ -767,9 +771,18 @@ static void stdio_fread_bytes (SLang_Ref_Type *ref, unsigned int *num_wantedp, S
    size_t num_read = 0, num_wanted = *num_wantedp;
    int ret = -1;
    char *buf = NULL;
+   SLstrlen_Type nwp1;
    SLang_BString_Type *bs;
    if (NULL == (fp = check_fp (t, SL_READ)))
      goto the_return;
+
+   /* FIXME: until SLstrlen_Type == size_t, add this check */
+   nwp1 = num_wanted + 1;
+   if ((size_t)nwp1 != num_wanted+1)
+     {
+	SLang_set_error (SL_MALLOC_ERROR);
+	return;
+     }
 
    if (NULL == (buf = (char *)SLmalloc (num_wanted + 1)))
      goto the_return;
@@ -869,13 +882,15 @@ static void stdio_fread (SLang_Ref_Type *ref, int *data_typep, unsigned int *num
 	SLang_Array_Type *at;
 	SLindex_Type inum_read = (SLindex_Type) num_read;
 	at = SLang_create_array (data_type, 0, (VOID_STAR)s, &inum_read, 1);
+	if (at == NULL)
+	  goto the_return;
+
 	ret = SLang_assign_to_ref (ref, SLANG_ARRAY_TYPE, (VOID_STAR)&at);
 	SLang_free_array (at);
      }
    s = NULL;
-
-   the_return:
-
+   /* drop */
+the_return:
    if (s != NULL)
      SLfree (s);
 

@@ -1,6 +1,6 @@
 /* This module implements an interface to the SLang SMG routines */
 /* -*- mode: C; mode: fold -*-
-Copyright (C) 2010-2014 John E. Davis
+Copyright (C) 2010-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
 */
 #include <stdio.h>
+#include <stdlib.h>
 #include <slang.h>
 
 SLANG_MODULE(slsmg);
@@ -308,9 +309,38 @@ static SLang_IConstant_Type Smg_Constants [] =
 
 int init_slsmg_module_ns (char *ns_name)
 {
+   SLang_NameSpace_Type *ns;
    static int inited = 0;
 
-   SLang_NameSpace_Type *ns = SLns_create_namespace (ns_name);
+   if (inited == 0)
+     {
+#if defined(VMS) || defined(REAL_UNIX_SYSTEM)
+	int status;
+	char *term = getenv ("TERM");
+
+	if (term == NULL)
+	  {
+	     SLang_verror (SL_Application_Error, "The TERM environment variable is not set");
+	     return -1;
+	  }
+	status = SLtt_initialize (term);
+	if (status == -1)
+	  {
+	     SLang_verror (SL_RunTime_Error, "Cannot deduce properties for '%s' terminal", term);
+	     return -1;
+	  }
+	if (status < 0)
+	  {
+	     SLang_verror (SL_RunTime_Error, "The terminal '%s' lacks sufficient capabilities for controlling it", term);
+	     return -1;
+	  }
+#else
+	SLtt_get_terminfo ();
+#endif
+	inited = 1;
+     }
+
+   ns = SLns_create_namespace (ns_name);
    if (ns == NULL)
      return -1;
 
@@ -325,12 +355,6 @@ int init_slsmg_module_ns (char *ns_name)
        || (-1 == SLns_add_intrinsic_variable(ns, "SLsmg_Screen_Rows", (VOID_STAR)&SLtt_Screen_Rows, SLANG_INT_TYPE, 0))
        || (-1 == SLns_add_intrinsic_variable(ns, "SLsmg_Screen_Cols", (VOID_STAR)&SLtt_Screen_Cols, SLANG_INT_TYPE, 0)))
      return -1;
-
-   if (inited == 0)
-     {
-	inited = 1;
-	SLtt_get_terminfo ();
-     }
 
    Smg_Initialized = 0;
    return 0;

@@ -25,7 +25,8 @@ SRCDIR = @SRCDIR@# Location of sources
 OBJDIR = @OBJDIR@# Location of objects
 ELFDIR = @ELFDIR@# Location of elf objects
 VERSION_SCRIPT	= $(SRCDIR)/slang.ver
-
+ELFDIR_TSTAMP = $(ELFDIR)/tstamp
+OBJDIR_TSTAMP = $(OBJDIR)/tstamp
 #---------------------------------------------------------------------------
 # When searching for modules, slang will search the paths specified by the
 # value of the SLANG_MODULE_PATH environment variable.  The name of this
@@ -36,7 +37,8 @@ MODULE_PATH_ENV_NAME = "SLANG_MODULE_PATH"
 #---------------------------------------------------------------------------
 # Misc Libraries
 MISC_TERMINFO_DIRS = @MISC_TERMINFO_DIRS@
-OTHERLIBS = @TERMCAP@ @LIBS@ @M_LIB@
+OTHER_CFLAGS = @DSLSYSWRAP@
+OTHER_LIBS = @LIB_SLSYSWRAP@ @TERMCAP@ @LIBS@ @M_LIB@
 #---------------------------------------------------------------------------
 # Directory where library is going to go when installed
 #---------------------------------------------------------------------------
@@ -57,6 +59,11 @@ DEST_DOCDIR = $(DESTDIR)$(install_doc_dir)
 DEST_INCDIR = $(DESTDIR)$(install_include_dir)
 DEST_BINDIR = $(DESTDIR)$(install_bin_dir)
 
+#----------------------------------------------------------------------------
+# These should be empty for production code
+#----------------------------------------------------------------------------
+SLSYSWRAP_DEF = @DSLSYSWRAP@
+SLSYSWRAP_LIB = @LIB_SLSYSWRAP@
 #---------------------------------------------------------------------------
 # Misc commands (safe to leave these untouched)
 #---------------------------------------------------------------------------
@@ -85,8 +92,8 @@ INSTALL_ELFLIB_TARGET	= @INSTALL_ELFLIB_TARGET@
 
 CONFIG_H		= config.h
 TERMINFO_INC		= terminfo/@TERMINFO_LAYOUT@.inc
-ALL_CFLAGS		= $(CFLAGS) -Dunix $(THIS_LIB_DEFINES)
-ALL_ELF_CFLAGS		= $(ELF_CFLAGS) -Dunix $(THIS_LIB_DEFINES)
+ALL_CFLAGS		= $(CFLAGS) -Dunix $(THIS_LIB_DEFINES) $(OTHER_CFLAGS)
+ALL_ELF_CFLAGS		= $(ELF_CFLAGS) -Dunix $(THIS_LIB_DEFINES) $(OTHER_CFLAGS)
 COMPILE_CMD		= $(CC) -c $(ALL_CFLAGS)
 ELFCOMPILE_CMD		= $(ELF_CC) -c $(ALL_ELF_CFLAGS)
 ELF_LINK_CMD		= $(ELF_LINK)
@@ -107,7 +114,7 @@ ELFLIB_BUILD_NAME       = @ELFLIB_BUILD_NAME@
 ELFDIR_ELF_LIB = $(ELFDIR)/$(ELFLIB_BUILD_NAME)#
 ELFDIR_DLL_LIB = $(ELFDIR)/$(DLL_IMPLIB_NAME)#
 
-EXECLIBS = -L$(OBJDIR) -lslang $(OTHERLIBS) $(DL_LIB)
+EXECLIBS = -L$(OBJDIR) -lslang $(OTHER_LIBS) $(DL_LIB)
 EXECDEPS = $(OBJDIR_NORMAL_LIB)
 
 OFILES = @PROGRAM_OFILES@
@@ -117,6 +124,8 @@ ELFOBJS = @PROGRAM_ELFOBJECTS@
 SHELL = /bin/sh
 
 DOT_O_DEPS = sllimits.h _slang.h $(CONFIG_H)
+OBJ_O_DEPS = $(OBJDIR_TSTAMP)
+ELF_O_DEPS = $(ELFDIR_TSTAMP)
 sltoken_O_DEP = keywhash.c
 slarith_O_DEP = slarith.inc slarith2.inc
 slarrfun_O_DEP = slarrfun.inc
@@ -130,6 +139,7 @@ slcommon_O_DEP = slang.h
 slstd_O_DEP = Makefile
 slimport_O_DEP = Makefile
 sltermin_O_DEP = Makefile terminfo.inc
+slcurses_O_DEP = slcurses.h
 slstd_C_FLAGS = -DSLANG_DOC_DIR='"$(install_doc_dir)"' -DSLANG_INSTALL_PREFIX='"$(prefix)"'
 slimport_C_FLAGS = -DMODULE_INSTALL_DIR='"$(MODULE_INSTALL_DIR)"' -DMODULE_PATH_ENV_NAME='$(MODULE_PATH_ENV_NAME)'
 sltermin_C_FLAGS = -DMISC_TERMINFO_DIRS='"$(MISC_TERMINFO_DIRS)"'
@@ -139,10 +149,10 @@ UPDATE_VERSION_SCRIPT = $(HOME)/bin/update_changes_version
 # Rules
 #---------------------------------------------------------------------------
 all: static elf
-static: $(OBJDIR) $(CONFIG_H) $(OBJDIR_NORMAL_LIB) $(OTHERSTUFF)
-elf: $(ELFDIR) $(CONFIG_H) $(ELFDIR_ELF_LIB)
+static: $(OBJDIR_TSTAMP) $(CONFIG_H) $(OBJDIR_NORMAL_LIB) $(OTHERSTUFF)
+elf: $(ELFDIR_TSTAMP) $(CONFIG_H) $(ELFDIR_ELF_LIB)
 
-$(OBJDIR_NORMAL_LIB): $(OBJDIR) $(CONFIG_H) $(OBJS)
+$(OBJDIR_NORMAL_LIB): $(OBJDIR_TSTAMP) $(CONFIG_H) $(OBJS)
 	-$(RM) $(OBJDIR_NORMAL_LIB)
 	cd $(OBJDIR) && $(AR_CR) $(NORMAL_LIB) $(OFILES)
 	$(RANLIB) $(OBJDIR_NORMAL_LIB)
@@ -160,10 +170,12 @@ $(ELFDIR_ELF_LIB): $(ELFDIR) $(CONFIG_H) $(ELFOBJS) $(VERSION_SCRIPT)
 	@echo $(ELFLIB_BUILD_NAME) created in $(ELFDIR).
 	@echo The link $(ELFLIB) to $(ELFLIB_BUILD_NAME) was also created.
 	@echo ""
-$(OBJDIR) :
+$(OBJDIR_TSTAMP) :
 	-$(MKINSDIR) $(OBJDIR)
-$(ELFDIR) :
+	touch $(OBJDIR_TSTAMP)
+$(ELFDIR_TSTAMP) :
 	-$(MKINSDIR) $(ELFDIR)
+	touch $(ELFDIR_TSTAMP)
 $(CONFIG_H) : sysconf.h Makefile
 	-$(CP) sysconf.h $(CONFIG_H)
 terminfo.inc: $(TERMINFO_INC) Makefile
@@ -215,7 +227,7 @@ install: install-all
 # Tests
 #---------------------------------------------------------------------------
 runtests: $(OBJDIR_NORMAL_LIB) static
-	cd test; $(MAKE) CC="$(CC)" CFLAGS="$(CFLAGS)" OTHERLIBS="$(OTHERLIBS)" SLANGLIB="$(OBJDIR)"
+	cd test; $(MAKE) CC="$(CC)" CFLAGS="$(CFLAGS)" OTHER_CFLAGS="$(OTHER_CFLAGS)" OTHER_LIBS="$(OTHER_LIBS)" SLANGLIB="$(OBJDIR)"
 #---------------------------------------------------------------------------
 # Housekeeping
 #---------------------------------------------------------------------------

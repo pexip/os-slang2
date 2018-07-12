@@ -89,16 +89,23 @@ try
 }
 catch IndexError;
 
-B = transpose (A);
-
-if ((B[0,0,0] != 0)
-    or (B[1,0,0] != 1)
-    or (neqs (B[[:],0,0], [0:3]))
-    or (neqs (B[[:],1,0], [4:7]))
-    or (neqs (B[[:],2,0], [8:11]))
-    or (neqs (B[[:],0,1], [12:15]))
-    or (neqs (B[[:],1,1], [16:19]))
-    or (neqs (B[[:],2,1], [20:23]))) failed ("transpose int array");
+private define test_transpose_for_all_types ()
+{
+   foreach (Util_Arith_Types)
+     {
+	variable t = ();
+	variable b = transpose (typecast (A, t));
+	if ((b[0,0,0] != 0)
+	    or (b[1,0,0] != 1)
+	    or (neqs (b[[:],0,0], [0:3]))
+	    or (neqs (b[[:],1,0], [4:7]))
+	    or (neqs (b[[:],2,0], [8:11]))
+	    or (neqs (b[[:],0,1], [12:15]))
+	    or (neqs (b[[:],1,1], [16:19]))
+	    or (neqs (b[[:],2,1], [20:23])))
+	  failed ("transpose %S array", t);
+     }
+}
 
 if (length ([8198:8192:8192]) != 0)
   failed ("length ([8198:8192:8192])");
@@ -107,7 +114,8 @@ if (length ([8198.0:8192.0:8192]) != 0)
   failed ("length ([8198.0:8192.0:8192])");
 
 % Test for memory leak
-loop (100) B = transpose (B);
+B = transpose (A);
+loop (3) B = transpose (B);
 B = 0;
 
 % Try on a string array
@@ -152,6 +160,12 @@ if (neqs (SS, array_map (String_Type, &strcat, S, S))) failed ("array_map 2");
 
 SS = S + "--end";
 if (neqs (SS, array_map (String_Type, &strcat, S, "--end"))) failed ("array_map 3");
+
+try
+{
+   SS = Long_Type[10000,10000,10000,10000,10000,10000];
+}
+catch IndexError;
 
 private define array_map2_func ()
 {
@@ -606,6 +620,31 @@ private define test_indexing_with_1_index ()
 }
 test_indexing_with_1_index ();
 
+private define test_index_arrays ()
+{
+   foreach (Util_Arith_Types)
+     {
+	variable s = ();
+	variable x = typecast ([1:10], s);
+	variable y = typecast ([1,3,5,7,9], s);
+	variable i = [0::2];
+	foreach (Util_Arith_Types)
+	  {
+	     variable t = ();
+	     if (1 != __is_numeric(t))
+	       continue;
+	     variable ii = typecast (i, t);
+	     ifnot (_eqs (y, x[i]))
+	       failed ("get with index array of type %S", t);
+	     variable z = Int_Type[10];
+	     z[ii] = y;
+	     ifnot (_eqs (y, z[ii]))
+	       failed ("put with index array of type %S", t);
+	  }
+     }
+}
+test_index_arrays ();
+
 % Test array summing operations
 #ifexists Double_Type
 private define compute_sum (a, n)
@@ -797,6 +836,19 @@ A = [1.0:10]; A[3] = _NaN;
 test_eqs ("min", min(A), find_min(A));
 test_eqs ("max", max(A), find_max(A));
 test_min_maxabs(A);
+
+private define test_eqsmin_max_all_types (A)
+{
+   foreach (Util_Arith_Types)
+     {
+	variable t = ();
+	variable b = typecast (A, t);
+	test_eqs ("min", min(b), find_min(b));
+	test_eqs ("max", max(b), find_max(b));
+	test_min_maxabs(b);
+     }
+}
+test_eqsmin_max_all_types ([10:20]);
 
 if ((_min(2, 1) != 1) or (_min(1,2) != 1))
   failed ("_min");
@@ -1229,7 +1281,7 @@ private define index_random ()
 {
    variable a = [1:60];
    variable n = Int_Type[83]; n[*] = 70;
-   loop (100)
+   loop (5)
      {
 	try
 	  {
@@ -1270,8 +1322,7 @@ private define test_all_1 (astr, ans)
 
 private define test_any_or_all (fun, astr, ans)
 {
-   foreach ([Char_Type, UChar_Type, Short_Type, UShort_Type,
-	     Int_Type, UInt_Type, Long_Type, ULong_Type])
+   foreach (Util_Arith_Types)
      {
 	variable t = ();
 	(@fun) ("typecast ($astr, $t);"$, ans);
@@ -1505,11 +1556,11 @@ test_arrayn (33.1, 45.0, 0);
 test_arrayn (33.1, 45.0, -5);
 test_arrayn (0f,255f,256);
 
-define test_array_refs ()
+private define test_array_refs ()
 {
    variable a = String_Type[10, 10];
    variable r = &a[5,5];
-   return;
+
    @r = "foo";
    if (a[5,5] != "foo")
      failed ("&a[5,5]");
@@ -1518,6 +1569,11 @@ define test_array_refs ()
    @r = ["1x", "2x", "3x", "4x", "5x","6x"];
    if ((a[2,4] != "1x") or (a[3,6] != "6x"))
      failed ("&a[[2,3],[4,5,6]]");
+
+   ifnot (_eqs (@r, _reshape (["1x", "2x", "3x", "4x", "5x","6x"], [2,3])))
+     {
+	failed ("@r = %S did not produce expected result", @r);
+     }
 }
 test_array_refs ();
 
@@ -1666,16 +1722,7 @@ test_range_multiplier ();
 
 private define test_wherefirstlast_minmax (a)
 {
-   foreach ([
-#ifexists Double_Type
-	     Double_Type, Float_Type,
-#endif
-#ifexists LLong_Type
-	     LLong_Type, ULLong_Type,
-#endif
-	     Long_Type, ULong_Type, Int_Type, UInt_Type,
-	     Short_Type, UShort_Type, Char_Type, UChar_Type,
-	    ])
+   foreach (Util_Arith_Types)
      {
 	variable type = ();
 	variable b = typecast (a, type);
@@ -1748,6 +1795,119 @@ test_prod ([1:5]*1LL);
 test_prod ([1+0i]);
 test_prod ([1:5] + 1i*[2:6]);
 #endif
+
+private define test_wherefirst_op ()
+{
+   variable types = Util_Arith_Types;
+
+   variable ops = {"_op_eqs", "_op_neqs", "_op_gt", "_op_ge", "_op_lt", "_op_le"};
+   loop (5)
+     {
+	foreach (ops)
+	  {
+	     variable op = ();
+	     variable suffix = op[[3:5]];
+	     variable wherefirst_func = __get_reference ("wherefirst" + suffix);
+	     variable wherelast_func = __get_reference ("wherelast" + suffix);
+	     op = __get_reference (op);
+
+	     variable a = 128*urand(1000);
+	     variable b = 128*urand();
+	     variable istart = int (-10 + 10*urand ());
+	     variable aa, bb, atype, btype, i, j;
+
+	     foreach atype (types)
+	       {
+		  aa = typecast (a, atype);
+		  foreach btype (types)
+		    {
+		       bb = typecast (b, btype);
+		       i = (@wherefirst_func)(aa, bb);
+		       j = wherefirst ((@op)(aa, bb));
+		       if (i != j)
+			 {
+			    failed ("%S(%S,%S %S)==>a[%S]=%S, expected a[%S]=%S",
+				    wherefirst_func, aa, btype, bb,
+				    i, (i==NULL?"NULL":aa[i]),
+				    j, (j==NULL?"NULL":aa[j]));
+			 }
+
+		       i = (@wherelast_func)(aa, bb);
+		       j = wherelast ((@op)(aa, bb));
+		       if (i != j)
+			 {
+			    failed ("%S(%S,%S %S)==>a[%S]=%S, expected a[%S]=%S",
+				    wherelast_func, aa, btype, bb,
+				    i, (i==NULL?"NULL":aa[i]),
+				    j, (j==NULL?"NULL":aa[j]));
+			 }
+
+		       i = (@wherefirst_func)(aa, bb, istart);
+		       j = wherefirst ((@op)(aa, bb), istart);
+		       if (i != j)
+			 {
+			    failed ("%S(%S,%S %S)==>a[%S]=%S, expected a[%S]=%S",
+				    wherefirst_func, aa, btype, bb, istart,
+				    i, (i==NULL?"NULL":aa[i]),
+				    j, (j==NULL?"NULL":aa[j]));
+			 }
+
+		       i = (@wherelast_func)(aa, bb, istart);
+		       j = wherelast ((@op)(aa, bb), istart);
+		       if (i != j)
+			 {
+			    failed ("%S(%S,%S %S,%S)==>a[%S]=%S, expected a[%S]=%S",
+				    wherelast_func, aa, btype, bb, istart,
+				    i, (i==NULL?"NULL":aa[i]),
+				    j, (j==NULL?"NULL":aa[j]));
+			 }
+		    }
+	       }
+	  }
+     }
+}
+
+test_wherefirst_op ();
+
+private define test_wherediff ()
+{
+   variable a =  [1, 1, 3, 0, 0, 4, 7, 7];
+   variable i, j;
+
+   i = wherediff (a, &j);
+   ifnot (_eqs (i, [0, 2, 3, 5, 6]) && _eqs(j, [1, 4, 7]))
+     failed ("wherediff test1");
+
+   i = wherediff (Int_Type[0], &j);
+   if (length(i) || length(j))
+     failed ("wherediff test2");
+
+   a = ["foo"];
+   i = wherediff (a, &j);
+   ifnot (_eqs (i, [0]) && _eqs(j, Int_Type[0]))
+     failed ("wherediff test3");
+   a = ["foo"];
+
+   a = String_Type[3];
+   i = wherediff (a, &j);
+   ifnot (_eqs (i, [0]) && _eqs(j, [1,2]))
+     failed ("wherediff test4");
+}
+test_wherediff ();
+
+private define test_misc ()
+{
+   variable a = Char_Type [10], s = "HelloWorld";
+   init_char_array (a, s);
+
+   variable i;
+   _for i (0, length(a)-1, 1)
+     {
+	if (a[i] != s[i])
+	  failed ("init_char_array");
+     }
+}
+test_misc ();
 
 print ("Ok\n");
 exit (0);

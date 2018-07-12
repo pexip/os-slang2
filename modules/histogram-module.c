@@ -2,7 +2,7 @@
 
 /*
   Copyright (c) 2003-2007 Massachusetts Institute of Technology
-  Copyright (c) 2013-2013 John E. Davis <jed@jedsoft.org>
+  Copyright (c) 2013-2016 John E. Davis <jed@jedsoft.org>
 
   This software was developed by the MIT Center for Space Research
   under contract SV1-61010 from the Smithsonian Institution.
@@ -615,6 +615,7 @@ static void hist2d (void)
 	  (void) SLdo_pop ();
 	else if (-1 == SLang_pop_ref (&ref))
 	  return;
+	break;
 
       case 5:
 	type = SLang_peek_at_stack ();
@@ -669,7 +670,7 @@ static void hist2d (void)
 
    if (has_hist)
      {
-	if (-1 == SLang_pop_array_of_type (&hist_at, SLANG_INT_TYPE))
+	if (-1 == SLang_pop_array_of_type (&hist_at, HISTDATA_TYPE))
 	  goto free_and_return;
 	if (hist_at->flags & SLARR_DATA_VALUE_IS_READ_ONLY)
 	  {
@@ -684,7 +685,7 @@ static void hist2d (void)
 	     goto free_and_return;
 	  }
      }
-   else if (NULL == (hist_at = SLang_create_array (SLANG_INT_TYPE, 0, NULL, dims, 2)))
+   else if (NULL == (hist_at = SLang_create_array (HISTDATA_TYPE, 0, NULL, dims, 2)))
      goto free_and_return;
    /* hist_at->data is already initialized to 0 */
 
@@ -700,6 +701,7 @@ static void hist2d (void)
 				   (double *)yedges_at->data, yedges_at->num_elements,
 				   (HistData_Type *) hist_at->data, rev_indices))
 	  goto free_and_return;
+	break;
 
       case SLANG_INT_TYPE:
 	if (-1 == i_histogram_2d ((int *)xpts_at->data, (int *)ypts_at->data, ypts_at->num_elements,
@@ -742,7 +744,7 @@ static void hist2d (void)
    (void) SLang_push_array (hist_at, 0);
 
    /* NULLs ok below */
-   free_and_return:
+free_and_return:
    if (rev_indices != NULL) SLfree ((char *) rev_indices);
    SLang_free_ref (ref);
    SLang_free_array (indices_at);

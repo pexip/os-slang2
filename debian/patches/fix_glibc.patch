@@ -4,11 +4,11 @@ Description: Fixes needed so that functions are visible (ip_mreq,strtoll)
 Last-Updated 2014-09-21
 Forwarded: yes
 
-Index: slang-2.3.0/modules/socket-module.c
+Index: slang2-2.3.1/modules/socket-module.c
 ===================================================================
---- slang-2.3.0.orig/modules/socket-module.c
-+++ slang-2.3.0/modules/socket-module.c
-@@ -40,6 +40,15 @@
+--- slang2-2.3.1.orig/modules/socket-module.c
++++ slang2-2.3.1/modules/socket-module.c
+@@ -42,6 +42,15 @@
  
  #include <sys/types.h>
  
@@ -24,7 +24,7 @@ Index: slang-2.3.0/modules/socket-module.c
  #include <time.h>
  #ifdef HAVE_SYS_TIME_H
  # include <sys/time.h>
-@@ -74,9 +83,6 @@
+@@ -76,9 +85,6 @@
  # include <sys/un.h>		       /* for AF_UNIX sockets */
  #endif
  
@@ -34,7 +34,7 @@ Index: slang-2.3.0/modules/socket-module.c
  
  #ifdef HAVE_ARPA_INET_H
  # include <arpa/inet.h>
-@@ -95,6 +101,8 @@ static int SocketError = -1;
+@@ -97,6 +103,8 @@ static int SocketError = -1;
  static int SocketHerrnoError = -1;
  static int Socket_Type_Id = -1;
  
@@ -43,30 +43,3 @@ Index: slang-2.3.0/modules/socket-module.c
  typedef struct Socket_Type Socket_Type;
  typedef struct
  {
-Index: slang-2.3.0/modules/json-module.c
-===================================================================
---- slang-2.3.0.orig/modules/json-module.c
-+++ slang-2.3.0/modules/json-module.c
-@@ -20,6 +20,8 @@ Foundation, Inc., 59 Temple Place - Suit
- USA.
- */
- 
-+/* _BSD_SOURCE needed for strtoll() definition */
-+#define _BSD_SOURCE 1
- #include "config.h"
- 
- #include <stdlib.h>
-Index: slang-2.3.0/src/slstd.c
-===================================================================
---- slang-2.3.0.orig/src/slstd.c
-+++ slang-2.3.0/src/slstd.c
-@@ -22,6 +22,9 @@ Foundation, Inc., 59 Temple Place - Suit
- USA.
- */
- 
-+/* _BSD_SOURCE needed for strtoll() definition */
-+#define _BSD_SOURCE 1
-+
- #include "slinclud.h"
- /*{{{ Include Files */
- 

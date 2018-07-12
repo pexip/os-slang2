@@ -8,13 +8,11 @@
 # "src/tests/sltest ./utf8" triggers the bug; works fine in UTF-8 mode, fails otherwise.
 # - amck, 2012-06-30
 
-DEB_CFLAGS_MAINT_APPEND= -D_XOPEN_SOURCE=500 `dpkg-buildflags --get CPPFLAGS` -O0
-DPKG_EXPORT_BUILDFLAGS = 1
-include /usr/share/dpkg/buildflags.mk
+CFLAGS:= $(CFLAGS) -D_XOPEN_SOURCE=500 $(CPPFLAGS) -O0 -fsigned-char
 
 # Magic debhelper rule
 %:
-	dh $@ --with autotools_dev
+	dh $@ --with autotools_dev --no-parallel
 
 override_dh_auto_configure:
 	cd autoconf \
@@ -25,7 +23,7 @@ override_dh_auto_configure:
 override_dh_auto_build:
 	dh_auto_build
 	${MAKE} -C src static
-	ar cqv libslang_pic.a src/elfobjs/*.o
+	ar cqv libslang_pic.a `LC_ALL=C ls src/elfobjs/*.o`
 	INSTANT_OPT=" " docbook-to-man debian/slsh.sgml > slsh.1
 
 override_dh_auto_clean:
@@ -33,7 +31,7 @@ override_dh_auto_clean:
 	rm -f slsh.1 libslang_pic.a src/test/sltest
 
 override_dh_auto_install:
-	dh_auto_install
+	dh_auto_install --no-parallel
 	cp  /usr/share/unicode/EastAsianWidth.txt utf8/tools
 	cp /usr/share/unicode/UnicodeData.txt utf8/tools
 	cp src/slang.ver debian/libslang2-pic/usr/lib/libslang_pic.map

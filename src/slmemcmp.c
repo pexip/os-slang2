@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -34,7 +34,6 @@ USA.
 */
 int SLmemcmp(register char *s1, register char *s2, int n)
 {
-   register int cmp;
    register char *s1max;
 
    s1max = s1 + (n - 32);
@@ -80,6 +79,7 @@ int SLmemcmp(register char *s1, register char *s2, int n)
 
    while (s1 < s1max)
      {
+	register int cmp;
 	cmp = (unsigned char) *s1 - (unsigned char) *s2;
 	if (cmp) return(cmp);
 	s1++;

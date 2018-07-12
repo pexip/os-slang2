@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Pexip AS <packaging@pexip.com>
 XSBC-Pexip-Original-Maintainer: Alastair McKinstry <mckinstry@debian.org>
 XSBC-Pexip-Original-Uploaders: Dmitry Smirnov <onlyjob@member.fsf.org>
-Build-Depends: debhelper (>= 9), autoconf, autotools-dev,
+Build-Depends: debhelper (>= 10), autoconf, autotools-dev,
  unicode-data,
  chrpath,
  docbook-to-man,
@@ -13,7 +13,7 @@ Build-Depends: debhelper (>= 9), autoconf, autotools-dev,
  libpcre3-dev,
  libpng-dev,
  zlib1g-dev,
-Standards-Version: 3.9.6
+Standards-Version: 3.9.8
 Homepage: http://www.jedsoft.org/slang/
 VCS-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/slang2.git
 VCS-Git: git://anonscm.debian.org/collab-maint/slang2.git
@@ -53,7 +53,6 @@ Depends: ${shlibs:Depends}, ${misc:Depends}
 Pre-Depends: ${misc:Pre-Depends}
 Multi-Arch: same
 Built-Using: ${Built-Using}
-Recommends: libpng12-0
 Description: S-Lang programming library - runtime version
  S-Lang is a C programmer's library that includes routines for the rapid
  development of sophisticated, user friendly, multi-platform applications.

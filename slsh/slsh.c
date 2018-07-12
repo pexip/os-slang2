@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2005-2014 John E. Davis
+Copyright (C) 2005-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -36,7 +36,11 @@ USA.
 #include <signal.h>
 #include <slang.h>
 
-static SLFUTURE_CONST char *Slsh_Version = "0.9.1-1";
+#ifdef SLSYSWRAP
+# include <slsyswrap.h>
+#endif
+
+static SLFUTURE_CONST char *Slsh_Version = "0.9.4-0";
 #define SLSHRC_FILE "slsh.rc"
 #include "slsh.h"
 
@@ -54,7 +58,8 @@ static SLFUTURE_CONST char *Slsh_Version = "0.9.1-1";
 
 #if defined(REAL_UNIX_SYSTEM) || defined(__APPLE__)
 /* # define DEFAULT_LIBRARY_PATH "/usr/local/share/slsh:/usr/local/lib/slsh:/usr/share/slsh:/usr/lib/slsh"; */
-# define DEFAULT_CONF_PATH "/usr/local/etc:/usr/local/etc/slsh:/etc:/etc/slsh";
+/* # define DEFAULT_CONF_PATH "/usr/local/etc:/usr/local/etc/slsh:/etc:/etc/slsh"; */
+# define DEFAULT_CONF_PATH NULL
 # define USER_SLSHRC ".slshrc"
 #else
 # define DEFAULT_CONF_PATH NULL
@@ -203,9 +208,7 @@ static void c_exit (int status)
 	AtExit_Hooks = next;
      }
 
-   if (SLang_get_error ())
-     SLang_restart (1);
-
+   SLang_restart (1);
    exit (status);
 }
 
@@ -273,8 +276,6 @@ static void stat_mode_to_string (void)
    (void) SLang_push_string (mode_string);
 }
 
-#ifdef __WIN32__
-
 /* Root/
  * 	bin/
  * 		slsh.exe
@@ -283,32 +284,45 @@ static void stat_mode_to_string (void)
  * 		autoload.sl
  * 		( ... )
  */
-static char *get_win32_root (void)
+static char *prepend_exec_root (const char *pgm, const char *suffix,
+				char *pathbuf, size_t size)
 {
-   static char base_path[MAX_PATH] = "";
+   char *p;
+   unsigned int len;
+   char pathsep;
 
-   if (*base_path == 0)
-     {
-	if (GetModuleFileName(NULL, base_path, MAX_PATH-10) > 0)
-	  {
-	     /* drop file name */
-	     char *p = strrchr(base_path, '\\');
-	     if (p != NULL)
-	       {
-		  *p = 0;
-		  /* drop also 'bin' */
-		  p = strrchr(base_path, '\\');
-		  if (p != NULL)
-		    {
-		       strcpy(p, "\\slsh\\");
-		    }
-	       }
-	  }
-     }
+   len = strlen (suffix);
+   if (len >= size)
+     return (char *)suffix;
 
-   return base_path;
-}
+#ifdef __WIN32__
+   if (0 == GetModuleFileName(NULL, pathbuf, size-len))
+     return suffix;
+   pathsep = '\\';
+#else
+   if (pgm == NULL)
+     return (char *)suffix;
+
+   strncpy (pathbuf, pgm, size);
+   pathbuf[size-1] = 0;
+   pathsep = '/';
 #endif
+
+   /* drop file name */
+   p = strrchr(pathbuf, pathsep);
+   if (p == NULL)
+     p = pathbuf;
+   *p = 0;
+
+   /* drop also 'bin' */
+   p = strrchr(pathbuf, pathsep);
+   if (p == NULL)
+     p = pathbuf;
+
+   strcpy(p, suffix);
+
+   return pathbuf;
+}
 
 static int Verbose_Loading;
 
@@ -345,8 +359,9 @@ static int try_to_load_file (SLFUTURE_CONST char *path, char *file, char *ns)
    return -1;
 }
 
-static int load_startup_file (int is_interactive)
+static int load_startup_file (const char *pgm, int is_interactive)
 {
+   char pathbuf[2048];
    SLFUTURE_CONST char *dir;
    int status;
 
@@ -369,10 +384,9 @@ static int load_startup_file (int is_interactive)
 #endif
 
 #ifdef __WIN32__
-	if (NULL == (dir = get_win32_root ()))
-	  dir = DEFAULT_CONF_PATH;
+	dir = prepend_exec_root (pgm, "\\etc", pathbuf, sizeof(pathbuf));
 #else
-	dir = DEFAULT_CONF_PATH;
+	dir = prepend_exec_root (pgm, "/etc", pathbuf, sizeof(pathbuf));
 #endif
      }
 
@@ -389,40 +403,44 @@ static int load_startup_file (int is_interactive)
    return 0;
 }
 
-#if 0
-static int is_script (char *file)
+static int setup_paths (const char *pgm)
 {
-   FILE *fp;
-   char buf[3];
-   int is;
+   SLFUTURE_CONST char *libpath = NULL;
+   char pathbuf[2048];
 
-   if (NULL == (fp = fopen (file, "r")))
-     return 0;
-
-   is = ((NULL != fgets (buf, sizeof(buf), fp))
-	 && (buf[0] == '#') && (buf[1] == '!'));
-
-   fclose (fp);
-   return is;
-}
+#ifdef SLSH_PATH
+   libpath = SLSH_PATH;
 #endif
 
-static int setup_paths (void)
-{
-   SLFUTURE_CONST char *libpath;
-
-   if (NULL == (libpath = getenv (SLSH_PATH_ENV)))
+   if (libpath != NULL)
      {
-#ifdef SLSH_PATH
-	libpath = SLSH_PATH;
+	if (2 != SLpath_file_exists (libpath))
+	  libpath = NULL;
+     }
+
+   if (libpath == NULL)
+     {
+#ifdef __WIN32__
+	libpath = prepend_exec_root (pgm, "\\share\\slsh", pathbuf, sizeof(pathbuf));
 #else
-# ifdef __WIN32__
-	libpath = get_win32_root ();
-# endif
+	libpath = prepend_exec_root (pgm, "/share/slsh", pathbuf, sizeof(pathbuf));
 #endif
      }
 
-   return SLpath_set_load_path (libpath);
+   if (-1 == SLpath_set_load_path (libpath))
+     return -1;
+
+#ifdef __WIN32__
+   /* hack a directory for modules */
+     {
+	char *dir;
+	dir = prepend_exec_root (pgm, "\\lib\\slang\\v2\\modules", pathbuf, sizeof(pathbuf));
+	if (-1 == SLang_set_module_load_path (dir))
+	  return -1;
+     }
+#endif
+
+   return 0;
 }
 
 static int set_verbose_loading (int *val)
@@ -438,6 +456,15 @@ static SLang_Intrin_Fun_Type Intrinsics [] =
    MAKE_INTRINSIC_0("stat_mode_to_string", stat_mode_to_string, VOID_TYPE),
    MAKE_INTRINSIC_1("set_verbose_loading", set_verbose_loading, SLANG_INT_TYPE, SLANG_INT_TYPE),
    SLANG_END_INTRIN_FUN_TABLE
+};
+
+static char *Slsh_Path_Env = SLSH_PATH_ENV;
+static char *Slsh_Conf_Dir_Env = SLSH_CONF_DIR_ENV;
+static SLang_Intrin_Var_Type Intrinsic_Variables [] =
+{
+   MAKE_VARIABLE("SLSH_PATH_ENV", &Slsh_Path_Env, SLANG_STRING_TYPE, 1),
+   MAKE_VARIABLE("SLSH_CONF_DIR_ENV", &Slsh_Conf_Dir_Env, SLANG_STRING_TYPE, 1),
+   SLANG_END_INTRIN_VAR_TABLE
 };
 
 static void usage (void)
@@ -485,7 +512,7 @@ static void output_version (void)
 static int output_copyright (void)
 {
    output_version ();
-   fprintf (stdout, "Copyright (C) 2005-2014 John E. Davis <jed@jedsoft.org>\r\n");
+   fprintf (stdout, "Copyright (C) 2005-2016 John E. Davis <jed@jedsoft.org>\r\n");
    fprintf (stdout, "This is free software with ABSOLUTELY NO WARRANTY.\r\n");
    fprintf (stdout, "\n");
 
@@ -500,7 +527,7 @@ static void version (void)
 
 int main (int argc, char **argv)
 {
-   char *file = NULL;
+   char *file = NULL, *pgm;
    SLFUTURE_CONST char *init_file = USER_SLSHRC;
    char *init_file_dir;
    int exit_val;
@@ -510,12 +537,19 @@ int main (int argc, char **argv)
    char *exec_string = NULL;
    int quiet = 0;
 
+#ifdef SLSYSWRAP
+   (void) SLsyswrap_set_syscall_failure (0);
+#endif
+
    (void) SLutf8_enable (-1);
 
    if ((-1 == SLang_init_all ())
        || (-1 == SLang_init_array_extra ())
+#ifndef SLSH_STATIC
        || (-1 == SLang_init_import ()) /* dynamic linking */
+#endif
        || (-1 == SLadd_intrin_fun_table (Intrinsics, NULL))
+       || (-1 == SLadd_intrin_var_table (Intrinsic_Variables, NULL))
        || (-1 == slsh_init_readline_intrinsics ()))
      {
 	fprintf(stderr, "Unable to initialize S-Lang.\n");
@@ -526,6 +560,10 @@ int main (int argc, char **argv)
    (void) SLsignal (SIGPIPE, SIG_IGN);
 #endif
 
+#ifdef SLSYSWRAP
+   (void) SLsyswrap_set_syscall_failure (1);
+#endif
+
    /* FIXME for other systems */
 #ifdef __WIN32__
    init_file_dir = getenv ("USERPROFILE");
@@ -533,22 +571,9 @@ int main (int argc, char **argv)
    init_file_dir = getenv ("HOME");
 #endif
 
-   if (-1 == setup_paths ())
+   pgm = argv[0];
+   if (-1 == setup_paths (pgm))
      return -1;
-
-#ifdef __WIN32__
-   /* hack a directory for modules */
-     {
-	char *slshdir;
-	char buffer[MAX_PATH] = "";
-
-	slshdir = get_win32_root();
-	if (slshdir != NULL)
-	  strcpy(buffer, slshdir);
-	strcat(buffer, "modules\\");
-	SLang_set_module_load_path (buffer);
-     }
-#endif
 
    while (argc > 1)
      {
@@ -644,6 +669,7 @@ int main (int argc, char **argv)
 	       (void) SLdefine_for_ifdef (prep);
 	     argc--;
 	     argv++;
+	     continue;
 	  }
 
 	break;
@@ -684,7 +710,10 @@ int main (int argc, char **argv)
    if (is_interactive)
      (void) SLdefine_for_ifdef ("__INTERACTIVE__");
 
-   if (-1 == load_startup_file (is_interactive))
+   if (-1 == load_startup_file (pgm, is_interactive))
+     return SLang_get_error ();
+
+   if (-1 == SLang_run_hooks ("__slsh_startup_hook", 0))
      return SLang_get_error ();
 
    /* Initializing the readline interface causes the .slrlinerc file

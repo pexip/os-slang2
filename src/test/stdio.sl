@@ -2,42 +2,49 @@
 
 testing_feature ("stdio routines");
 
-define fopen_tmp_file (fileptr, mode)
+define fdopen_tmp_file (fileptr, mode, fdp)
 {
-   variable n;
-   variable file, fp;
-   variable fmt;
+   variable file, fp, fd;
 
    @fileptr = NULL;
 
-   fmt = "tmp-xxx.%03d";    % I need something that works on an 8+3 filesystem
+   file = util_make_tmp_file ("tmpfile", &fd);
+   fp = fdopen (fd, mode);
+   if (fp == NULL)
+     failed ("fdopen failed: %s", errno_string());
 
-   n = -1;
-   while (n < 999)
-     {
-	n++;
-	file = sprintf (fmt, n);
-	if (NULL != stat_file (file))
-	  continue;
+   @fdp = fd;
+   @fileptr = file;
+   return fp;
+}
 
-	fp = fopen (file, mode);
-	if (fp != NULL)
-	  {
-	     @fileptr = file;
-	     return fp;
-	  }
-     }
-   failed ("Unable to open a tmp file");
+define fopen_tmp_file (fileptr, mode)
+{
+   variable file, fp;
+
+   @fileptr = NULL;
+
+   file = util_make_tmp_file ("tmpfile", NULL);
+
+   fp = fopen (file, mode);
+   if (fp == NULL)
+     failed ("Unable to open %S", file);
+
+   @fileptr = file;
+   return fp;
 }
 
 define run_tests (some_text, read_fun, write_fun, length_fun)
 {
-   variable file, fp;
+   variable file, fp, fd;
    variable new_text, nbytes, len;
    variable pos;
 
-   fp = fopen_tmp_file (&file, "wb");
-
+   fp = fdopen_tmp_file (&file, "wb", &fd);
+#ifexists setvbuf
+   if (-1 == setvbuf (fp, _IOFBF, 8))
+     failed ("setvbuf");
+#endif
    if (-1 == @write_fun (some_text, fp))
      failed (string (write_fun));
 
@@ -58,6 +65,9 @@ define run_tests (some_text, read_fun, write_fun, length_fun)
      failed (string (read_fun) + " at EOF");
 
    if (0 == feof (fp)) failed ("feof");
+
+   if (ferror (fp))
+     failed ("expected ferror to return 0");
 
    clearerr (fp);
    if (feof (fp)) failed ("clearerr");
@@ -92,13 +102,14 @@ define run_tests (some_text, read_fun, write_fun, length_fun)
 
    if (-1 == fclose (fp)) failed ("fclose after tests");
 
-   variable fd = open (file, O_RDONLY);
+   fd = open (file, O_RDONLY);
    if (fd == NULL)
      failed ("open %s failed", file);
 
    variable ofs = (@length_fun)(some_text) - 1;
-   if (ofs != lseek (fd, ofs, SEEK_SET))
-     failed ("lseek failed to return %S", ofs);
+   variable ofs1 = lseek (fd, ofs, SEEK_SET);
+   if (ofs != ofs1)
+     failed ("lseek returned %S, expected %S: %S", ofs1, ofs, errno_string());
    if (1 != read (fd, &new_text, 1))
      failed ("read failed after lseek");
    if (new_text[0] != some_text[-1])
@@ -112,7 +123,24 @@ define run_tests (some_text, read_fun, write_fun, length_fun)
 
 static define do_fgets (addr, nbytes, fp)
 {
-   return fgets (addr, fp);
+   variable count;
+   variable dbytes, bytes;
+
+   variable dc = fgets (&bytes, fp);
+   if (dc == -1)
+     return -1;
+
+   count = dc;
+   while (count < nbytes)
+     {
+	dc = fgets (&dbytes, fp);
+	if (dc == -1)
+	  break;
+	count += dc;
+	bytes += dbytes;
+     }
+   @addr = bytes;
+   return count;
 }
 
 static define do_fread (addr, nbytes, fp)
@@ -121,8 +149,57 @@ static define do_fread (addr, nbytes, fp)
    return fread_bytes (addr, nbytes, fp);
 }
 
+private define do_fprintf (some_text, fp)
+{
+   if (fprintf (fp, "%s", some_text) != strbytelen(some_text))
+     return -1;
+
+   return 0;
+}
+
+private define do_foreach_char (addr, nbytes, fp)
+{
+   variable ch, str = NULL, count = 0;
+   foreach ch (fp) using ("char")
+     {
+	if (str == NULL)
+	  str = "";
+	str = strcat (str, char(-1*ch));
+	count++;
+	if (count >= nbytes)
+	  break;
+     }
+   if (str == NULL)
+     return -1;
+
+   @addr = str;
+   return count;
+}
+
+private define do_foreach_line (addr, nbytes, fp)
+{
+   variable line, str = NULL, count = 0;
+   foreach line (fp) using ("line")
+     {
+	if (str == NULL)
+	  str = "";
+	str = strcat (str, line);
+	count += strbytelen(line);
+	if (count >= nbytes)
+	  break;
+     }
+   if (str == NULL)
+     return -1;
+
+   @addr = str;
+   return count;
+}
+
 run_tests ("ABCDEFG", &do_fgets, &fputs, &strlen);
 run_tests ("A\000BC\000\n\n\n", &do_fread, &fwrite, &bstrlen);
+run_tests ("A\nAB\n\ABC\nABCD", &do_fgets, &do_fprintf, &strbytelen);
+run_tests ("A\nAB\n\ABC\nABCD", &do_foreach_char, &fwrite, &strbytelen);
+run_tests ("A\nAB\n\ABC\nABCD", &do_foreach_line, &fwrite, &strbytelen);
 
 define test_fread_fwrite (x)
 {
@@ -233,6 +310,74 @@ define test_read_write ()
    () = remove (file);
 }
 test_read_write();
+
+#ifdef UNIX
+private define test_write_to_stdout ()
+{
+   () = fflush(stdout);
+   variable fd = fileno (stdout);
+   variable ifd = _fileno(stdout);
+   variable old_stdout = dup_fd(fd);
+   if (old_stdout == NULL)
+     failed ("test_write_to_stdout: dup: %S", errno_string());
+
+   variable new_fd = open("/dev/null", O_WRONLY);
+
+   if (-1 == dup2_fd(new_fd, ifd))
+     failed ("test_write_to_stdout: dup2: %S", errno_string());
+
+   () = close (new_fd);
+
+   () = printf ("Write to stdout, fileno=%S", fileno(stdout));
+   () = fflush(stdout);
+
+   () = dup2_fd(old_stdout, ifd);
+   () = close (old_stdout);
+}
+test_write_to_stdout ();
+#endif
+
+#ifdef UNIX
+private define test_popen ()
+{
+   variable fp = popen ("ls", "r");
+   if (fp == NULL)
+     failed ("popen ls failed");
+   variable count = 0;
+   foreach (fp) using ("wsline")
+     {
+	variable line = ();
+	count++;
+     }
+   if (0 != pclose (fp))
+     failed ("pclose: %S", errno_string());
+   if (count == 0)
+     failed ("no lines read from popen ls");
+}
+test_popen ();
+#endif
+
+private define test_bad_fds ()
+{
+   variable file;
+   variable fp = fopen_tmp_file (&file, "w");
+   () = remove (file);
+
+   if (NULL != fgetslines (fp, 0))
+     {
+	() = fclose (fp);
+	failed ("fgetslines on write-only stdio file pointer");
+     }
+
+   clearerr (fp);
+
+   if (-1 == fclose (fp))
+     failed ("fclose failed");
+
+   if (-1 != fclose (fp))
+     failed ("Expected second fclose to fail");
+}
+test_bad_fds ();
 
 print ("Ok\n");
 

@@ -1,6 +1,6 @@
 /* User defined objects */
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -297,7 +297,6 @@ scalar_vector_bin_op (int op,
 static int scalar_fread (SLtype type, FILE *fp, VOID_STAR ptr,
 			 SLstrlen_Type desired, SLstrlen_Type *actual)
 {
-   size_t n;
    char *buf = (char *)ptr;
    size_t desired_bytes, actual_bytes;
    size_t size = _pSLclass_get_class (type)->cl_sizeof_type;
@@ -307,6 +306,7 @@ static int scalar_fread (SLtype type, FILE *fp, VOID_STAR ptr,
 
    while (desired_bytes)
      {
+	size_t n;
 	int e;
 
 	errno = 0;
@@ -342,7 +342,6 @@ static int scalar_fread (SLtype type, FILE *fp, VOID_STAR ptr,
 static int scalar_fwrite (SLtype type, FILE *fp, VOID_STAR ptr,
 			  SLstrlen_Type desired, SLstrlen_Type *actual)
 {
-   size_t n;
    char *buf = (char *)ptr;
    size_t desired_bytes, actual_bytes;
    size_t size = _pSLclass_get_class (type)->cl_sizeof_type;
@@ -352,6 +351,7 @@ static int scalar_fwrite (SLtype type, FILE *fp, VOID_STAR ptr,
 
    while (desired_bytes)
      {
+	size_t n;
 	int e;
 
 	errno = 0;
@@ -1214,7 +1214,7 @@ int SLclass_set_length_function (SLang_Class_Type *cl, int (*f)(SLtype, VOID_STA
    return 0;
 }
 
-extern int SLclass_set_is_container (SLang_Class_Type *cl, int ic)
+int SLclass_set_is_container (SLang_Class_Type *cl, int ic)
 {
    if (cl == NULL)
      return -1;

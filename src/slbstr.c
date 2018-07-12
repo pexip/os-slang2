@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2004-2014 John E. Davis
+Copyright (C) 2004-2016 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -239,7 +239,7 @@ static int compare_bstrings (SLang_BString_Type *a, SLang_BString_Type *b)
    len = a->len;
    if (b->len < len) len = b->len;
 
-   ret = memcmp ((char *)BS_GET_POINTER(b), (char *)BS_GET_POINTER(a), len);
+   ret = memcmp ((char *)BS_GET_POINTER(a), (char *)BS_GET_POINTER(b), len);
    if (ret != 0)
      return ret;
 
@@ -567,10 +567,27 @@ static int bstring_to_string (SLtype a_type, VOID_STAR ap, SLuindex_Type na,
    return 1;
 }
 
+static size_t Printable_BString_Size = 256;
+static void set_printable_bstring_size (unsigned int *np)
+{
+   unsigned int n = *np;
+   if (n > 0xFFFFU)
+     n = 0xFFFFU;
+   if (n < 16)
+     n = 16;
+
+   Printable_BString_Size = n;
+}
+
+static unsigned int get_printable_bstring_size (void)
+{
+   return (unsigned int) Printable_BString_Size;
+}
+
 static char *bstring_string (SLtype type, VOID_STAR v)
 {
    SLang_BString_Type *s;
-   unsigned char buf[128];
+   unsigned char *buf;
    unsigned char *bytes, *bytes_max;
    unsigned char *b, *bmax;
 
@@ -580,8 +597,12 @@ static char *bstring_string (SLtype type, VOID_STAR v)
    bytes = BS_GET_POINTER(s);
    bytes_max = bytes + s->len;
 
+   buf = (unsigned char *)SLmalloc (Printable_BString_Size);
+   if (buf == NULL)
+     return NULL;
+
    b = buf;
-   bmax = buf + (sizeof (buf) - 4);
+   bmax = buf + (Printable_BString_Size - 4);
 
    while (bytes < bytes_max)
      {
@@ -614,7 +635,10 @@ static char *bstring_string (SLtype type, VOID_STAR v)
      }
    *b = 0;
 
-   return SLmake_string ((char *)buf);
+   /* reduce the size */
+   b = (unsigned char *)SLrealloc ((char *)buf, 1+(b-buf));
+   if (b != NULL) buf = b;
+   return (char *)buf;
 }
 
 static unsigned int bstrlen_cmd (SLang_BString_Type *b)
@@ -715,9 +739,9 @@ static SLindex_Type issubbytes (void)
 	/* 1-based upon return */
 
 	ofs = (SLindex_Type) uofs;
-	SLbstring_free (b);
+	SLbstring_free (a);
      }
-   SLbstring_free (a);
+   SLbstring_free (b);
    return ofs;
 }
 
@@ -896,6 +920,8 @@ static SLang_Intrin_Fun_Type BString_Table [] = /*{{{*/
    MAKE_INTRINSIC_1("pad_pack_format", _pSLpack_pad_format, SLANG_VOID_TYPE, SLANG_STRING_TYPE),
    MAKE_INTRINSIC_1("sizeof_pack", _pSLpack_compute_size, SLANG_UINT_TYPE, SLANG_STRING_TYPE),
    MAKE_INTRINSIC_0("is_substrbytes", issubbytes, SLANG_ARRAY_INDEX_TYPE),
+   MAKE_INTRINSIC_1("set_printable_bstring_size", set_printable_bstring_size, SLANG_VOID_TYPE, SLANG_UINT_TYPE),
+   MAKE_INTRINSIC_0("get_printable_bstring_size", get_printable_bstring_size, SLANG_UINT_TYPE),
    SLANG_END_INTRIN_FUN_TABLE
 };
 
@@ -981,7 +1007,6 @@ void _pSLbstring_foreach_close (SLtype type, SLang_Foreach_Context_Type *c)
 
 int _pSLbstring_foreach (SLtype type, SLang_Foreach_Context_Type *c)
 {
-   unsigned char ch;
    SLwchar_Type wch;
    unsigned char *s, *s1, *smax;
 
@@ -994,7 +1019,7 @@ int _pSLbstring_foreach (SLtype type, SLang_Foreach_Context_Type *c)
 
    if (c->using_chars == 0)
      {
-	ch = (unsigned char) *s++;
+	unsigned char ch = (unsigned char) *s++;
 	c->s = s;
 
 	if (-1 == SLclass_push_char_obj (SLANG_UCHAR_TYPE, ch))

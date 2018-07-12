@@ -161,6 +161,9 @@
 @modules/stats.sl
 @modules/stats-module.c
 @modules/stats-module.inc
+@modules/statslib/kuiper.sl
+@modules/statslib/ad_test.sl
+@modules/statslib/ks_test.sl
 @modules/sysconf-module.c
 @modules/sysconf.sl
 @modules/termios-module.c
@@ -181,13 +184,24 @@
 @modules/test/test_base64.sl
 @modules/test/test_chksum.sl
 @modules/test/test_csv.sl
-@modules/test/test_zlib.sl
-@modules/test/test_onig.sl
-@modules/test/test_rand.sl
+@modules/test/test_fcntl.sl
+@modules/test/test_fork.sl
 @modules/test/test_hist.sl
-@modules/test/test_stats.sl
+@modules/test/test_iconv.sl
 @modules/test/test_json.sl
+@modules/test/test_onig.sl
+@modules/test/test_pcre.sl
 @modules/test/test_png.sl
+@modules/test/test_rand.sl
+@modules/test/test_select.sl
+@modules/test/test_slsmg.sl
+@modules/test/test_socket.sl
+@modules/test/test_stats.sl
+@modules/test/test_sysconf.sl
+@modules/test/test_sysconf.sl
+@modules/test/test_termios.sl
+@modules/test/test_varray.sl
+@modules/test/test_zlib.sl
 
 @modules/tm/Makefile
 @modules/tm/base64funs.tm
@@ -325,6 +339,8 @@
 @slsh/lib/tm/setfuns.tm
 @slsh/lib/tm/listfuns.tm
 
+@slsh/lib/test/runtests.sh 0755
+@slsh/lib/test/common.sl
 @slsh/lib/test/test_cmdopt.sl
 @slsh/lib/test/test_structfuns.sl
 @slsh/lib/test/test_readascii.sl
@@ -486,6 +502,7 @@
 @src/slxstrng.c
 
 @src/test/runtests.sh 0755
+@src/test/w32test.bat
 @src/test/Makefile
 @src/test/README
 @src/test/sltest.c
@@ -514,7 +531,9 @@
 @src/test/list.sl
 @src/test/longline.inc
 @src/test/loops.sl
+@src/test/math.sl
 @src/test/method.sl
+@src/test/misc.sl
 @src/test/multline.sl
 @src/test/naninf.sl
 @src/test/ns1.inc
@@ -525,7 +544,9 @@
 @src/test/overflow.sl
 @src/test/pack.sl
 @src/test/path.sl
+@src/test/posdir.sl
 @src/test/posixio.sl
+@src/test/proc.sl
 @src/test/prep.sl
 @src/test/qualif.sl
 @src/test/regexp.sl
@@ -536,6 +557,7 @@
 @src/test/signal.sl
 @src/test/sort.sl
 @src/test/sscanf.sl
+@src/test/stack.sl
 @src/test/stdio.sl
 @src/test/strops.sl
 @src/test/struct.sl
@@ -544,6 +566,7 @@
 @src/test/time.sl
 @src/test/utf8.sl
 @src/test/longlong.sl
+
 @src/untic.c
 @src/slang.ver
 @src/terminfo/aix4.inc
