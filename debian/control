@@ -3,7 +3,7 @@ Section: devel
 Priority: optional
 Maintainer: Alastair McKinstry <mckinstry@debian.org>
 Uploaders: Dmitry Smirnov <onlyjob@member.fsf.org>
-Build-Depends: debhelper (>= 10), autoconf, autotools-dev,
+Build-Depends: debhelper (>= 10),
  unicode-data,
  chrpath,
  docbook-to-man,
@@ -13,10 +13,10 @@ Build-Depends: debhelper (>= 10), autoconf, autotools-dev,
  libpcre3-dev,
  libpng-dev,
  zlib1g-dev,
-Standards-Version: 3.9.8
+Standards-Version: 4.3.0
 Homepage: http://www.jedsoft.org/slang/
-VCS-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/slang2.git
-VCS-Git: git://anonscm.debian.org/collab-maint/slang2.git
+Vcs-Browser: https://salsa.debian.org/debian/slang2
+Vcs-Git: https://salsa.debian.org/debian/slang2.git
 
 Package: libslang2-dev
 Section: libdevel
@@ -46,7 +46,6 @@ Description: S-Lang programming library, development version
 
 Package: libslang2
 Section: libs
-Priority: important
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Pre-Depends: ${misc:Pre-Depends}
@@ -74,7 +73,6 @@ Description: S-Lang programming library, shared library subset kit
 
 Package: libslang2-udeb
 Section: debian-installer
-Priority: extra
 Architecture: any
 Built-Using: ${Built-Using}
 Depends: ${shlibs:Depends}, ${misc:Depends}

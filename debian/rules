@@ -3,16 +3,22 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-# Add -O0 to workaround ¢675125, a bug that appeared with gcc-4.7. 
+# Add -O0 to workaround ¢675125, a bug that appeared with gcc-4.7.
 # Probably to do with uninitialized memory somewhere ?
 # "src/tests/sltest ./utf8" triggers the bug; works fine in UTF-8 mode, fails otherwise.
 # - amck, 2012-06-30
 
 CFLAGS:= $(CFLAGS) -D_XOPEN_SOURCE=500 $(CPPFLAGS) -O0 -fsigned-char
 
+# #890545:
+OBJDIR:=src/objs
+ifeq ($(ARCH), x32)
+  OBJDIR:=src/x32objs
+endif
+
 # Magic debhelper rule
 %:
-	dh $@ --with autotools_dev --no-parallel
+	dh $@ --no-parallel
 
 override_dh_auto_configure:
 	cd autoconf \
@@ -36,7 +42,7 @@ override_dh_auto_install:
 	cp /usr/share/unicode/UnicodeData.txt utf8/tools
 	cp src/slang.ver debian/libslang2-pic/usr/lib/libslang_pic.map
 	mkdir -p debian/tmp/lib/${DEB_HOST_MULTIARCH}
-	cp -a src/objs/libslang.a debian/tmp/usr/lib/${DEB_HOST_MULTIARCH}
+	cp -a ${OBJDIR}/libslang.a debian/tmp/usr/lib/${DEB_HOST_MULTIARCH}
 	mv debian/tmp/usr/lib/${DEB_HOST_MULTIARCH}/libslang.so.* debian/tmp/lib/${DEB_HOST_MULTIARCH}
 	ln -sf /lib/${DEB_HOST_MULTIARCH}/libslang.so.2 debian/tmp/usr/lib/${DEB_HOST_MULTIARCH}/libslang.so
 	chrpath -d debian/tmp/usr/lib/${DEB_HOST_MULTIARCH}/slang/v2/modules/*.so

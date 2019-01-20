@@ -1,7 +1,7 @@
 /* -*- mode: C; mode: fold; -*- */
 /* slang.c  --- guts of S-Lang interpreter */
 /*
-Copyright (C) 2004-2016 John E. Davis
+Copyright (C) 2004-2017,2018 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -2625,7 +2625,9 @@ set_struct_obj_lvalue (SLBlock_Type *bc_blk, SLang_Object_Type *objA, int do_fre
 	     if (do_free) free_object (objA, cl);
 	     return -1;
 	  }
+#if SLANG_USE_TMP_OPTIMIZATION
 	free_object (&obj, cl_obj);
+#endif
      }
 
    /* The result of the operation is now on the stack.
