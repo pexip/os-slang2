@@ -1,4 +1,74 @@
 -*- mode: text; mode: fold -*-
+Changes since 2.3.1a
+1. modules/stats_kendall.c: Updated to use Knight's O(NlogN)
+   algorithm.  This update was facilitating by separating out some
+   integer typedefs from _slang.h and placing them in _slint.h.  The
+   closely relation mann_kendall function was also added to the stats
+   module.
+2. modules/stats_kendall.c: In the prtaus function, the loops were
+   reorganized loops to eliminate embedded if-tests, and the code that
+   deals with arrays were made for "C-like".
+3. Merged Manfred Hanke's CSV module documentation updates.
+4. slsh/lib/cmdopt.sl: The form -fVAL was not working as described for
+   short-options whose value (VAL) is optional.
+5. src/sl*.h: Updated Unicode tables from version 5 to 9
+6. src/slischar.h: Previously, if a lower(upper) case character did
+   not have a mapping to an upper(lower) case character, it was take
+   to not have a case.  This restriction has been dropped.  In other
+   words, it is nolonger necessary for an upper(lower) case character
+   to have a lower(upper) case equivalent.
+7. src/slpack.c: Added an intrinsic function (_array_byteswap) that
+   may be used to convert the values of an array from one endianness
+   to another.
+8. src/slparse.c: It is now possible to use reserved words as struct
+   field names without quoting them.  For example, it is now possible
+   to write
+              s = struct { public = value };
+   Previously, this required the field name to be quoted:
+              s = struct { "public" = value };
+
+9. modules/json-module.c: Malformed UTF-8 was not being properly
+   handled by the json-encoder.
+10. modules/csv-module.c: The decode_csv_row function was ignoring the
+    delimiter setting after a quoted string.
+11. src/slparse.c: A for statement lacking a conditional expression
+    was not being properly handled (noticed by rocket penguin).
+12. src/struct.c: Rewrote the __add_binary function, which was not
+    properly handling multiple data types.
+13. changes.txt: Converted to UTF-8 (Miroslav Lichvar)
+14. src/slscanf.c: The sscanf function was not parsing ".0" as a
+    floating poing number (zero).
+15. The library was failing to compile when __tmp operator
+    optimizations were turned off.  The default is to permit such
+    optimizations since they can lead to faster running code and less
+    memory usage.  Bug reported by Henry.
+16. src/slsh.c: Updated copyright year.
+17. INSTALL.unx: Corrected the URL for the ONIGURUMA regexp library; added
+    a small note that PCRE2 is not supported (Henry Nelson).
+18. modules/csv-module.c: If the delimiter or quote character is
+    specified to be 0, then use the defaults (, and ").
+19. src/sltermin.c: Added support for the new ncurses 32-bit terminfo
+    database entries.
+20. autoconf/aclocal.m4,src/Makefile.in: Install shared objects
+    (modules and library) with executable permissions.
+21. src/sl*.h: Updated Unicode tables from version 9 to 10
+22. src/sltermin.c: Corrected a few typos in the comments (Manfred
+    Hanke).
+23. Updated Copyright year to 2018
+24. doc updates
+25. src/sltermin.c: removed unnecessary "extern" function attribute.
+26. src/test/syntax.sl: The version number test required the use of
+    isalpha and not isascii.
+
+{{{ Previous Versions
+
+Changes since 2.3.1
+a. Some tests were failing when compiled with a compiler that defaults
+   to using `unsigned char'.  In the few places where a `signed char'
+   was assumed, `char' was changed to `signed char'.  Also, a
+   copy-paste error was corrected in the src/test/sltest.c that caused
+   the test program to fail on big-endian 64 bit systems.
+
 Changes since 2.3.0
 1. modules/json-module.c: Fix a possible uninitialized variable error.
 2. Define _BSD_SOURCE the few places necessary to get prototypes for
@@ -248,8 +318,6 @@ Changes since 2.3.0
     mkfiles/runslsh.bat (Windows only).
 100. documentation updates
 
-
-{{{ Previous Versions
 
 Changes since 2.2.4
 1. src/slarray.c: Try to find a suitable multiplier for range arrays
@@ -2349,7 +2417,7 @@ Changes since 2.0.0 pre-release 3
 12. src/mkfiles/makefile.all: DOS/Windows: The response file was not
     being properly generated (SANGOI DINO (SANGOID at lloydadriatico, it)
 13. src/slang.c: The autoload function may be used to load a file into
-    a namespace. (Based upon an idea from Jörg Sommer (joerg at alea,
+    a namespace. (Based upon an idea from JÃ¶rg Sommer (joerg at alea,
     gnuu, de)
 14. src/slstring.c: New hash function (from Bob Jenkins-- see
     See http://burtleburtle.net/bob/hash/evahash.html)
@@ -2766,7 +2834,7 @@ Changes since 1.4.1
     properly handled in do..while statements.  src/test/loops.sl added
     for testing.
 2.  slparse.c: avoid potential (rare?) infinite loop when slang error occurs
-    (Stanis³a Bartkowski <sb at protest.com.pl>).
+    (StanisÅ‚a Bartkowski <sb at protest.com.pl>).
 3.  slsmg.c: When SLsmg_init_smg is called, mark the display as trashed.
 4.  It is now possible to add intrinsics to their own namespace via
     new SLns_add* functions.  Moreover, the import function now takes
@@ -3005,7 +3073,7 @@ Changes since 1.2.2
    initialize.
 5. An array such as [[1,2,3],[4,5,6]] is interpreted as a 2-row
    3-column array.
-6. Amiga patches from Jörg Strohmayer <j_s at gmx.de>.
+6. Amiga patches from JÃ¶rg Strohmayer <j_s at gmx.de>.
 7. New table types:
 
        SLang_IConstant_Type
@@ -3324,7 +3392,7 @@ Changes since 1.2.2
 
         #ifeval (_slang_version > 9900) || (x == 1)
 
-63. sl-feat.h: Patch from Jörg Strohmayer <j_s at gmx.de> to define
+63. sl-feat.h: Patch from JÃ¶rg Strohmayer <j_s at gmx.de> to define
     _SLANG_MAP_VTXX_8BIT=1 for AMIGA.
 
 64. New intrinsics:

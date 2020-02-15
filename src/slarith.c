@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2004-2016 John E. Davis
+Copyright (C) 2004-2017,2018 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -1239,7 +1239,7 @@ static char *arith_string (SLtype type, VOID_STAR v)
 	break;
 
       case SLANG_CHAR_TYPE:
-	sprintf (s, "%d", *(char *) v);
+	sprintf (s, "%d", *(signed char *) v);
 	break;
       case SLANG_UCHAR_TYPE:
 	sprintf (s, "%u", *(unsigned char *) v);

@@ -1,6 +1,6 @@
 /* Array manipulation routines for S-Lang */
 /*
-Copyright (C) 2004-2016 John E. Davis
+Copyright (C) 2004-2017,2018 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -1396,7 +1396,7 @@ int _pSLarray1d_push_elem (SLang_Array_Type *at, SLindex_Type idx)
      {
       case SLANG_CHAR_TYPE:
 	if (NULL == (data = at->index_fun(at, &idx))) return -1;
-	return SLclass_push_char_obj (SLANG_CHAR_TYPE, *(char *)data);
+	return SLclass_push_char_obj (SLANG_CHAR_TYPE, *(signed char *)data);
 
       case SLANG_INT_TYPE:
 	if (NULL == (data = at->index_fun(at, &idx))) return -1;
@@ -2759,7 +2759,7 @@ static void init_char_array (void)
    if (-1 == SLang_pop_array (&at, 0))
      goto free_and_return;
 
-   if (at->data_type != SLANG_CHAR_TYPE)
+   if ((at->data_type != SLANG_CHAR_TYPE) && (at->data_type != SLANG_UCHAR_TYPE))
      {
 	_pSLang_verror (SL_TYPE_MISMATCH, "Operation requires a character array");
 	goto free_and_return;
@@ -3684,7 +3684,7 @@ static int array_binary_op (int op,
 		      SLtype, VOID_STAR, SLuindex_Type,
 		      VOID_STAR);
    SLang_Class_Type *a_cl, *b_cl, *c_cl;
-   int no_init, ret;
+   int ret;
 
    if (a_type == SLANG_ARRAY_TYPE)
      {
@@ -3782,9 +3782,6 @@ static int array_binary_op (int op,
 
    ct = NULL;
 
-   no_init = ((c_cl->cl_class_type == SLANG_CLASS_TYPE_SCALAR)
-	      || (c_cl->cl_class_type == SLANG_CLASS_TYPE_VECTOR));
-
 #if SLANG_USE_TMP_OPTIMIZATION
    /* If we are dealing with scalar (or vector) objects, and if the object
     * appears to be owned by the stack, then use it instead of creating a
@@ -3792,7 +3789,8 @@ static int array_binary_op (int op,
     * @  x = [1,2,3,4];
     * @  x = __tmp(x) + 1;
     */
-   if (no_init)
+   if ((c_cl->cl_class_type == SLANG_CLASS_TYPE_SCALAR)
+       || (c_cl->cl_class_type == SLANG_CLASS_TYPE_VECTOR))
      {
 	if ((at != NULL)
 	    && (at->num_refs == 1)
@@ -4955,6 +4953,64 @@ static void aget_intrin (void)
 }
 #endif
 
+static int pop_byte_order (int *bop)
+{
+   int bo;
+
+   if (-1 == SLang_pop_integer (&bo))
+     return -1;
+
+   switch (bo)
+     {
+      case 'n': case 'N': case '=': bo = _pSLANG_BYTEORDER_NATIVE; break;
+      case 'b': case 'B': case '>': bo = _pSLANG_BYTEORDER_BIGE; break;
+      case 'l': case 'L': case '<': bo = _pSLANG_BYTEORDER_LILE; break;
+      default:
+	SLang_verror (SL_InvalidParm_Error, "Invalid byte-order specifier, expecting one of 'B', 'L', or 'N'");
+	return -1;
+     }
+
+   *bop = bo;
+   return 0;
+}
+
+/* Usage b = _array_byteswap (a, from, to);
+ */
+static void byteswap_intrin (void)
+{
+   SLang_Array_Type *at, *bt;
+   int from, to;
+   int converted_scalar;
+
+   if (SLang_Num_Function_Args != 3)
+     {
+	SLang_verror (SL_Usage_Error, "\
+Usage: b = _array_byteswap (a, from, to);\
+  from/to is one of: 'B' (big), 'L' (little), or 'N'(native) endian order");
+	return;
+     }
+   if ((-1 == pop_byte_order (&to)) || (-1 == pop_byte_order (&from)))
+     return;
+
+   if (-1 == SLang_pop_array (&at, 1))
+     return;
+
+   converted_scalar = at->flags & SLARR_DERIVED_FROM_SCALAR;
+
+   bt = _pSLpack_byteswap_array (at, from, to);
+   SLang_free_array (at);
+   if (bt == NULL)
+     return;
+
+   if (converted_scalar)
+     (void) push_element_at_index (bt, 0);
+   else
+     (void) SLang_push_array (bt, 0);
+
+   SLang_free_array (bt);
+}
+
+
 static SLang_Intrin_Fun_Type Array_Table [] =
 {
    MAKE_INTRINSIC_0("array_map", array_map, SLANG_VOID_TYPE),
@@ -4974,6 +5030,7 @@ static SLang_Intrin_Fun_Type Array_Table [] =
    MAKE_INTRINSIC_0("wherediff", array_wherediff, SLANG_VOID_TYPE),
    MAKE_INTRINSIC_0("reshape", array_reshape, SLANG_VOID_TYPE),
    MAKE_INTRINSIC_0("_reshape", _array_reshape, SLANG_VOID_TYPE),
+   MAKE_INTRINSIC_0("_array_byteswap", byteswap_intrin, SLANG_VOID_TYPE),
 #if 0
    MAKE_INTRINSIC_0("__aget", aget_intrin, SLANG_VOID_TYPE),
    MAKE_INTRINSIC_0("__aput", aput_intrin, SLANG_VOID_TYPE),
@@ -5092,7 +5149,6 @@ do_array_math_op (int op, int unary_type,
    int (*f) (int, SLtype, VOID_STAR, SLuindex_Type, VOID_STAR);
    SLang_Array_Type *bt;
    SLang_Class_Type *b_cl;
-   int no_init;
 
    if (na != 1)
      {
@@ -5108,9 +5164,6 @@ do_array_math_op (int op, int unary_type,
    if (-1 == coerse_array_to_linear (at))
      return NULL;
 
-   no_init = ((b_cl->cl_class_type == SLANG_CLASS_TYPE_SCALAR)
-	      || (b_cl->cl_class_type == SLANG_CLASS_TYPE_VECTOR));
-
 #if SLANG_USE_TMP_OPTIMIZATION
    /* If we are dealing with scalar (or vector) objects, and if the object
     * appears to be owned by the stack, then use it instead of creating a
@@ -5118,7 +5171,8 @@ do_array_math_op (int op, int unary_type,
     * @  x = [1,2,3,4];
     * @  x = UNARY_OP(__tmp(x));
     */
-   if (no_init
+   if (((b_cl->cl_class_type == SLANG_CLASS_TYPE_SCALAR)
+	|| (b_cl->cl_class_type == SLANG_CLASS_TYPE_VECTOR))
        && (at->num_refs == 1)
        && (at->data_type == b_cl->cl_data_type)
        && (0 == (at->flags & SLARR_DATA_VALUE_IS_READ_ONLY)))

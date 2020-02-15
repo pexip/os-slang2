@@ -1,6 +1,6 @@
 /* Basic type operations for S-Lang */
 /*
-Copyright (C) 2004-2016 John E. Davis
+Copyright (C) 2004-2017,2018 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -948,6 +948,22 @@ static int intp_pop (SLtype unused, VOID_STAR ptr)
 	return -1;
      }
    return SLang_pop_integer (addr);
+}
+
+int _pSLang_pop_wchar (SLwchar_Type *wcp)
+{
+   /* FIXME: This bit of code will be merged into the SLang_pop_wchar function
+    * for the next major version.  Currently, SLang_pop_wchar is a macro.
+    */
+   if (SLang_peek_at_stack () == SLANG_CHAR_TYPE)
+     {
+	char ch;
+	if (-1 == SLang_pop_char (&ch))
+	  return -1;
+	*wcp = (unsigned char)ch;
+	return 0;
+     }
+   return SLang_pop_wchar (wcp);
 }
 
 static int undefined_method (SLtype t, VOID_STAR p)
