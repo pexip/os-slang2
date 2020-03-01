@@ -5,4 +5,3 @@ dso_linking.patch
 fix_glibc.patch
 segv_fix.patch
 init-crash.patch
-int-fix.patch

@@ -1,5 +1,7 @@
+#ifndef SLSTATS_MODULE_H_
+# define SLSTATS_MODULE_H_ 1
 /*
-Copyright (C) 2004-2017,2018 John E. Davis
+Copyright (C) 2017,2018 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -18,20 +20,10 @@ along with this library; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
 */
-#include "slinclud.h"
-#include <ctype.h>
 
-#include "slang.h"
-#include "_slang.h"
+/* It is assumed that the array a has already been sorted in ascending or and that b
+ * has been rearranged accordingly
+ */
+extern double _pSLstats_kendall_tau (SLindex_Type *a, SLindex_Type *b, size_t n, double *taup);
 
-#define DEFINE_PSLWC_TOUPPER_TABLE
-#include "slupper.h"
-
-#define MODE_VARIABLE _pSLinterp_UTF8_Mode
-SLwchar_Type SLwchar_toupper (SLwchar_Type ch)
-{
-   if (MODE_VARIABLE)
-     return ch + SL_TOUPPER_LOOKUP(ch);
-
-   return toupper (ch);
-}
+#endif				       /* SLSTATS_MODULE_H_ */

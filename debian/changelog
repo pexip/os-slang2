@@ -1,3 +1,55 @@
+slang2 (2.3.2-2) unstable; urgency=medium
+
+  [Ondřej Nový]
+  * d/copyright: Use https protocol in Format field
+  * d/changelog: Remove trailing whitespaces
+  * d/control: Remove trailing whitespaces
+  * d/rules: Remove trailing whitespaces
+  * d/control: Fix wrong Vcs-*
+
+  [Alastair McKinstry]
+  * Standards-Version: 4.3.0
+
+ -- Alastair McKinstry <mckinstry@debian.org>  Sun, 20 Jan 2019 15:09:19 +0000
+
+slang2 (2.3.2-1) unstable; urgency=medium
+
+  * New upstream release
+    - extended_terminfo.patch now included upstream
+  * Ack old bugs: Closes: #407835, #664075
+  * Set OBJDIR to src/x32objs on x32. Closes: #890545
+
+ -- Alastair McKinstry <mckinstry@debian.org>  Mon, 19 Feb 2018 16:59:12 +0000
+
+slang2 (2.3.1a-3) unstable; urgency=medium
+
+  * Support for extended terminfo. Thanks to Sven Joachim. Closes: #890769
+  * Use OBJDIR src/x32elfobjs on x32-arch. Closes: #890545
+
+ -- Alastair McKinstry <mckinstry@debian.org>  Mon, 19 Feb 2018 08:33:13 +0000
+
+slang2 (2.3.1a-2) unstable; urgency=medium
+
+  * Standards-Version: 4.1.3; no changes required
+  * Drop auto* dependencies not needed with debhelper 10
+  * Delete old patches:
+    - die-on-failure.patch
+    - hurd-wcontinued.patch
+  * Drop Priority: important on library package
+  * Drop Priority: extra on udeb package
+  * Set VCS to point to salsa.debian.org/debian/slang2. Closes: #838982
+
+ -- Alastair McKinstry <mckinstry@debian.org>  Thu, 15 Feb 2018 09:40:15 +0000
+
+slang2 (2.3.1a-1) unstable; urgency=medium
+
+  * New upstream release
+    - int-fix.patch merged upstream
+  * Standards-Version: 4.0.0; no changes required
+  *  Add debian/gbp.conf file
+
+ -- Alastair McKinstry <mckinstry@debian.org>  Fri, 28 Jul 2017 12:29:25 +0100
+
 slang2 (2.3.1-5pexip1) pexip1; urgency=medium
 
   * Migrate to Stretch
@@ -107,7 +159,7 @@ slang2 (2.3.0-1) unstable; urgency=medium
 
   * New upstream release.
    - Merged hurd-wcontinued.patch
-   - Patch for new-glibc needed for sockets, to uncover strtoll(), atoll() 
+   - Patch for new-glibc needed for sockets, to uncover strtoll(), atoll()
   * Now incorporates and obsoletes slang-histogram.
   * Remove obsolete Conflicts/Breaks statements from debian/control.
   * Now at Standards-Version: 3.9.6
@@ -143,21 +195,21 @@ slang2 (2.2.4-14) unstable; urgency=low
 
   * Add "-O0" to build options to avoid tickling a bug somewhere in libslang;
     probably with uninitized memory. Closes: #675125.
-  * Add patch to ensure test failures cause automated testing to fail on 
-    Debian and catch this sort of thing. 
+  * Add patch to ensure test failures cause automated testing to fail on
+    Debian and catch this sort of thing.
 
  -- Alastair McKinstry <mckinstry@debian.org>  Sat, 30 Jun 2012 03:30:24 +0100
 
 slang2 (2.2.4-13) unstable; urgency=low
 
-  * Re-insert CFLAGS that may not be obsolete ... 
+  * Re-insert CFLAGS that may not be obsolete ...
 
  -- Alastair McKinstry <mckinstry@debian.org>  Fri, 08 Jun 2012 15:10:50 +0100
 
 slang2 (2.2.4-12) unstable; urgency=low
 
   * Don't ship pre-built config.h in examples directory : it makes the -dev
-    package arch-dependent. Closes: #674495. 
+    package arch-dependent. Closes: #674495.
 
  -- Alastair McKinstry <mckinstry@debian.org>  Mon, 28 May 2012 14:56:26 +0100
 
@@ -211,13 +263,13 @@ slang2 (2.2.4-10) unstable; urgency=low
 
 slang2 (2.2.4-9) unstable; urgency=low
 
-  * Fix wrong parens in control file. Closes: #669514. 
+  * Fix wrong parens in control file. Closes: #669514.
 
  -- Alastair McKinstry <mckinstry@debian.org>  Mon, 23 Apr 2012 21:06:29 +0100
 
 slang2 (2.2.4-8) unstable; urgency=low
 
-  * Fix broken multiarch in libslang2-modules 
+  * Fix broken multiarch in libslang2-modules
 
  -- Alastair McKinstry <mckinstry@debian.org>  Wed, 11 Apr 2012 14:27:55 +0100
 
@@ -225,13 +277,13 @@ slang2 (2.2.4-7) unstable; urgency=low
 
   * Build against libpng-dev for png15 transition. Closes: #662504.
   * Standards-Version: 3.9.3. No changes required.
-  * Remove accidental debian-changes patches in debian/patches 
+  * Remove accidental debian-changes patches in debian/patches
 
  -- Alastair McKinstry <mckinstry@debian.org>  Sat, 10 Mar 2012 13:36:09 +0000
 
 slang2 (2.2.4-6) unstable; urgency=low
 
-  * Remove redundant Priority: optional in control for -pic. 
+  * Remove redundant Priority: optional in control for -pic.
   * Hardened build flags patch from Moritz Muehlenhoff. Closes: #656128
 
  -- Alastair McKinstry <mckinstry@debian.org>  Sat, 04 Feb 2012 17:19:10 +0000
@@ -239,7 +291,7 @@ slang2 (2.2.4-6) unstable; urgency=low
 slang2 (2.2.4-5) unstable; urgency=low
 
   * back out build-dep change which breaks on buildds, which only check first
-    dependency. Closes: #650694. 
+    dependency. Closes: #650694.
 
  -- Alastair McKinstry <mckinstry@debian.org>  Fri, 02 Dec 2011 09:54:19 +0000
 
@@ -280,19 +332,19 @@ slang2 (2.2.3-3) unstable; urgency=low
 
 slang2 (2.2.3-2) unstable; urgency=low
 
-  * Add chrpath to Build-Depends. Closes: #620997. 
+  * Add chrpath to Build-Depends. Closes: #620997.
 
  -- Alastair McKinstry <mckinstry@debian.org>  Fri, 01 Apr 2011 19:58:59 +0100
 
 slang2 (2.2.3-1) unstable; urgency=low
 
-  * New upstream release.  
-    Removed obsolete patches: 
+  * New upstream release.
+    Removed obsolete patches:
        termcap_emulation.patch
        nointerlibc.patch
        slagetput.patch
   * Standards-Version: 3.9.1
-  * Moved from DBS to debhlper 7 + quilt build style.  
+  * Moved from DBS to debhlper 7 + quilt build style.
     Closes: #576047, #571283, #615910.
   * Patches moved to quilt format, DEPS-3 headers added.
   * Patch for automatic dependencies for udeb. Closes: #564486.
@@ -309,7 +361,7 @@ slang2 (2.2.2-4) unstable; urgency=low
 
 slang2 (2.2.2-3) unstable; urgency=low
 
-  * FTBFS: Need to depend on libncurses-dev for -ltermcap. Closes: #574298. 
+  * FTBFS: Need to depend on libncurses-dev for -ltermcap. Closes: #574298.
   * Standards-Version: 3.8.4. No changes required.
   *  Add ${misc:Depends} for debhelper, thanks to lintian.
 
@@ -318,20 +370,20 @@ slang2 (2.2.2-3) unstable; urgency=low
 slang2 (2.2.2-2) unstable; urgency=low
 
   * Patch thanks to Cyril Brulebois to fix broken .so symlink.
-    Closes: #560239, #560068. 
+    Closes: #560239, #560068.
 
  -- Alastair McKinstry <mckinstry@debian.org>  Thu, 10 Dec 2009 06:05:36 +0000
 
 slang2 (2.2.2-1) unstable; urgency=low
 
-  * New upstream release. 
+  * New upstream release.
   * Move to source format 3.0
 
  -- Alastair McKinstry <mckinstry@debian.org>  Sun, 06 Dec 2009 10:29:11 +0000
 
 slang2 (2.2.1-1) unstable; urgency=low
 
-  * New upstream release. 
+  * New upstream release.
 
  -- Alastair McKinstry <mckinstry@debian.org>  Tue, 08 Sep 2009 15:02:59 +0100
 
@@ -340,14 +392,14 @@ slang2 (2.2.1~14-1) unstable; urgency=low
   * New upstream release. Closes: #542882.
   * Move to Standards-Version: 3.8.3, debhelper 7.
   * Support DEB_BUILD_OPTION 'noopt'. Closes: #539333.
-  * Add dependencies on zlib1g-dev, libonig-dev for modules 
+  * Add dependencies on zlib1g-dev, libonig-dev for modules
 
  -- Alastair McKinstry <mckinstry@debian.org>  Fri, 04 Sep 2009 12:23:54 +0100
 
 slang2 (2.1.4-3) unstable; urgency=low
 
   * Add libslang-modules package for slsh modules used by third-party
-    applications. Closes: #524825, #524849. 
+    applications. Closes: #524825, #524849.
   * Remove -lm -ldl from slsh link line (uses no symbols from these).
 
  -- Alastair McKinstry <mckinstry@debian.org>  Wed, 22 Apr 2009 13:17:53 +0100
@@ -371,19 +423,19 @@ slang2 (2.1.4-1) unstable; urgency=low
 
 slang2 (2.1.3-3) unstable; urgency=low
 
-  * Move to Standards;Version: 3.7.3. 
+  * Move to Standards;Version: 3.7.3.
   * Replace ${Source-Version} with ${binary:Version} in debian/control.
   * debian/compat (5) replaces DH_COMPAT=4 in rules.
   * libslang2-dev is now in the libdevel section, not devel.
   * Fix broken entry in changelog by acknowledging NMU in next entry.
-  * set SLSH_LOCALLIB_DIR="", as we don't ship a local-packages dir in 
+  * set SLSH_LOCALLIB_DIR="", as we don't ship a local-packages dir in
      Debian (breaks FSSTND).
 
  -- Alastair McKinstry <mckinstry@debian.org>  Mon, 17 Mar 2008 17:49:49 +0000
 
 slang2 (2.1.3-2) unstable; urgency=low
 
-  * Ensure libslang.a is included in libslang2-dev. Closes: #453171. 
+  * Ensure libslang.a is included in libslang2-dev. Closes: #453171.
 
  -- Alastair McKinstry <mckinstry@debian.org>  Tue, 27 Nov 2007 20:13:04 +0000
 
@@ -396,13 +448,13 @@ slang2 (2.1.3-1) unstable; urgency=low
 slang2 (2.0.7-5) unstable; urgency=low
 
   * Install map file in the pic package. Closes: #316525.
-    Thanks to Joey Hess for the patch. 
+    Thanks to Joey Hess for the patch.
 
  -- Alastair McKinstry <mckinstry@debian.org>  Fri, 21 Sep 2007 09:59:01 +0100
 
 slang2 (2.0.7-4) unstable; urgency=low
 
-  * Change libpng12 to libpng12-0. Thought libpng12 was a virtual 
+  * Change libpng12 to libpng12-0. Thought libpng12 was a virtual
     package. Closes: #436932.
 
  -- Alastair McKinstry <mckinstry@debian.org>  Sun, 09 Sep 2007 00:40:22 +0100
@@ -483,7 +535,7 @@ slang2 (2.0.4-7) unstable; urgency=low
 
 slang2 (2.0.4-6) unstable; urgency=low
 
-  * Include slsh modules, .sl files, cmap and hlp files in slsh. 
+  * Include slsh modules, .sl files, cmap and hlp files in slsh.
   * Include slsh examples.
 
  -- Alastair McKinstry <mckinstry@debian.org>  Sat, 17 Sep 2005 16:23:49 +0100
@@ -508,7 +560,7 @@ slang2 (2.0.4-4) unstable; urgency=low
 slang2 (2.0.4-3) unstable; urgency=low
 
   * libslang2 now recommends libfribidi0.
-  * Fix segfault if libfribidi is not present. Closes: #316637. 
+  * Fix segfault if libfribidi is not present. Closes: #316637.
 
  -- Alastair McKinstry <mckinstry@debian.org>  Sat,  9 Jul 2005 12:51:49 +0100
 
@@ -533,7 +585,7 @@ slang2 (2.0.4-1) unstable; urgency=low
 slang2 (2.0.3-1) unstable; urgency=low
 
   * New Upstream release.
-  * Added debian/watch and lintian ignores files. 
+  * Added debian/watch and lintian ignores files.
   * patches: re-enable doc patch;
   * Include cross-build patch from NIIBE Yutaka.
 
@@ -541,13 +593,13 @@ slang2 (2.0.3-1) unstable; urgency=low
 
 slang2 (2.0.2-1) experimental; urgency=low
 
-  * New Upstream release. 
+  * New Upstream release.
 
  -- Alastair McKinstry <mckinstry@debian.org>  Fri, 20 May 2005 22:25:48 +0100
 
 slang2 (1.99pre2r7-2) experimental; urgency=low
 
-  * Depend on >= 1.99pre2r7-1 , not >> 1.99pre2r7-1. 
+  * Depend on >= 1.99pre2r7-1 , not >> 1.99pre2r7-1.
 
  -- Alastair McKinstry <mckinstry@debian.org>  Sat,  2 Apr 2005 14:48:36 +0100
 
@@ -568,7 +620,7 @@ slang2 (1.99pre2r4-2) experimental; urgency=low
 
 slang2 (1.99pre2r4-1) experimental; urgency=low
 
-  * New upstream release. 
+  * New upstream release.
     Please note that the license is now GPL only; Perl Artistic License
     is no longer supported.
   * Added slsh package; thanks to Rafael Laboissiere for patch.
@@ -583,19 +635,19 @@ slang (1.4.9dbs-8) unstable; urgency=low
 
 slang (1.4.9dbs-6) unstable; urgency=low
 
-  * Fix segfault on lists running over screen boundary: Closes: #264080. 
+  * Fix segfault on lists running over screen boundary: Closes: #264080.
 
  -- Alastair McKinstry <mckinstry@debian.org>  Wed, 11 Aug 2004 21:34:01 +0100
 
 slang (1.4.9dbs-5) unstable; urgency=low
 
-  * Fix error in shlibs that breaks newt. 
+  * Fix error in shlibs that breaks newt.
 
  -- Alastair McKinstry <mckinstry@debian.org>  Mon, 26 Jul 2004 23:10:07 +0100
 
 slang (1.4.9dbs-4) unstable; urgency=low
 
-  * Avoid reopening libfridi; cache file handle. Closes: #260898. 
+  * Avoid reopening libfridi; cache file handle. Closes: #260898.
 
  -- Alastair McKinstry <mckinstry@debian.org>  Mon, 26 Jul 2004 22:15:43 +0100
 
@@ -649,12 +701,12 @@ slang (1.4.9-3.1) unstable; urgency=low
      autogenerated; and run autoheader.
    * Add -D_XOPEN_SOURCE=500 to the CFLAGS, so that we get the correct
      wcwidth() definition (and any others we might need).
- 
+
  -- Alastair McKinstry <mckinstry@debian.org>  Sun, 13 Jun 2004 21:27:35 -0600
- 
+
 slang (1.4.9-2) unstable; urgency=low
 
-  * The "more to Debian than Linux" release. 
+  * The "more to Debian than Linux" release.
   * Produce the right udeb filename for hurd-i386. Closes: #213429.
   * Fix incorrect dependency on libc6-dev which breaks hurd. Closes: #212356.
   * Remove ELF_DEP_LIBS override from debian/rules that broke NetBSD;
@@ -667,11 +719,11 @@ slang (1.4.9-1) unstable; urgency=low
 
   * New upstream release, 1.4.9. Closes: #208219.
   * Moved to Standards-Version: 3.6.1
-  * New co-maintainer,  Alastair McKinstry <mckinstry@debian.org> 
+  * New co-maintainer,  Alastair McKinstry <mckinstry@debian.org>
   * Co-Maintainer upload; acknowledging NMUs. Closes: #208887, #100563, #177405
       #177462, #100563, #131379, #131380, #102595, #122976, #128255, #133031
       #122495, #129694, #134009, #127938.
-  * Change priority of slang1 to standard, slang1-pic, slang1-utf8-dev and slang1a-utf8-udeb  
+  * Change priority of slang1 to standard, slang1-pic, slang1-utf8-dev and slang1a-utf8-udeb
       to extra. Changed slang1-pic , slang1-utf8-pic and Section to libdevel.
       Priority changes required by policy as slang1a-utf8 now required; Section changes
       recommended by overrides. Closes: #208887.
@@ -679,7 +731,7 @@ slang (1.4.9-1) unstable; urgency=low
   * Patch from Nikita V. Youshchenko to display geometric chars properly.
     Closes: #195010, #187704, #201767, #202218, #189330.
   * Add changelog entry to show NMU 1.4.4-3.1 occured. Closes: #119944.
-  * To satisfy lintian: Removed superflous full stops from Descriptions; 
+  * To satisfy lintian: Removed superflous full stops from Descriptions;
     removed obsolete and redundant dh_suidregister call.
 
  -- Alastair McKinstry <mckinstry@debian.org>  Wed, 17 Sep 2003 21:24:19 +0100
@@ -742,15 +794,15 @@ slang (1.4.4-7.1) unstable; urgency=low
   * slang1-utf8 and slang1 will coexist with each other!
   * slang1-utf8-dev and slag1-dev will not coexist with each other.
   * slang1-utf8-dev will not be satisfied with slang1.
-  * debian/slang.h.extra.in: some extra checking appended to slang.h 
+  * debian/slang.h.extra.in: some extra checking appended to slang.h
     for utf-8 compat. /usr/include/slang.h checks for -DUTF8 status.
   * slang1-utf8 does no longer divert slang1. It's not a simple replacement.
   * shlibs file were generated incorrectly, fix it.
-  * slang1-utf8 package is now slang1a-utf8 to indicate incompatible 
+  * slang1-utf8 package is now slang1a-utf8 to indicate incompatible
     soname.
   * the diversion is no longer needed. Package name is renamed, so the
     old package should be able to clean up by themselves.
-  * I really recommend rebuilding against this version. This 
+  * I really recommend rebuilding against this version. This
     modification definitely requires rebuild for boot-floppies, and
     mutt.
   * slang1-utf8 libraries have a soname of libslang.so.1-UTF8 now.
@@ -933,7 +985,7 @@ slang (1.0.3-0.1) unstable; urgency=low
   * Non-maintainer release.
   * Build process cleaned up a lot; used debhelper.
   * Though slang1 is not used by packages in base yet, I expect that to
-    happen soon (as it will take over the role of slang0.99.38); 
+    happen soon (as it will take over the role of slang0.99.38);
     the Section and Priority reflect this already.
 
  -- J.H.M. Dassen (Ray) <jdassen@wi.LeidenUniv.nl>  Wed,  1 Apr 1998 11:44:57 +0200

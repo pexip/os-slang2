@@ -3,7 +3,7 @@
 /* header file for S-Lang internal structures that users do not (should not)
    need.  Use slang.h for that purpose. */
 /*
-Copyright (C) 2004-2016 John E. Davis
+Copyright (C) 2004-2017,2018 John E. Davis
 
 This file is part of the S-Lang Library.
 
@@ -26,6 +26,7 @@ USA.
 /* #include "config.h" */
 #include "jdmacros.h"
 #include "sllimits.h"
+#include "_slint.h"
 
 #ifdef VMS
 # define SLANG_SYSTEM_NAME "_VMS"
@@ -376,164 +377,6 @@ _pSLang_BC_Type;
 #define SLANG_BCST_MINUSMINUS		0x0A
 #define SLANG_BCST_POST_MINUSMINUS	0x0B
 
-/* These use SLANG_PLUS, SLANG_MINUS, SLANG_PLUSPLUS, etc... */
-
-#define LONG_IS_INT (SIZEOF_INT == SIZEOF_LONG)
-#define LONG_IS_NOT_INT (SIZEOF_INT != SIZEOF_LONG)
-#define SHORT_IS_INT (SIZEOF_INT == SIZEOF_SHORT)
-#define SHORT_IS_NOT_INT (SIZEOF_INT != SIZEOF_SHORT)
-#define LLONG_IS_LONG (SIZEOF_LONG == SIZEOF_LONG_LONG)
-#define LLONG_IS_NOT_LONG (SIZEOF_LONG != SIZEOF_LONG_LONG)
-
-/* If long or short are ints, then map the slang types to ints.  This is
- * done because slang has some optimizations for ints.
- */
-#if LONG_IS_INT
-# define _pSLANG_LONG_TYPE SLANG_INT_TYPE
-# define _pSLANG_ULONG_TYPE SLANG_UINT_TYPE
-#else
-# define _pSLANG_LONG_TYPE SLANG_LONG_TYPE
-# define _pSLANG_ULONG_TYPE SLANG_ULONG_TYPE
-#endif
-#if SHORT_IS_INT
-# define _pSLANG_SHORT_TYPE SLANG_INT_TYPE
-# define _pSLANG_USHORT_TYPE SLANG_UINT_TYPE
-#else
-# define _pSLANG_SHORT_TYPE SLANG_SHORT_TYPE
-# define _pSLANG_USHORT_TYPE SLANG_USHORT_TYPE
-#endif
-#if LLONG_IS_LONG
-# define _pSLANG_LLONG_TYPE _pSLANG_LONG_TYPE
-# define _pSLANG_ULLONG_TYPE _pSLANG_ULONG_TYPE
-#else
-# define _pSLANG_LLONG_TYPE SLANG_LLONG_TYPE
-# define _pSLANG_ULLONG_TYPE SLANG_ULLONG_TYPE
-#endif
-
-/* Map off_t to a slang type */
-#if defined(HAVE_LONG_LONG) && (SIZEOF_OFF_T == SIZEOF_LONG_LONG) && (SIZEOF_LONG_LONG > SIZEOF_LONG)
-# define SLANG_C_OFF_T_TYPE _pSLANG_LLONG_TYPE
-typedef long long _pSLc_off_t_Type;
-# define SLANG_PUSH_OFF_T SLang_push_long_long
-#else
-# if (SIZEOF_OFF_T == SIZEOF_INT)
-#  define SLANG_C_OFF_T_TYPE SLANG_INT_TYPE
-#  define SLANG_PUSH_OFF_T SLang_push_int
-typedef int _pSLc_off_t_Type;
-# else
-#  define SLANG_C_OFF_T_TYPE _pSLANG_LONG_TYPE
-#  define SLANG_PUSH_OFF_T SLang_push_long
-typedef long _pSLc_off_t_Type;
-# endif
-#endif
-
-#if SIZEOF_INT == 2
-# define _pSLANG_INT16_TYPE	SLANG_INT_TYPE
-# define _pSLANG_UINT16_TYPE	SLANG_UINT_TYPE
-typedef int _pSLint16_Type;
-typedef unsigned int _pSLuint16_Type;
-#else
-# if SIZEOF_SHORT == 2
-#  define _pSLANG_INT16_TYPE	SLANG_SHORT_TYPE
-#  define _pSLANG_UINT16_TYPE	SLANG_USHORT_TYPE
-typedef short _pSLint16_Type;
-typedef unsigned short _pSLuint16_Type;
-# else
-#  if SIZEOF_LONG == 2
-#   define _pSLANG_INT16_TYPE	SLANG_LONG_TYPE
-#   define _pSLANG_UINT16_TYPE	SLANG_ULONG_TYPE
-typedef long _pSLInt16_Type;
-typedef unsigned long _pSLuint16_Type;
-#  else
-#   define _pSLANG_INT16_TYPE	0
-#   define _pSLANG_UINT16_TYPE	0
-#  endif
-# endif
-#endif
-
-#if SIZEOF_INT == 4
-# define _pSLANG_INT32_TYPE	SLANG_INT_TYPE
-# define _pSLANG_UINT32_TYPE	SLANG_UINT_TYPE
-typedef int _pSLint32_Type;
-typedef unsigned int _pSLuint32_Type;
-#else
-# if SIZEOF_SHORT == 4
-#  define _pSLANG_INT32_TYPE	SLANG_SHORT_TYPE
-#  define _pSLANG_UINT32_TYPE	SLANG_USHORT_TYPE
-typedef short _pSLInt32_Type;
-typedef unsigned short _pSLuint32_Type;
-# else
-#  if SIZEOF_LONG == 4
-#   define _pSLANG_INT32_TYPE	SLANG_LONG_TYPE
-#   define _pSLANG_UINT32_TYPE	SLANG_ULONG_TYPE
-typedef long _pSLInt32_Type;
-typedef unsigned long _pSLuint32_Type;
-#  else
-#   define _pSLANG_INT32_TYPE	0
-#   define _pSLANG_UINT32_TYPE	0
-#  endif
-# endif
-#endif
-
-#if SIZEOF_INT == 8
-# define _pSLANG_INT64_TYPE	SLANG_INT_TYPE
-# define _pSLANG_UINT64_TYPE	SLANG_UINT_TYPE
-typedef int _pSLint64_Type;
-typedef unsigned int _pSLuint64_Type;
-#else
-# if SIZEOF_SHORT == 8
-#  define _pSLANG_INT64_TYPE	SLANG_SHORT_TYPE
-#  define _pSLANG_UINT64_TYPE	SLANG_USHORT_TYPE
-typedef int _pSLint64_Type;
-typedef unsigned int _pSLuint64_Type;
-# else
-#  if SIZEOF_LONG == 8
-#   define _pSLANG_INT64_TYPE	SLANG_LONG_TYPE
-#   define _pSLANG_UINT64_TYPE	SLANG_ULONG_TYPE
-typedef long _pSLint64_Type;
-typedef unsigned long _pSLuint64_Type;
-#  else
-#   if SIZEOF_LONG_LONG == 8
-#    define _pSLANG_INT64_TYPE	SLANG_LLONG_TYPE
-#    define _pSLANG_UINT64_TYPE	SLANG_ULLONG_TYPE
-typedef long long _pSLint64_Type;
-typedef unsigned long long _pSLuint64_Type;
-#   else
-#    define _pSLANG_INT64_TYPE	0
-#    define _pSLANG_UINT64_TYPE	0
-#   endif
-#  endif
-# endif
-#endif
-
-/* The following are commented out because they are not used by the library */
-/* extern int _pSLang_pop_int16 (_pSLint16_Type *); */
-/* extern int _pSLang_pop_uint16 (_pSLuint16_Type *); */
-/* extern int _pSLang_pop_int32 (_pSLint32_Type *); */
-/* extern int _pSLang_pop_uint32 (_pSLuint32_Type *); */
-#if _pSLANG_INT64_TYPE
-extern int _pSLang_pop_int64(_pSLint64_Type *);
-extern int _pSLang_pop_uint64 (_pSLuint64_Type *);
-#endif
-/* extern int _pSLang_push_int16 (_pSLint16_Type); */
-/* extern int _pSLang_push_uint16 (_pSLuint16_Type); */
-/* extern int _pSLang_push_int32 (_pSLint32_Type); */
-/* extern int _pSLang_push_uint32 (_pSLuint32_Type); */
-#if _pSLANG_INT64_TYPE
-/* extern int _pSLang_push_int64(_pSLint64_Type); */
-/* extern int _pSLang_push_uint64 (_pSLuint64_Type); */
-#endif
-
-#ifdef HAVE_LONG_LONG
-# ifdef __WIN32__
-#  define SLFMT_LLD  "%I64d"
-#  define SLFMT_LLU  "%I64u"
-# else
-#  define SLFMT_LLD  "%lld"
-#  define SLFMT_LLU  "%llu"
-# endif
-#endif
-
 typedef union
 {
 #if SLANG_HAS_FLOAT
@@ -556,7 +399,7 @@ typedef union
    struct _pSLang_Array_Type *array_val;
    short short_val;
    unsigned short ushort_val;
-   char char_val;
+   signed char char_val;
    unsigned char uchar_val;
    SLindex_Type index_val;
    _pSLint16_Type int16_val;
@@ -815,11 +658,16 @@ extern void _pSLbstring_foreach_close (SLtype type, SLang_Foreach_Context_Type *
 extern int _pSLbstring_foreach (SLtype type, SLang_Foreach_Context_Type *c);
 
 extern int _pSLang_init_sltime (void);
+extern int _pSLusleep (unsigned long);
+
+#define _pSLANG_BYTEORDER_NATIVE	0
+#define _pSLANG_BYTEORDER_BIGE		1
+#define _pSLANG_BYTEORDER_LILE		2
 extern void _pSLpack (void);
 extern void _pSLunpack (char *, SLang_BString_Type *);
 extern void _pSLpack_pad_format (char *);
 extern SLstrlen_Type _pSLpack_compute_size (char *);
-extern int _pSLusleep (unsigned long);
+extern SLang_Array_Type *_pSLpack_byteswap_array (SLang_Array_Type *at, int from, int to);
 
 /* frees upon error.  NULL __NOT__ ok. */
 extern int _pSLang_push_slstring (char *);
@@ -1064,6 +912,9 @@ extern int _pSLarith_bin_op (SLang_Object_Type *, SLang_Object_Type *, int);
  */
 extern int _pSLarray_pop_index (unsigned int num_elements, SLang_Array_Type **ind_atp, SLindex_Type *ind);
 
+/* Special treatment for signed chars */
+extern int _pSLang_pop_wchar (SLwchar_Type *wcp);
+
 extern int _pSLarray_add_bin_op (SLtype);
 extern int _pSLarray_push_elem_ref (void);
 extern int _pSLang_push_array (SLang_Array_Type *, int);   /* NULL not allowed */
@@ -1212,6 +1063,7 @@ typedef struct _pSLang_Token_Type
 #define SLTOKEN_TYPE_INTEGER		0x100
 #define SLTOKEN_TYPE_FLOAT		0x200
 #define SLTOKEN_TYPE_NUMBER		(SLTOKEN_TYPE_INTEGER|SLTOKEN_TYPE_FLOAT)
+#define SLTOKEN_VALUE_IS_RESERVED	0x400
    int flags;
 
 #if SLANG_HAS_DEBUG_CODE
