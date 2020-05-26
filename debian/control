@@ -3,7 +3,7 @@ Section: devel
 Priority: optional
 Maintainer: Alastair McKinstry <mckinstry@debian.org>
 Uploaders: Dmitry Smirnov <onlyjob@member.fsf.org>
-Build-Depends: debhelper (>= 10),
+Build-Depends: debhelper-compat (= 12),
  unicode-data,
  chrpath,
  docbook-to-man,
@@ -13,7 +13,7 @@ Build-Depends: debhelper (>= 10),
  libpcre3-dev,
  libpng-dev,
  zlib1g-dev,
-Standards-Version: 4.3.0
+Standards-Version: 4.5.0
 Homepage: http://www.jedsoft.org/slang/
 Vcs-Browser: https://salsa.debian.org/debian/slang2
 Vcs-Git: https://salsa.debian.org/debian/slang2.git

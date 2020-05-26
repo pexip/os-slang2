@@ -1,1 +1,1 @@
-debian/tmp/lib/*/libslang.so.*
+debian/tmp/usr/lib/*/libslang.so.* 

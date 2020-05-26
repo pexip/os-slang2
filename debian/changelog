@@ -1,3 +1,25 @@
+slang2 (2.3.2-5) unstable; urgency=medium
+
+  * Use debhelper-compat (=12)
+  * Standards-Version: 4.5.0
+  * Move lib from /lib/$(MA) to /usr/lib/$(MA). Closes: #923825
+  * Drop hard-coded 'xz' compression
+
+ -- Alastair McKinstry <mckinstry@debian.org>  Tue, 26 May 2020 09:33:46 +0100
+
+slang2 (2.3.2-4) unstable; urgency=medium
+
+  * Standards-Version: 4.4.0
+  * Move to debhelper compat level 12
+
+ -- Alastair McKinstry <mckinstry@debian.org>  Wed, 17 Jul 2019 10:26:13 +0100
+
+slang2 (2.3.2-3) unstable; urgency=medium
+
+  * Rebuild against unicode-data 12.1
+
+ -- Alastair McKinstry <mckinstry@debian.org>  Fri, 26 Apr 2019 09:19:19 +0100
+
 slang2 (2.3.2-2) unstable; urgency=medium
 
   [Ondřej Nový]
