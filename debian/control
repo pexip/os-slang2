@@ -17,7 +17,7 @@ Standards-Version: 4.5.0
 Homepage: http://www.jedsoft.org/slang/
 Vcs-Browser: https://salsa.debian.org/debian/slang2
 Vcs-Git: https://salsa.debian.org/debian/slang2.git
-XS-Pexip-Upstream: http://deb.debian.org/debian/ bullseye
+XS-Pexip-Upstream: http://deb.debian.org/debian/ bookworm
 
 Package: libslang2-dev
 Section: libdevel
