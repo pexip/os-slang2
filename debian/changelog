@@ -1,3 +1,19 @@
+slang2 (2.3.3-5) unstable; urgency=medium
+
+  * Standards-Version: 4.7.0; no changes required
+  * Fix broken symlink in udeb. Closes: #1070828
+  * Support noudeb profile, thanks to Helmut Grohne. Closes: #0124934
+  * Drop obsolete README.Debian. Closes: #890429
+
+ -- Alastair McKinstry <mckinstry@debian.org>  Fri, 10 May 2024 06:28:20 +0100
+
+slang2 (2.3.3-4) unstable; urgency=medium
+
+  * Fix for leap year calculation. Closes:#1065723
+  * Standards-Version: 4.6.2
+
+ -- Alastair McKinstry <mckinstry@debian.org>  Wed, 13 Mar 2024 08:55:37 +0000
+
 slang2 (2.3.3-3+pexip24u3) pexip-bookworm; urgency=medium
 
   * New versioning scheme
